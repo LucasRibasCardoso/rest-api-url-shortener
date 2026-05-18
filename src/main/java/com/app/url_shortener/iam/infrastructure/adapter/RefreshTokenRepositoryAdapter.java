@@ -5,17 +5,18 @@ import com.app.url_shortener.iam.domain.model.RefreshToken;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.RefreshTokenEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort {
 
+  private final EntityManager entityManager;
   private final RefreshTokenJpaRepository refreshTokenJpaRepository;
   private final RefreshTokenPersistenceMapper refreshTokenPersistenceMapper;
 
@@ -27,7 +28,9 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort
 
   @Override
   public Optional<RefreshToken> findByTokenHash(String tokenHash) {
-    return refreshTokenJpaRepository.findByTokenHash(tokenHash).map(refreshTokenPersistenceMapper::toDomain);
+    return refreshTokenJpaRepository
+        .findByTokenHash(tokenHash)
+        .map(refreshTokenPersistenceMapper::toDomain);
   }
 
   @Override
@@ -38,5 +41,13 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort
   @Override
   public void revokeActiveTokenByHash(String tokenHash) {
     refreshTokenJpaRepository.revokeActiveTokenByHash(tokenHash, Instant.now());
+  }
+
+  @Override
+  public int markTokenAsRotatedIfActive(String oldTokenHash, Instant rotatedAt, UUID replacedByTokenId) {
+    RefreshTokenEntity replacedByTokenReference =
+        entityManager.getReference(RefreshTokenEntity.class, replacedByTokenId);
+
+    return refreshTokenJpaRepository.markTokenAsRotatedIfActive(oldTokenHash, rotatedAt, replacedByTokenReference);
   }
 }

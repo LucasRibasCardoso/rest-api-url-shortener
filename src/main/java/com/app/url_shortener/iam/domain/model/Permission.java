@@ -1,19 +1,15 @@
 package com.app.url_shortener.iam.domain.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
-
 import java.util.Objects;
 import java.util.UUID;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 @Getter
-@ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Permission {
 
-  @EqualsAndHashCode.Include
-  private final UUID id;
+  @EqualsAndHashCode.Include private final UUID id;
   private final String name;
   private final String description;
 
@@ -39,5 +35,19 @@ public class Permission {
 
     String normalizedDescription = description.trim();
     return normalizedDescription.isBlank() ? null : normalizedDescription;
+  }
+
+  @Override
+  public String toString() {
+    return "Permission{"
+        + "id="
+        + id
+        + ", name='"
+        + name
+        + '\''
+        + ", description='"
+        + description
+        + '\''
+        + '}';
   }
 }

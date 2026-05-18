@@ -20,7 +20,6 @@ public abstract class RefreshTokenPersistenceMapper {
 
   @Mapping(target = "userId", ignore = true)
   @Mapping(target = "replacedByTokenId", ignore = true)
-  @Mapping(target = "rotate", ignore = true)
   public abstract RefreshToken toDomain(RefreshTokenEntity entity);
 
   @Mapping(target = "user", ignore = true)

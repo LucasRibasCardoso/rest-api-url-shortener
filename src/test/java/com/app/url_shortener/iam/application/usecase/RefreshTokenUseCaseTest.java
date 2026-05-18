@@ -6,6 +6,7 @@ import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryP
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
+import com.app.url_shortener.iam.application.service.RefreshTokenSecurityService;
 import com.app.url_shortener.iam.application.usecase.impl.RefreshTokenUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
@@ -57,6 +58,9 @@ class RefreshTokenUseCaseTest {
   @Mock
   private UserAccountRepositoryPort userRepository;
 
+  @Mock
+  private RefreshTokenSecurityService refreshTokenSecurityService;
+
   @Captor
   private ArgumentCaptor<RefreshToken> refreshTokenCaptor;
 
@@ -87,7 +91,12 @@ class RefreshTokenUseCaseTest {
       given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(oldToken));
       given(tokenGenerator.generateRandomToken()).willReturn(newRawToken);
       given(tokenGenerator.hashToken(newRawToken)).willReturn(newTokenHash);
-      given(userRepository.findById(userId)).willReturn(Optional.of(userAccount));
+      given(tokenRepository.markTokenAsRotatedIfActive(
+              eq(incomingHash),
+              any(Instant.class),
+              any(UUID.class)
+      )).willReturn(1);
+      given(userRepository.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.of(userAccount));
       given(accessTokenPort.getToken(any(AuthenticatedUserResult.class))).willReturn(newAccessToken);
 
       // 2. Act
@@ -99,20 +108,20 @@ class RefreshTokenUseCaseTest {
               () -> assertThat(result.newAccessToken()).isEqualTo(newAccessToken)
       );
 
-      verify(tokenRepository, times(2)).save(refreshTokenCaptor.capture());
-      var savedTokens = refreshTokenCaptor.getAllValues();
-      var savedNewToken = savedTokens.getFirst();
-      var savedOldToken = savedTokens.getLast();
+      verify(tokenRepository).save(refreshTokenCaptor.capture());
+      var savedNewToken = refreshTokenCaptor.getValue();
 
       assertAll(
               () -> assertThat(savedNewToken.getUserId()).isEqualTo(userId),
               () -> assertThat(savedNewToken.getTokenHash()).isEqualTo(newTokenHash),
-              () -> assertThat(savedNewToken.isRevoked()).isFalse(),
-              () -> assertThat(savedOldToken).isSameAs(oldToken),
-              () -> assertThat(savedOldToken.isRevoked()).isTrue(),
-              () -> assertThat(savedOldToken.getReplacedByTokenId()).isEqualTo(savedNewToken.getId())
+              () -> assertThat(savedNewToken.isRevoked()).isFalse()
       );
 
+      verify(tokenRepository).markTokenAsRotatedIfActive(
+              eq(incomingHash),
+              any(Instant.class),
+              eq(savedNewToken.getId())
+      );
       verify(accessTokenPort).getToken(authenticatedUserCaptor.capture());
       var authenticatedUser = authenticatedUserCaptor.getValue();
 
@@ -130,8 +139,15 @@ class RefreshTokenUseCaseTest {
       verify(tokenRepository).findByTokenHash(incomingHash);
       verify(tokenGenerator).generateRandomToken();
       verify(tokenGenerator).hashToken(newRawToken);
-      verify(userRepository).findById(userId);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator, accessTokenPort, userRepository);
+      verify(userRepository).findByIdWithRolesAndPermissions(userId);
+      verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
+      verifyNoMoreInteractions(
+              tokenRepository,
+              tokenGenerator,
+              accessTokenPort,
+              userRepository,
+              refreshTokenSecurityService
+      );
     }
 
     @Test
@@ -154,7 +170,7 @@ class RefreshTokenUseCaseTest {
 
       verify(tokenGenerator).hashToken(command.refreshToken());
       verify(tokenRepository).findByTokenHash(incomingHash);
-      verifyNoInteractions(accessTokenPort, userRepository);
+      verifyNoInteractions(accessTokenPort, userRepository, refreshTokenSecurityService);
       verifyNoMoreInteractions(tokenRepository, tokenGenerator);
     }
 
@@ -202,9 +218,12 @@ class RefreshTokenUseCaseTest {
 
       verify(tokenGenerator).hashToken(command.refreshToken());
       verify(tokenRepository).findByTokenHash(incomingHash);
-      verify(tokenRepository).revokeAllTokensForUser(userId);
+      verify(refreshTokenSecurityService).revokeAllTokensDueToCompromise(userId);
+      verify(tokenRepository, never()).save(any(RefreshToken.class));
+      verify(tokenRepository, never()).markTokenAsRotatedIfActive(any(), any(), any());
+      verify(accessTokenPort, never()).getToken(any());
       verifyNoInteractions(accessTokenPort, userRepository);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator);
+      verifyNoMoreInteractions(tokenRepository, tokenGenerator, refreshTokenSecurityService);
     }
 
     @Test
@@ -214,14 +233,10 @@ class RefreshTokenUseCaseTest {
       var userId = UUID.fromString("019a1744-9a1f-7f0b-b7a4-9b2ab723c003");
       var command = new RefreshTokenCommand("expired-refresh-token");
       var incomingHash = "expired-refresh-token-hash";
-      var newRawToken = "new-raw-refresh-token";
-      var newTokenHash = "new-refresh-token-hash";
       var expiredToken = expiredRefreshToken(userId, incomingHash);
 
       given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
       given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(expiredToken));
-      given(tokenGenerator.generateRandomToken()).willReturn(newRawToken);
-      given(tokenGenerator.hashToken(newRawToken)).willReturn(newTokenHash);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -233,11 +248,12 @@ class RefreshTokenUseCaseTest {
 
       verify(tokenGenerator).hashToken(command.refreshToken());
       verify(tokenRepository).findByTokenHash(incomingHash);
-      verify(tokenGenerator).generateRandomToken();
-      verify(tokenGenerator).hashToken(newRawToken);
+      verify(tokenGenerator, never()).generateRandomToken();
+      verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
       verify(tokenRepository, never()).save(any(RefreshToken.class));
+      verify(tokenRepository, never()).markTokenAsRotatedIfActive(any(), any(), any());
       verifyNoInteractions(accessTokenPort, userRepository);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator);
+      verifyNoMoreInteractions(tokenRepository, tokenGenerator, refreshTokenSecurityService);
     }
 
     @Test
@@ -255,7 +271,12 @@ class RefreshTokenUseCaseTest {
       given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(oldToken));
       given(tokenGenerator.generateRandomToken()).willReturn(newRawToken);
       given(tokenGenerator.hashToken(newRawToken)).willReturn(newTokenHash);
-      given(userRepository.findById(userId)).willReturn(Optional.empty());
+      given(tokenRepository.markTokenAsRotatedIfActive(
+              eq(incomingHash),
+              any(Instant.class),
+              any(UUID.class)
+      )).willReturn(1);
+      given(userRepository.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.empty());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -265,10 +286,20 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(UserNotFoundException.class)
               .hasMessage("Usuário não encontrado.");
 
-      verify(tokenRepository, times(2)).save(any(RefreshToken.class));
-      verify(userRepository).findById(userId);
+      verify(tokenRepository).save(refreshTokenCaptor.capture());
+      verify(tokenRepository).markTokenAsRotatedIfActive(
+              eq(incomingHash),
+              any(Instant.class),
+              eq(refreshTokenCaptor.getValue().getId())
+      );
+      verify(tokenGenerator).hashToken(command.refreshToken());
+      verify(tokenRepository).findByTokenHash(incomingHash);
+      verify(tokenGenerator).generateRandomToken();
+      verify(tokenGenerator).hashToken(newRawToken);
+      verify(userRepository).findByIdWithRolesAndPermissions(userId);
+      verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
       verifyNoInteractions(accessTokenPort);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator, userRepository);
+      verifyNoMoreInteractions(tokenRepository, tokenGenerator, userRepository, refreshTokenSecurityService);
     }
   }
 

@@ -1,9 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.iam.domain.model.RefreshToken;
-import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapperImpl;
 import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
@@ -15,15 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -124,7 +117,7 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
   }
 
   @Nested
-  @DisplayName("Revogação por queries customizadas")
+  @DisplayName("Revogação e rotação por queries customizadas")
   class RevokeQueryTests {
 
     @Test
@@ -181,6 +174,98 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       assertThat(revokedAt("hash-to-revoke")).isNotNull();
       assertThat(revokedAt("hash-to-keep")).isNull();
       assertThat(revokedAt("hash-already-revoked")).isEqualTo(alreadyRevokedAt);
+    }
+
+    @Test
+    @DisplayName("Deve marcar token ativo como rotacionado")
+    void shouldMarkActiveTokenAsRotated() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad405");
+      var oldTokenHash = "active-token-to-rotate";
+      var newTokenId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad407");
+      var rotatedAt = Instant.parse("2026-05-08T10:15:30Z");
+
+      insertUser(userId, "active-rotation@email.com");
+      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad406"), userId, oldTokenHash, null, null));
+      adapter.save(refreshToken(newTokenId, userId, "new-active-rotation-token", null, null));
+      entityManager.flush();
+      entityManager.clear();
+
+      // 2. Act
+      var updatedRows = adapter.markTokenAsRotatedIfActive(oldTokenHash, rotatedAt, newTokenId);
+      entityManager.flush();
+      entityManager.clear();
+
+      // 3. Assert
+      assertThat(updatedRows).isEqualTo(1);
+      assertThat(revokedAt(oldTokenHash)).isEqualTo(rotatedAt);
+      assertThat(replacedByTokenId(oldTokenHash)).isEqualTo(newTokenId);
+    }
+
+    @Test
+    @DisplayName("Não deve rotacionar token já revogado")
+    void shouldNotRotateAlreadyRevokedToken() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad408");
+      var oldTokenHash = "already-rotated-token";
+      var firstNewTokenId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40a");
+      var anotherNewTokenId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40b");
+      var originalRevokedAt = Instant.parse("2026-05-08T11:00:00Z");
+      var anotherRotatedAt = Instant.parse("2026-05-08T12:00:00Z");
+
+      insertUser(userId, "already-rotated@email.com");
+      adapter.save(refreshToken(firstNewTokenId, userId, "first-new-rotation-token", null, null));
+      adapter.save(refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad409"),
+              userId,
+              oldTokenHash,
+              originalRevokedAt,
+              firstNewTokenId
+      ));
+      adapter.save(refreshToken(anotherNewTokenId, userId, "another-new-rotation-token", null, null));
+      entityManager.flush();
+      entityManager.clear();
+
+      // 2. Act
+      var updatedRows = adapter.markTokenAsRotatedIfActive(oldTokenHash, anotherRotatedAt, anotherNewTokenId);
+      entityManager.flush();
+      entityManager.clear();
+
+      // 3. Assert
+      assertThat(updatedRows).isZero();
+      assertThat(revokedAt(oldTokenHash)).isEqualTo(originalRevokedAt);
+      assertThat(replacedByTokenId(oldTokenHash)).isEqualTo(firstNewTokenId);
+    }
+
+    @Test
+    @DisplayName("Não deve rotacionar token expirado")
+    void shouldNotRotateExpiredToken() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40c");
+      var expiredTokenHash = "expired-token-to-rotate";
+      var newTokenId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40e");
+      var now = Instant.parse("2026-05-08T10:15:30Z");
+
+      insertUser(userId, "expired-rotation@email.com");
+      insertRefreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40d"),
+              userId,
+              expiredTokenHash,
+              Instant.parse("2026-05-08T10:15:29Z")
+      );
+      adapter.save(refreshToken(newTokenId, userId, "new-expired-rotation-token", null, null));
+      entityManager.flush();
+      entityManager.clear();
+
+      // 2. Act
+      var updatedRows = adapter.markTokenAsRotatedIfActive(expiredTokenHash, now, newTokenId);
+      entityManager.flush();
+      entityManager.clear();
+
+      // 3. Assert
+      assertThat(updatedRows).isZero();
+      assertThat(revokedAt(expiredTokenHash)).isNull();
+      assertThat(replacedByTokenId(expiredTokenHash)).isNull();
     }
   }
 
@@ -393,6 +478,14 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
     return jdbcTemplate.queryForObject(
             "SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?",
             Instant.class,
+            tokenHash
+    );
+  }
+
+  private UUID replacedByTokenId(String tokenHash) {
+    return jdbcTemplate.queryForObject(
+            "SELECT replaced_by_token_id FROM refresh_tokens WHERE token_hash = ?",
+            UUID.class,
             tokenHash
     );
   }

@@ -6,17 +6,15 @@ import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.UserAccountPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.persistence.repository.UserJpaRepository;
 import com.app.url_shortener.shared.infrastructure.persistence.DataIntegrityExceptionTranslator;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @Repository
 @RequiredArgsConstructor
 public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
-
 
   private final UserJpaRepository userJpaRepository;
   private final DataIntegrityExceptionTranslator dataIntegrityExceptionTranslator;
@@ -43,11 +41,15 @@ public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
 
   @Override
   public Optional<UserAccount> findByEmail(String email) {
-    return userJpaRepository.findByEmailWithRolesAndPermissions(email).map(userAccountPersistenceMapper::toDomain);
+    return userJpaRepository
+        .findByEmailWithRolesAndPermissions(email)
+        .map(userAccountPersistenceMapper::toDomain);
   }
 
   @Override
-  public Optional<UserAccount> findById(UUID id) {
-    return userJpaRepository.findById(id).map(userAccountPersistenceMapper::toDomain);
+  public Optional<UserAccount> findByIdWithRolesAndPermissions(UUID id) {
+    return userJpaRepository
+        .findByIdWithRolesAndPermissions(id)
+        .map(userAccountPersistenceMapper::toDomain);
   }
 }

@@ -1,18 +1,14 @@
 package com.app.url_shortener.iam.domain.model;
 
+import java.util.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.ToString;
-
-import java.util.*;
 
 @Getter
-@ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Role {
 
-  @EqualsAndHashCode.Include
-  private final UUID id;
+  @EqualsAndHashCode.Include private final UUID id;
   private final String name;
   private final boolean isDefault;
   private final Set<Permission> permissions;
@@ -21,7 +17,7 @@ public class Role {
     this.id = Objects.requireNonNull(id, "id is required");
     this.name = Objects.requireNonNull(name, "name is required").trim();
     this.isDefault = isDefault;
-    this.permissions = permissions == null ? new HashSet<>() : permissions;
+    this.permissions = permissions == null ? new HashSet<>() : new HashSet<>(permissions);
   }
 
   public static Role create(String name, Set<Permission> permissions) {
@@ -36,5 +32,20 @@ public class Role {
 
   public Set<Permission> getPermissions() {
     return Collections.unmodifiableSet(permissions);
+  }
+
+  @Override
+  public String toString() {
+    return "Role{"
+        + "id="
+        + id
+        + ", name='"
+        + name
+        + '\''
+        + ", isDefault="
+        + isDefault
+        + ", permissionsCount="
+        + permissions.size()
+        + '}';
   }
 }

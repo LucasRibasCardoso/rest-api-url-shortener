@@ -1,16 +1,13 @@
 package com.app.url_shortener.url.domain.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 @Getter
-@ToString
 @EqualsAndHashCode
 public class Url implements Serializable {
   private final UUID userId;
@@ -29,8 +26,24 @@ public class Url implements Serializable {
     return new Url(userId, shortCode, originalUrl, LocalDateTime.now());
   }
 
-  public static Url restore(UUID userId, String shortCode, String originalUrl, LocalDateTime createdAt) {
+  public static Url restore(
+      UUID userId, String shortCode, String originalUrl, LocalDateTime createdAt) {
     return new Url(userId, shortCode, originalUrl, createdAt);
   }
 
+  @Override
+  public String toString() {
+    return "Url{"
+        + "userId="
+        + userId
+        + ", shortCode='"
+        + shortCode
+        + '\''
+        + ", originalUrl='"
+        + originalUrl
+        + '\''
+        + ", createdAt="
+        + createdAt
+        + '}';
+  }
 }
