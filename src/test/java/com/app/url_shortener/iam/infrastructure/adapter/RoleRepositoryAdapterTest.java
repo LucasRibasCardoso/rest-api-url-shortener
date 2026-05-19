@@ -1,7 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.domain.exception.rbac.DefaultRoleNotFoundException;
-import com.app.url_shortener.iam.domain.model.Permission;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.infrastructure.adapter.RoleRepositoryAdapter;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
@@ -43,52 +42,6 @@ class RoleRepositoryAdapterTest {
   private RoleRepositoryAdapter adapter;
 
   @Nested
-  @DisplayName("Busca por Nome")
-  class FindByNameTests {
-
-    @Test
-    @DisplayName("Deve retornar role quando entidade existir para o nome informado")
-    void shouldReturnRoleWhenEntityExistsForName() {
-      // 1. Arrange
-      var roleName = "ROLE_USER";
-      var entity = roleEntity(roleName, true);
-      var domain = roleDomain(entity.getId(), roleName, true);
-
-      given(roleJpaRepository.findByName(roleName)).willReturn(Optional.of(entity));
-      given(rolePersistenceMapper.toDomain(entity)).willReturn(domain);
-
-      // 2. Act
-      var result = adapter.findByName(roleName);
-
-      // 3. Assert
-      assertThat(result).contains(domain);
-
-      verify(roleJpaRepository).findByName(roleName);
-      verify(rolePersistenceMapper).toDomain(entity);
-      verifyNoMoreInteractions(roleJpaRepository, rolePersistenceMapper);
-    }
-
-    @Test
-    @DisplayName("Deve retornar vazio quando nenhuma role existir para o nome informado")
-    void shouldReturnEmptyWhenNoRoleExistsForName() {
-      // 1. Arrange
-      var roleName = "ROLE_UNKNOWN";
-
-      given(roleJpaRepository.findByName(roleName)).willReturn(Optional.empty());
-
-      // 2. Act
-      var result = adapter.findByName(roleName);
-
-      // 3. Assert
-      assertThat(result).isEmpty();
-
-      verify(roleJpaRepository).findByName(roleName);
-      verifyNoInteractions(rolePersistenceMapper);
-      verifyNoMoreInteractions(roleJpaRepository);
-    }
-  }
-
-  @Nested
   @DisplayName("Busca da Role Padrão")
   class FindDefaultRoleTests {
 
@@ -100,7 +53,7 @@ class RoleRepositoryAdapterTest {
       var domain = roleDomain(entity.getId(), "ROLE_USER", true);
 
       given(roleJpaRepository.findDefaultRole()).willReturn(Optional.of(entity));
-      given(rolePersistenceMapper.toDomain(entity)).willReturn(domain);
+      given(rolePersistenceMapper.toDomainWithoutPermissions(entity)).willReturn(domain);
 
       // 2. Act
       var result = adapter.findDefaultRole();
@@ -109,7 +62,7 @@ class RoleRepositoryAdapterTest {
       assertThat(result).isEqualTo(domain);
 
       verify(roleJpaRepository).findDefaultRole();
-      verify(rolePersistenceMapper).toDomain(entity);
+      verify(rolePersistenceMapper).toDomainWithoutPermissions(entity);
       verifyNoMoreInteractions(roleJpaRepository, rolePersistenceMapper);
     }
 
@@ -151,11 +104,7 @@ class RoleRepositoryAdapterTest {
             id,
             name,
             isDefault,
-            Set.of(Permission.restore(
-                    UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac456"),
-                    "url:create",
-                    "Criar URLs encurtadas"
-            ))
+            Set.of()
     );
   }
 }

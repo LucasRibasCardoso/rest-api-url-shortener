@@ -42,7 +42,9 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
       throw new InvalidVerificationCodeException();
     }
 
-    UserAccount userAccount = userAccountRepositoryPort.findByEmail(email).orElseThrow(UserNotFoundException::new);
+    UserAccount userAccount = userAccountRepositoryPort.findByEmailWithRoles(email)
+            .orElseThrow(UserNotFoundException::new);
+
     Role defaultRole = roleRepositoryPort.findDefaultRole();
     userAccount.verifyEmail(defaultRole);
     userAccountRepositoryPort.save(userAccount);

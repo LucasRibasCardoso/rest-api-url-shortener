@@ -42,14 +42,21 @@ public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
   @Override
   public Optional<UserAccount> findByEmail(String email) {
     return userJpaRepository
-        .findByEmailWithRolesAndPermissions(email)
-        .map(userAccountPersistenceMapper::toDomain);
+        .findByEmail(email)
+        .map(userAccountPersistenceMapper::toDomainWithoutRoles);
+  }
+
+  @Override
+  public Optional<UserAccount> findByEmailWithRoles(String email) {
+    return userJpaRepository
+        .findByEmailWithRoles(email)
+        .map(userAccountPersistenceMapper::toDomainWithRoles);
   }
 
   @Override
   public Optional<UserAccount> findByIdWithRolesAndPermissions(UUID id) {
     return userJpaRepository
         .findByIdWithRolesAndPermissions(id)
-        .map(userAccountPersistenceMapper::toDomain);
+        .map(userAccountPersistenceMapper::toDomainWithRolesAndPermissions);
   }
 }

@@ -85,15 +85,18 @@ class VerifyEmailUseCaseTest {
 
       TransactionSynchronizationManager.initSynchronization();
       given(emailVerificationTokenPort.findByEmail("user@email.com")).willReturn(Optional.of(token));
-      given(userAccountRepositoryPort.findByEmail("user@email.com")).willReturn(Optional.of(pendingUser));
+      given(userAccountRepositoryPort.findByEmailWithRoles("user@email.com")).willReturn(Optional.of(pendingUser));
       given(roleRepositoryPort.findDefaultRole()).willReturn(defaultRole);
 
       // 2. Act
       var result = verifyEmailUseCase.execute(command);
+
+      // 3. Assert
+      verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());
+
       TransactionSynchronizationManager.getSynchronizations()
               .forEach(synchronization -> synchronization.afterCommit());
 
-      // 3. Assert
       assertThat(result.message()).isEqualTo(SUCCESS_MESSAGE);
 
       verify(userAccountRepositoryPort).save(userAccountCaptor.capture());
@@ -107,7 +110,7 @@ class VerifyEmailUseCaseTest {
       );
 
       verify(emailVerificationTokenPort).findByEmail("user@email.com");
-      verify(userAccountRepositoryPort).findByEmail("user@email.com");
+      verify(userAccountRepositoryPort).findByEmailWithRoles("user@email.com");
       verify(roleRepositoryPort).findDefaultRole();
       verify(emailVerificationTokenPort).deleteByEmail("user@email.com");
       verifyNoMoreInteractions(emailVerificationTokenPort, userAccountRepositoryPort, roleRepositoryPort);
@@ -189,7 +192,7 @@ class VerifyEmailUseCaseTest {
       var token = validToken(command.email(), code);
 
       given(emailVerificationTokenPort.findByEmail(command.email())).willReturn(Optional.of(token));
-      given(userAccountRepositoryPort.findByEmail(command.email())).willReturn(Optional.empty());
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.empty());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> verifyEmailUseCase.execute(command));
@@ -200,7 +203,7 @@ class VerifyEmailUseCaseTest {
               .hasMessage("Usuário não encontrado.");
 
       verify(emailVerificationTokenPort).findByEmail(command.email());
-      verify(userAccountRepositoryPort).findByEmail(command.email());
+      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       verifyNoInteractions(roleRepositoryPort);
       verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());
       verifyNoMoreInteractions(emailVerificationTokenPort, userAccountRepositoryPort);
@@ -218,7 +221,7 @@ class VerifyEmailUseCaseTest {
       var exception = new IllegalStateException("Falha ao salvar usuário.");
 
       given(emailVerificationTokenPort.findByEmail(command.email())).willReturn(Optional.of(token));
-      given(userAccountRepositoryPort.findByEmail(command.email())).willReturn(Optional.of(pendingUser));
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
       given(roleRepositoryPort.findDefaultRole()).willReturn(defaultRole);
       given(userAccountRepositoryPort.save(pendingUser)).willThrow(exception);
 
@@ -231,7 +234,7 @@ class VerifyEmailUseCaseTest {
               .hasMessage("Falha ao salvar usuário.");
 
       verify(emailVerificationTokenPort).findByEmail(command.email());
-      verify(userAccountRepositoryPort).findByEmail(command.email());
+      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       verify(roleRepositoryPort).findDefaultRole();
       verify(userAccountRepositoryPort).save(pendingUser);
       verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());

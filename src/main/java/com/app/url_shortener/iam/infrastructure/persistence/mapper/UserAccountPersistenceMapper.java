@@ -1,69 +1,88 @@
 package com.app.url_shortener.iam.infrastructure.persistence.mapper;
 
-import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.domain.model.UserAccount;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import java.util.Collections;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ObjectFactory;
 import org.mapstruct.ReportingPolicy;
-
-import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Mapper(
-        componentModel = "spring",
-        unmappedTargetPolicy = ReportingPolicy.ERROR,
-        uses = RolePersistenceMapper.class)
+    componentModel = "spring",
+    unmappedTargetPolicy = ReportingPolicy.ERROR,
+    uses = RolePersistenceMapper.class)
 public abstract class UserAccountPersistenceMapper {
 
-  @Mapping(target = "roles", ignore = true)
-  public abstract UserAccount toDomain(UserEntity entity);
+  @Autowired
+  protected RolePersistenceMapper rolePersistenceMapper;
 
-  @Mapping(target = "roles", ignore = true)
-  @Mapping(target = "createdAt", ignore = true)
-  @Mapping(target = "updatedAt", ignore = true)
-  @Mapping(target = "createdBy", ignore = true)
-  @Mapping(target = "updatedBy", ignore = true)
-  public abstract UserEntity toEntity(UserAccount domain);
-
-  public abstract Set<Role> toDomainRoles(Set<RoleEntity> entities);
-
-  public abstract Set<RoleEntity> toEntityRoles(Set<Role> domains);
-
-  @ObjectFactory
-  public UserAccount createDomainObject(UserEntity entity) {
+  public UserAccount toDomainWithoutRoles(UserEntity entity) {
     if (entity == null) {
       return null;
     }
+
     return UserAccount.restore(
-            entity.getId(),
-            entity.getName(),
-            entity.getEmail(),
-            entity.getPasswordHash(),
-            entity.getStatus(),
-            entity.getPlan(),
-            entity.isEmailVerified(),
-            toDomainRoles(entity.getRoles())
-    );
+        entity.getId(),
+        entity.getName(),
+        entity.getEmail(),
+        entity.getPasswordHash(),
+        entity.getStatus(),
+        entity.getPlan(),
+        entity.isEmailVerified(),
+        Collections.emptySet());
   }
 
-  @ObjectFactory
-  public UserEntity createEntityObject(UserAccount domain) {
+  public UserAccount toDomainWithRoles(UserEntity entity) {
+    if (entity == null) {
+      return null;
+    }
+
+    return UserAccount.restore(
+        entity.getId(),
+        entity.getName(),
+        entity.getEmail(),
+        entity.getPasswordHash(),
+        entity.getStatus(),
+        entity.getPlan(),
+        entity.isEmailVerified(),
+        rolePersistenceMapper.toDomainWithoutPermissions(entity.getRoles()));
+  }
+
+  public UserAccount toDomainWithRolesAndPermissions(UserEntity entity) {
+    if (entity == null) {
+      return null;
+    }
+
+    return UserAccount.restore(
+        entity.getId(),
+        entity.getName(),
+        entity.getEmail(),
+        entity.getPasswordHash(),
+        entity.getStatus(),
+        entity.getPlan(),
+        entity.isEmailVerified(),
+        rolePersistenceMapper.toDomainWithPermissions(entity.getRoles()));
+  }
+
+  public UserAccount toDomain(UserEntity entity) {
+    return toDomainWithoutRoles(entity);
+  }
+
+  public UserEntity toEntity(UserAccount domain) {
     if (domain == null) {
       return null;
     }
+
     return new UserEntity(
-            domain.getId(),
-            domain.getName(),
-            domain.getEmail(),
-            domain.getPasswordHash(),
-            domain.getStatus(),
-            domain.getPlan(),
-            domain.isEmailVerified(),
-            null,
-            null,
-            toEntityRoles(domain.getRoles())
-    );
+        domain.getId(),
+        domain.getName(),
+        domain.getEmail(),
+        domain.getPasswordHash(),
+        domain.getStatus(),
+        domain.getPlan(),
+        domain.isEmailVerified(),
+        null,
+        null,
+        rolePersistenceMapper.toEntity(domain.getRoles()));
   }
 }

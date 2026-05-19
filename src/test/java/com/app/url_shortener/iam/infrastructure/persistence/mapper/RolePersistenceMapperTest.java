@@ -42,7 +42,7 @@ class RolePersistenceMapperTest {
       var entity = new RoleEntity(roleId, "ROLE_ADMIN", true, Set.of(permissionEntity));
 
       // 2. Act
-      var domain = mapper.toDomain(entity);
+      var domain = mapper.toDomainWithPermissions(entity);
 
       // 3. Assert
       assertThat(domain).isNotNull();
@@ -59,13 +59,36 @@ class RolePersistenceMapperTest {
     }
 
     @Test
+    @DisplayName("Deve mapear entidade de role para domínio sem permissões")
+    void shouldMapRoleEntityToDomainWithoutPermissions() {
+      // 1. Arrange
+      var roleId = UUID.randomUUID();
+      var permissionEntity = new PermissionEntity(
+              UUID.randomUUID(),
+              "url:create",
+              "Criar URLs encurtadas"
+      );
+      var entity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+
+      // 2. Act
+      var domain = mapper.toDomainWithoutPermissions(entity);
+
+      // 3. Assert
+      assertThat(domain).isNotNull();
+      assertThat(domain.getId()).isEqualTo(roleId);
+      assertThat(domain.getName()).isEqualTo("ROLE_USER");
+      assertThat(domain.isDefault()).isTrue();
+      assertThat(domain.getPermissions()).isEmpty();
+    }
+
+    @Test
     @DisplayName("Deve retornar nulo quando a entidade for nula")
     void shouldReturnNullWhenRoleEntityIsNull() {
       // 1. Arrange
       RoleEntity entity = null;
 
       // 2. Act
-      var domain = mapper.toDomain(entity);
+      var domain = mapper.toDomainWithPermissions(entity);
 
       // 3. Assert
       assertThat(domain).isNull();
@@ -131,11 +154,30 @@ class RolePersistenceMapperTest {
 
   private static void setField(Object target, String fieldName, Object value) {
     try {
-      Field field = target.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      field.set(target, value);
+      setFields(target, fieldName, value);
     } catch (NoSuchFieldException | IllegalAccessException exception) {
       throw new IllegalStateException("Could not configure mapper dependency", exception);
+    }
+  }
+
+  private static void setFields(Object target, String fieldName, Object value)
+          throws NoSuchFieldException, IllegalAccessException {
+    Class<?> currentType = target.getClass();
+    boolean found = false;
+    while (currentType != null) {
+      try {
+        Field field = currentType.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+        found = true;
+      } catch (NoSuchFieldException exception) {
+        // Continue searching fields declared in superclasses.
+      }
+      currentType = currentType.getSuperclass();
+    }
+
+    if (!found) {
+      throw new NoSuchFieldException(fieldName);
     }
   }
 }

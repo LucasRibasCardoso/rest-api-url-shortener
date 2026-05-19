@@ -3,17 +3,16 @@ package com.app.url_shortener.iam.infrastructure.persistence.entity;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Getter
 @Entity
@@ -63,11 +62,12 @@ public class UserEntity {
 
   @Getter(AccessLevel.NONE)
   @ManyToMany(fetch = FetchType.LAZY)
+  @Column(nullable = false, length = 120)
   @JoinTable(
           name = "user_roles",
           joinColumns = @JoinColumn(name = "user_id"),
           inverseJoinColumns = @JoinColumn(name = "role_id"))
-  private Set<RoleEntity> roles;
+  private Set<RoleEntity> roles = new HashSet<>();
 
   public UserEntity() {
   }
@@ -92,10 +92,14 @@ public class UserEntity {
     this.emailVerified = emailVerified;
     this.createdBy = createdBy;
     this.updatedBy = updatedBy;
-    this.roles = roles == null ? new HashSet<>() : roles;
+    this.roles = roles == null ? new HashSet<>() : new HashSet<>(roles);
   }
 
   public Set<RoleEntity> getRoles() {
+    if (roles == null) {
+      return Collections.emptySet();
+    }
+
     return Collections.unmodifiableSet(roles);
   }
 }

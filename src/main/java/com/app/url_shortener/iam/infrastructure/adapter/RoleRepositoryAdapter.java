@@ -8,8 +8,6 @@ import com.app.url_shortener.iam.infrastructure.persistence.repository.RoleJpaRe
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
 @Repository
 @RequiredArgsConstructor
 public class RoleRepositoryAdapter implements RoleRepositoryPort {
@@ -18,14 +16,10 @@ public class RoleRepositoryAdapter implements RoleRepositoryPort {
   private final RolePersistenceMapper rolePersistenceMapper;
 
   @Override
-  public Optional<Role> findByName(String name) {
-    return roleJpaRepository.findByName(name).map(rolePersistenceMapper::toDomain);
-  }
-
-  @Override
   public Role findDefaultRole() {
-    return roleJpaRepository.findDefaultRole()
-            .map(rolePersistenceMapper::toDomain)
-            .orElseThrow(DefaultRoleNotFoundException::new);
+    return roleJpaRepository
+        .findDefaultRole()
+        .map(rolePersistenceMapper::toDomainWithoutPermissions)
+        .orElseThrow(DefaultRoleNotFoundException::new);
   }
 }

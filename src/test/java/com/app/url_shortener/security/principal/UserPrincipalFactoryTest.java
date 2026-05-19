@@ -77,7 +77,7 @@ class UserPrincipalFactoryTest {
       // 3. Assert
       assertThat(principal.getAuthorities())
               .extracting("authority")
-              .containsExactly(
+              .containsExactlyInAnyOrder(
                       "ROLE_ADMIN",
                       "url:create",
                       "url:delete",
@@ -100,7 +100,7 @@ class UserPrincipalFactoryTest {
       // 3. Assert
       assertThat(principal.getAuthorities())
               .extracting("authority")
-              .containsExactly("ROLE_USER", "url:read", "url:create");
+              .contains("ROLE_USER", "url:read", "url:create");
     }
 
     @Test

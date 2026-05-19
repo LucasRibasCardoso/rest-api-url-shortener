@@ -34,8 +34,8 @@ class UserAccountPersistenceMapperTest {
   class ToDomainTests {
 
     @Test
-    @DisplayName("Deve mapear entidade de usuário para domínio com roles e permissões")
-    void shouldMapUserEntityToDomainWithRolesAndPermissions() {
+    @DisplayName("Deve mapear entidade de usuário para domínio sem roles")
+    void shouldMapUserEntityToDomainWithoutRoles() {
       // 1. Arrange
       var userId = UUID.randomUUID();
       var roleId = UUID.randomUUID();
@@ -59,14 +59,55 @@ class UserAccountPersistenceMapperTest {
       var domain = mapper.toDomain(entity);
 
       // 3. Assert
-      assertThat(domain).isNotNull();
-      assertThat(domain.getId()).isEqualTo(userId);
-      assertThat(domain.getName()).isEqualTo("Maria Silva");
-      assertThat(domain.getEmail()).isEqualTo("maria@email.com");
-      assertThat(domain.getPasswordHash()).isEqualTo("password-hash");
-      assertThat(domain.getStatus()).isEqualTo(UserStatus.ACTIVE);
-      assertThat(domain.getPlan()).isEqualTo(PlanType.FREE);
-      assertThat(domain.isEmailVerified()).isTrue();
+      assertBasicUser(domain, userId);
+      assertThat(domain.getRoles()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Deve mapear entidade de usuário para domínio com roles sem permissões")
+    void shouldMapUserEntityToDomainWithRoles() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+      var roleId = UUID.randomUUID();
+      var permissionEntity = new PermissionEntity(
+              UUID.randomUUID(),
+              "url:create",
+              "Criar URLs"
+      );
+      var roleEntity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var entity = userEntity(userId, Set.of(roleEntity));
+
+      // 2. Act
+      var domain = mapper.toDomainWithRoles(entity);
+
+      // 3. Assert
+      assertBasicUser(domain, userId);
+      assertThat(domain.getRoles())
+              .singleElement()
+              .satisfies(role -> {
+                assertThat(role.getId()).isEqualTo(roleId);
+                assertThat(role.getName()).isEqualTo("ROLE_USER");
+                assertThat(role.isDefault()).isTrue();
+                assertThat(role.getPermissions()).isEmpty();
+              });
+    }
+
+    @Test
+    @DisplayName("Deve mapear entidade de usuário para domínio com roles e permissões")
+    void shouldMapUserEntityToDomainWithRolesAndPermissions() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+      var roleId = UUID.randomUUID();
+      var permissionId = UUID.randomUUID();
+      var permissionEntity = new PermissionEntity(permissionId, "url:create", "Criar URLs");
+      var roleEntity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var entity = userEntity(userId, Set.of(roleEntity));
+
+      // 2. Act
+      var domain = mapper.toDomainWithRolesAndPermissions(entity);
+
+      // 3. Assert
+      assertBasicUser(domain, userId);
       assertThat(domain.getRoles())
               .singleElement()
               .satisfies(role -> {
@@ -81,6 +122,23 @@ class UserAccountPersistenceMapperTest {
                           assertThat(permission.getDescription()).isEqualTo("Criar URLs");
                         });
               });
+    }
+
+    @Test
+    @DisplayName("Deve retornar nulo quando entidade for nula nos mapeamentos explícitos")
+    void shouldReturnNullWhenUserEntityIsNullForExplicitMappings() {
+      // 1. Arrange
+      UserEntity entity = null;
+
+      // 2. Act
+      var withoutRoles = mapper.toDomainWithoutRoles(entity);
+      var withRoles = mapper.toDomainWithRoles(entity);
+      var withRolesAndPermissions = mapper.toDomainWithRolesAndPermissions(entity);
+
+      // 3. Assert
+      assertThat(withoutRoles).isNull();
+      assertThat(withRoles).isNull();
+      assertThat(withRolesAndPermissions).isNull();
     }
 
     @Test
@@ -125,6 +183,7 @@ class UserAccountPersistenceMapperTest {
       var entity = mapper.toEntity(domain);
 
       // 3. Assert
+      assertThat(domain).isNotNull();
       assertThat(entity).isNotNull();
       assertThat(entity.getId()).isEqualTo(userId);
       assertThat(entity.getName()).isEqualTo("João Silva");
@@ -177,13 +236,58 @@ class UserAccountPersistenceMapperTest {
     return mapper;
   }
 
+  private static UserEntity userEntity(UUID id, Set<RoleEntity> roles) {
+    return new UserEntity(
+            id,
+            "Maria Silva",
+            "maria@email.com",
+            "password-hash",
+            UserStatus.ACTIVE,
+            PlanType.FREE,
+            true,
+            null,
+            null,
+            roles
+    );
+  }
+
+  private static void assertBasicUser(UserAccount domain, UUID id) {
+    assertThat(domain).isNotNull();
+    assertThat(domain.getId()).isEqualTo(id);
+    assertThat(domain.getName()).isEqualTo("Maria Silva");
+    assertThat(domain.getEmail()).isEqualTo("maria@email.com");
+    assertThat(domain.getPasswordHash()).isEqualTo("password-hash");
+    assertThat(domain.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    assertThat(domain.getPlan()).isEqualTo(PlanType.FREE);
+    assertThat(domain.isEmailVerified()).isTrue();
+  }
+
   private static void setField(Object target, String fieldName, Object value) {
     try {
-      Field field = target.getClass().getDeclaredField(fieldName);
-      field.setAccessible(true);
-      field.set(target, value);
+      setFields(target, fieldName, value);
     } catch (NoSuchFieldException | IllegalAccessException exception) {
       throw new IllegalStateException("Could not configure mapper dependency", exception);
+    }
+  }
+
+  private static void setFields(Object target, String fieldName, Object value)
+          throws NoSuchFieldException, IllegalAccessException {
+    Class<?> currentType = target.getClass();
+    boolean found = false;
+    while (currentType != null) {
+      try {
+        Field field = currentType.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+        found = true;
+      } catch (NoSuchFieldException exception) {
+        // Continue searching fields declared in superclasses.
+      }
+      currentType = currentType.getSuperclass();
+    }
+
+    if (!found) {
+      throw new NoSuchFieldException(fieldName);
     }
   }
 }
