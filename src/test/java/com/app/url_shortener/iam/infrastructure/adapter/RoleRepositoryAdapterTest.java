@@ -1,12 +1,21 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.app.url_shortener.iam.domain.exception.rbac.DefaultRoleNotFoundException;
 import com.app.url_shortener.iam.domain.model.Role;
-import com.app.url_shortener.iam.infrastructure.adapter.RoleRepositoryAdapter;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.RolePersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.persistence.repository.RoleJpaRepository;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -15,17 +24,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)

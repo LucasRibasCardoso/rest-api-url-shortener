@@ -25,6 +25,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
@@ -95,7 +96,7 @@ class VerifyEmailUseCaseTest {
       verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());
 
       TransactionSynchronizationManager.getSynchronizations()
-              .forEach(synchronization -> synchronization.afterCommit());
+              .forEach(TransactionSynchronization::afterCommit);
 
       assertThat(result.message()).isEqualTo(SUCCESS_MESSAGE);
 
