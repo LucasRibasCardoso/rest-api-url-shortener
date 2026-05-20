@@ -14,7 +14,7 @@ Este backlog organiza os riscos encontrados na auditoria em tarefas executáveis
 
 | ID | Risco | Severidade | Status |
 |---|---|---:|---:|
-| R1 | `IdGeneratorAdapter` inseguro sob concorrência | Crítica | Pendente |
+| R1 | `IdGeneratorAdapter` inseguro sob concorrência | Crítica | Concluído |
 | R2 | Refresh token rotation sem operação atômica | Alta | Concluído |
 | R3 | Vazamento de dados sensíveis em logs/`toString` | Alta | Pendente |
 | R4 | Rate limit não implementado | Alta | Pendente |
@@ -31,7 +31,7 @@ Este backlog organiza os riscos encontrados na auditoria em tarefas executáveis
 
 ### TASK-R1 — Corrigir geração de ID sob concorrência
 
-**Status:** Pendente
+**Status:** Concluído
 **Severidade:** Crítica
 **Área:** URL
 **Fluxo afetado:** `POST /api/v1/urls`
@@ -51,27 +51,98 @@ Garantir que a geração de IDs seja segura sob concorrência, sem duplicidades 
 
 #### Subtasks
 
-- [ ] Revisar a implementação atual do `IdGeneratorAdapter`.
-- [ ] Decidir estratégia de correção:
-  - [ ] sincronizar a geração completa;
-  - [ ] encapsular `baseId` e `offset` em estado atômico único;
-  - [ ] usar Redis/Lua;
-  - [ ] usar DynamoDB atomic counter;
-  - [ ] usar outro gerador comprovado, como Snowflake/ULID, se fizer sentido.
-- [ ] Implementar a correção escolhida.
-- [ ] Criar/ajustar testes unitários de stress com `blockSize` pequeno.
-- [ ] Validar ausência de IDs duplicados.
-- [ ] Validar ausência de IDs calculados com bloco incorreto.
+- [x] Revisar a implementação atual do `IdGeneratorAdapter`.
+- [x] Decidir estratégia de correção:
+  - [x] sincronizar a geração completa;
+  - [x] encapsular `baseId` e `offset` em estado atômico único;
+  - [x] usar Redis/Lua;
+  - [x] usar DynamoDB atomic counter;
+  - [x] usar outro gerador comprovado, como Snowflake/ULID, se fizer sentido.
+- [x] Implementar a correção escolhida.
+- [x] Criar/ajustar testes unitários de stress com `blockSize` pequeno.
+- [x] Validar ausência de IDs duplicados.
+- [x] Validar ausência de IDs calculados com bloco incorreto.
+- [x] Rodar testes específicos do módulo URL.
+- [x] Rodar suíte completa.
+
+#### Critérios de aceite
+
+- [x] IDs gerados sob concorrência são únicos.
+- [x] A troca de bloco não gera IDs incorretos.
+- [x] Teste concorrente falharia com a implementação antiga.
+- [x] Código compila.
+- [x] Suíte de testes passa.
+
+---
+
+### TASK-R1A — Migrar contador global de Redis para DynamoDB atomic counter
+
+**Status:** Pendente
+**Severidade:** Alta
+**Área:** URL / Infraestrutura
+**Fluxo afetado:** `POST /api/v1/urls`
+**Arquivos principais:**
+
+- `CounterIdAdapter`
+- `DynamoDbCounterIdAdapter`
+- `CounterIdRepository`
+- configurações DynamoDB
+- testes com LocalStack
+
+#### Problema
+
+O Redis é performático, mas não é a fonte mais adequada para um contador global que não pode voltar para trás durante anos de operação.
+
+Como o sistema deve suportar 100 milhões de URLs geradas por dia, manter URLs por no mínimo 10 anos e operar em alta disponibilidade, o contador global precisa ser durável, atômico e seguro contra perda/restauração incorreta.
+
+#### Objetivo
+
+Substituir Redis como fonte global de alocação de blocos por DynamoDB atomic counter, mantendo a geração local por blocos.
+
+#### Decisão técnica
+
+Usar DynamoDB como única fonte de verdade do contador global.
+
+A aplicação deve alocar blocos usando uma operação atômica no DynamoDB e consumir esses blocos localmente pelo `IdGeneratorAdapter`.
+
+Redis não deve ser usado como fallback para geração de IDs.
+
+#### Estratégia
+
+- Usar `blockSize = 10_000`, configurável por ambiente.
+- Alocar blocos exclusivos via DynamoDB atomic counter.
+- Consumir IDs localmente no `IdGeneratorAdapter`.
+- Se ainda houver bloco local, continuar gerando IDs mesmo que DynamoDB esteja temporariamente indisponível.
+- Se o bloco local acabar e DynamoDB estiver indisponível, falhar de forma controlada no `POST /api/v1/urls`.
+- Manter Redis apenas para cache, rate limit e dados temporários.
+
+#### Subtasks
+
+- [ ] Criar estrutura `url_counters` no DynamoDB/LocalStack.
+- [ ] Criar item inicial do contador `url_short_code`.
+- [ ] Implementar `DynamoDbCounterIdAdapter`.
+- [ ] Usar operação atômica de incremento no DynamoDB.
+- [ ] Retornar corretamente o `baseId` do bloco alocado.
+- [ ] Tornar `blockSize` configurável.
+- [ ] Remover Redis como fonte de verdade do contador global.
+- [ ] Garantir falha controlada quando DynamoDB estiver indisponível e não houver bloco local.
+- [ ] Garantir que a aplicação continue gerando IDs se ainda houver bloco local disponível.
+- [ ] Criar testes de integração com LocalStack para alocação de blocos.
+- [ ] Validar ausência de sobreposição entre blocos.
 - [ ] Rodar testes específicos do módulo URL.
 - [ ] Rodar suíte completa.
 
 #### Critérios de aceite
 
-- [ ] IDs gerados sob concorrência são únicos.
-- [ ] A troca de bloco não gera IDs incorretos.
-- [ ] Teste concorrente falharia com a implementação antiga.
+- [ ] DynamoDB é a única fonte de verdade do contador global.
+- [ ] Redis não é usado para gerar IDs ou alocar blocos.
+- [ ] Cada chamada ao contador aloca uma faixa exclusiva de IDs.
+- [ ] Com `blockSize = 10_000`, os blocos são calculados corretamente.
+- [ ] Não há sobreposição entre blocos.
+- [ ] Se DynamoDB estiver indisponível e houver bloco local, a geração continua.
+- [ ] Se DynamoDB estiver indisponível e o bloco local acabar, o `POST /api/v1/urls` retorna falha controlada.
 - [ ] Código compila.
-- [ ] Suíte de testes passa.
+- [ ] Testes passam.
 
 ---
 

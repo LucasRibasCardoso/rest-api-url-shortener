@@ -46,7 +46,7 @@ app:
     salt: "6tqpVWWvusxiDnK0iHXD5xsNBTSkN/BV7ojsWkjBu10="
     min-length: 7
   id-generator:
-    block-size: 1000
+    block-size: 10_000
   security:
     jwt:
       secret: "X43Q+VZwzlK3qYRVPzn3fnvNJvvWJmOG+yV0r+tj9ok="
