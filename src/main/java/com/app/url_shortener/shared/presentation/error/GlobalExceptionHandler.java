@@ -4,6 +4,7 @@ import com.app.url_shortener.shared.exception.AppBusinessException;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.conflict.ConflictException;
 import com.app.url_shortener.shared.exception.forbidden.ForbiddenException;
+import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
 import com.app.url_shortener.shared.exception.notfound.NotFoundException;
 import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
 import com.app.url_shortener.shared.exception.unauthorized.UnauthorizedException;
@@ -86,7 +87,7 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(AuthorizationDeniedException.class)
-  public ProblemDetail handleAuthorizationDenied(AuthorizationDeniedException exception) {
+  public ProblemDetail handleAuthorizationDenied() {
     return problemDetailFactory.create(
             HttpStatus.FORBIDDEN,
             "Acesso negado",
@@ -103,6 +104,19 @@ public class GlobalExceptionHandler {
             "Muitas requisições",
             ProblemType.TOO_MANY_REQUESTS,
             exception
+    );
+  }
+
+  @ExceptionHandler(InternalServerErrorException.class)
+  public ProblemDetail handleInternalServerError(InternalServerErrorException exception) {
+    LOGGER.error("Erro interno tratado. errorCode={}", exception.getErrorCode().getCode(), exception);
+
+    return buildProblemDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Erro interno",
+            ProblemType.INFRASTRUCTURE,
+            exception,
+            exception.getErrorCode().getMessage()
     );
   }
 
@@ -166,10 +180,20 @@ public class GlobalExceptionHandler {
           String type,
           AppBusinessException exception
   ) {
+    return buildProblemDetail(status, title, type, exception, exception.getMessage());
+  }
+
+  private ProblemDetail buildProblemDetail(
+          HttpStatusCode status,
+          String title,
+          String type,
+          AppBusinessException exception,
+          String detail
+  ) {
     return problemDetailFactory.create(
             status,
             title,
-            exception.getMessage(),
+            detail,
             type,
             exception.getErrorCode()
     );
@@ -184,4 +208,3 @@ public class GlobalExceptionHandler {
     );
   }
 }
-

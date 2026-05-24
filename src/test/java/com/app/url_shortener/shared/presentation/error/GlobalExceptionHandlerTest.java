@@ -8,6 +8,7 @@ import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredExc
 import com.app.url_shortener.shared.exception.AppBusinessException;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.ErrorCode;
+import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
 import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
@@ -277,6 +278,37 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("Deve mapear InternalServerErrorException para 500 e ProblemType de infraestrutura")
+    void shouldMapInternalServerErrorExceptionToInternalServerError() {
+      // 1. Arrange
+      var exception = new TestInternalServerErrorException();
+      var problemDetail = problemDetail(HttpStatus.INTERNAL_SERVER_ERROR);
+
+      given(problemDetailFactory.create(
+              HttpStatus.INTERNAL_SERVER_ERROR,
+              "Erro interno",
+              exception.getErrorCode().getMessage(),
+              ProblemType.INFRASTRUCTURE,
+              exception.getErrorCode()
+      )).willReturn(problemDetail);
+
+      // 2. Act
+      var result = handler.handleInternalServerError(exception);
+
+      // 3. Assert
+      assertThat(result).isSameAs(problemDetail);
+
+      verify(problemDetailFactory).create(
+              HttpStatus.INTERNAL_SERVER_ERROR,
+              "Erro interno",
+              TestErrorCode.INTERNAL_FAILURE.getMessage(),
+              ProblemType.INFRASTRUCTURE,
+              TestErrorCode.INTERNAL_FAILURE
+      );
+      verifyNoMoreInteractions(problemDetailFactory);
+    }
+
+    @Test
     @DisplayName("Deve mapear MethodArgumentNotValidException para 400 com erros de campos")
     void shouldMapMethodArgumentNotValidExceptionToValidationProblem() throws Exception {
       // 1. Arrange
@@ -528,7 +560,8 @@ class GlobalExceptionHandlerTest {
 
   private enum TestErrorCode implements ErrorCode {
     RATE_LIMITED("Limite de requisições excedido."),
-    BUSINESS_RULE("Regra de negócio violada.");
+    BUSINESS_RULE("Regra de negócio violada."),
+    INTERNAL_FAILURE("Falha interna.");
 
     private final String message;
 
@@ -558,6 +591,13 @@ class GlobalExceptionHandlerTest {
 
     TestBusinessException() {
       super(TestErrorCode.BUSINESS_RULE);
+    }
+  }
+
+  private static class TestInternalServerErrorException extends InternalServerErrorException {
+
+    TestInternalServerErrorException() {
+      super(TestErrorCode.INTERNAL_FAILURE);
     }
   }
 

@@ -26,8 +26,7 @@ public class DynamoDbConfig {
     return DynamoDbClient.builder()
         .endpointOverride(URI.create(endpoint))
         .region(Region.of(region))
-        .credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
+        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
         .build();
   }
 
@@ -39,7 +38,7 @@ public class DynamoDbConfig {
   @Bean
   public DynamoDbTable<UrlEntity> urlTable(
       DynamoDbEnhancedClient dynamoDbEnhancedClient,
-      @Value("${aws.dynamodb.table-name}") String tableName) {
+      @Value("${aws.dynamodb.tables.url}") String tableName) {
 
     return dynamoDbEnhancedClient.table(tableName, TableSchema.fromImmutableClass(UrlEntity.class));
   }

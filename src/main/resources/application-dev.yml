@@ -35,7 +35,9 @@ aws:
     region: us-east-1
     access-key: test
     secret-key: test
-    table-name: url
+    tables:
+      url: url
+      url-counter: url_counter
   cloud:
     credentials:
       use-default-aws-credentials-chain: false

@@ -21,7 +21,9 @@ aws:
     region: us-east-1
     access-key: test
     secret-key: test
-    table-name: url
+    tables:
+      url: url
+      url-counter: url_counter
   cloud:
     credentials:
       use-default-aws-credentials-chain: false
@@ -32,7 +34,8 @@ app:
     salt: "6tqpVWWvusxiDnK0iHXD5xsNBTSkN/BV7ojsWkjBu10="
     min-length: 7
   id-generator:
-    block-size: 1000
+    block-size: 10_000
+    counter-name: url_short_code
   security:
     jwt:
       secret: "rTtcljj9j9k16M65zQOnxjc1ujxwmyrmAVOJZ1dlEws="
