@@ -11,4 +11,14 @@ public record VerifyEmailCommand(
     public VerifyEmailCommand {
         email = email != null ? email.trim().toLowerCase(Locale.ROOT) : null;
     }
+
+    @Override
+    public String toString() {
+        return "VerifyEmailCommand{"
+                + "email='"
+                + email
+                + '\''
+                + ", code='[REDACTED]'"
+                + '}';
+    }
 }

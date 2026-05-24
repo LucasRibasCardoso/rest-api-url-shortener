@@ -6,4 +6,18 @@ public record LoginResponseDto(
         Long expiresInSeconds,
         AuthenticatedUserDto user
 ) {
+
+  @Override
+  public String toString() {
+    return "LoginResponseDto{"
+        + "accessToken='[REDACTED]'"
+        + ", tokenType='"
+        + tokenType
+        + '\''
+        + ", expiresInSeconds="
+        + expiresInSeconds
+        + ", user="
+        + user
+        + '}';
+  }
 }

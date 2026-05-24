@@ -8,4 +8,16 @@ public record JwtProperties(
         String secret,
         long accessTokenExpirationSeconds
 ) {
+
+  @Override
+  public String toString() {
+    return "JwtProperties{"
+        + "issuer='"
+        + issuer
+        + '\''
+        + ", secret='[REDACTED]'"
+        + ", accessTokenExpirationSeconds="
+        + accessTokenExpirationSeconds
+        + '}';
+  }
 }

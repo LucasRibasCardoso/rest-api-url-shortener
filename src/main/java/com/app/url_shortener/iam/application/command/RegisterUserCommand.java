@@ -14,4 +14,17 @@ public record RegisterUserCommand(
     email = email != null ? email.trim().toLowerCase(Locale.ROOT) : null;
     name = name != null ? MULTIPLE_SPACES.matcher(name.trim()).replaceAll(" ") : null;
   }
+
+  @Override
+  public String toString() {
+    return "RegisterUserCommand{"
+        + "name='"
+        + name
+        + '\''
+        + ", email='"
+        + email
+        + '\''
+        + ", password='[REDACTED]'"
+        + '}';
+  }
 }

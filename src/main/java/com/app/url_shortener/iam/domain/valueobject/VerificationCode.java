@@ -20,4 +20,9 @@ public record VerificationCode(String value) {
   public static VerificationCode generate() {
     return new VerificationCode(String.format("%06d", SECURE_RANDOM.nextInt(1_000_000)));
   }
+
+  @Override
+  public String toString() {
+    return "VerificationCode{value='[REDACTED]'}";
+  }
 }

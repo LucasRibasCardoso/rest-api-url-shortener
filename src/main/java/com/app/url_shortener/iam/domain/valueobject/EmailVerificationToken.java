@@ -28,4 +28,18 @@ public record EmailVerificationToken(UUID userId, String email, VerificationCode
   public boolean isExpired() {
     return !expiresAt.isAfter(Instant.now());
   }
+
+  @Override
+  public String toString() {
+    return "EmailVerificationToken{"
+        + "userId="
+        + userId
+        + ", email='"
+        + email
+        + '\''
+        + ", code='[REDACTED]'"
+        + ", expiresAt="
+        + expiresAt
+        + '}';
+  }
 }

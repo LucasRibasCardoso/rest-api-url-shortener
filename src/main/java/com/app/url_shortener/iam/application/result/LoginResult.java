@@ -7,4 +7,19 @@ public record LoginResult(
         Long expiresInSeconds,
         AuthenticatedUserResult user
 ) {
+
+  @Override
+  public String toString() {
+    return "LoginResult{"
+        + "refreshToken='[REDACTED]'"
+        + ", accessToken='[REDACTED]'"
+        + ", tokenType='"
+        + tokenType
+        + '\''
+        + ", expiresInSeconds="
+        + expiresInSeconds
+        + ", user="
+        + user
+        + '}';
+  }
 }

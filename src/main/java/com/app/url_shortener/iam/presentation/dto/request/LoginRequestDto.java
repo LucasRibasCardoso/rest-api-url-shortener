@@ -8,4 +8,9 @@ public record LoginRequestDto(
         @NotBlank @Email @Size(max = 180) String email,
         @NotBlank @Size(min = 6, max = 128) String password
 ) {
+
+  @Override
+  public String toString() {
+    return "LoginRequestDto{email='" + email + "', password='[REDACTED]'}";
+  }
 }

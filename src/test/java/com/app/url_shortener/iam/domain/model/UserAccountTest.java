@@ -136,4 +136,25 @@ class UserAccountTest {
               .hasMessage("defaultRole must not be null");
     }
   }
+
+  @Nested
+  @DisplayName("Representação textual segura")
+  class SafeToStringTests {
+
+    @Test
+    @DisplayName("Não deve expor passwordHash no toString")
+    void shouldNotExposePasswordHashInToString() {
+      // 1. Arrange
+      var passwordHash = "sensitive-password-hash";
+      var user = UserAccount.createPendingRegistration("Nome", "email@mail.com", passwordHash);
+
+      // 2. Act
+      var text = user.toString();
+
+      // 3. Assert
+      assertThat(text)
+          .doesNotContain(passwordHash)
+          .doesNotContain("passwordHash");
+    }
+  }
 }

@@ -70,4 +70,25 @@ class VerificationCodeTest {
       assertThat(code.value()).matches("\\d{6}");
     }
   }
+
+  @Nested
+  @DisplayName("Representação textual segura")
+  class SafeToStringTests {
+
+    @Test
+    @DisplayName("Não deve expor o código de verificação no toString")
+    void shouldNotExposeVerificationCodeInToString() {
+      // 1. Arrange
+      var rawCode = "123456";
+      var code = VerificationCode.of(rawCode);
+
+      // 2. Act
+      var text = code.toString();
+
+      // 3. Assert
+      assertThat(text)
+          .doesNotContain(rawCode)
+          .contains("[REDACTED]");
+    }
+  }
 }

@@ -117,4 +117,30 @@ class EmailVerificationTokenTest {
       assertThat(matches).isFalse();
     }
   }
+
+  @Nested
+  @DisplayName("Representação textual segura")
+  class SafeToStringTests {
+
+    @Test
+    @DisplayName("Não deve expor o código de verificação no toString")
+    void shouldNotExposeVerificationCodeInToString() {
+      // 1. Arrange
+      var rawCode = "123456";
+      var token =
+          EmailVerificationToken.create(
+              UUID.randomUUID(),
+              "usuario@email.com",
+              VerificationCode.of(rawCode),
+              Instant.now().plus(15, ChronoUnit.MINUTES));
+
+      // 2. Act
+      var text = token.toString();
+
+      // 3. Assert
+      assertThat(text)
+          .doesNotContain(rawCode)
+          .contains("[REDACTED]");
+    }
+  }
 }

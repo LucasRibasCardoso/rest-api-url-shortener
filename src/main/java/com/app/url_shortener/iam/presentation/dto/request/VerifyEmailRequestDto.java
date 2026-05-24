@@ -10,4 +10,9 @@ public record VerifyEmailRequestDto(
         @NotBlank
         @Pattern(regexp = "\\d{6}", message = "Código de verificação deve conter 6 digitos")
         String code) {
+
+  @Override
+  public String toString() {
+    return "VerifyEmailRequestDto{email='" + email + "', code='[REDACTED]'}";
+  }
 }

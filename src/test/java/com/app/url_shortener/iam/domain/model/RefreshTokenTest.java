@@ -41,4 +41,24 @@ class RefreshTokenTest {
     }
   }
 
+  @Nested
+  @DisplayName("Representação textual segura")
+  class SafeToStringTests {
+
+    @Test
+    @DisplayName("Não deve expor tokenHash no toString")
+    void shouldNotExposeTokenHashInToString() {
+      // 1. Arrange
+      var tokenHash = "sensitive-token-hash";
+      var token = RefreshToken.create(UUID.randomUUID(), tokenHash);
+
+      // 2. Act
+      var text = token.toString();
+
+      // 3. Assert
+      assertThat(text)
+          .doesNotContain(tokenHash)
+          .doesNotContain("tokenHash");
+    }
+  }
 }
