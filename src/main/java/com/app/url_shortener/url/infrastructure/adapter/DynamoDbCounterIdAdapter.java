@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
@@ -54,26 +55,8 @@ public class DynamoDbCounterIdAdapter implements CounterIdRepository {
       long blockEnd = extractUpdatedCurrentValue(response);
       return calculateBlockStart(blockEnd, blockSize);
 
-    } catch (ConditionalCheckFailedException exception) {
-      throw new CounterIdAllocationException(
-              UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED,
-              exception);
-    } catch (ProvisionedThroughputExceededException exception) {
-      throw new CounterIdAllocationException(
-              UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED,
-              exception);
-    } catch (ResourceNotFoundException exception) {
-      throw new CounterIdAllocationException(
-              UrlErrorCode.COUNTER_ID_TABLE_NOT_FOUND,
-              exception);
-    } catch (DynamoDbException exception) {
-      throw new CounterIdAllocationException(
-              UrlErrorCode.COUNTER_ID_DYNAMODB_FAILURE,
-              exception);
-    } catch (SdkClientException exception) {
-      throw new CounterIdAllocationException(
-              UrlErrorCode.COUNTER_ID_CLIENT_FAILURE,
-              exception);
+    } catch (SdkException exception) {
+      throw buildCounterIdAllocationException(exception);
     }
   }
 
@@ -89,8 +72,33 @@ public class DynamoDbCounterIdAdapter implements CounterIdRepository {
     return AttributeValue.builder().s(tableName).build();
   }
 
+  private CounterIdAllocationException buildCounterIdAllocationException(SdkException exception) {
+    if (exception instanceof ConditionalCheckFailedException) {
+      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED, exception);
+    }
+
+    if (exception instanceof ProvisionedThroughputExceededException) {
+      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED, exception);
+    }
+
+    if (exception instanceof ResourceNotFoundException) {
+      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_TABLE_NOT_FOUND, exception);
+    }
+
+    if (exception instanceof DynamoDbException) {
+      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_DYNAMODB_FAILURE, exception);
+    }
+
+    if (exception instanceof SdkClientException) {
+      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_CLIENT_FAILURE, exception);
+    }
+
+    return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_CLIENT_FAILURE, exception);
+  }
+
   private long extractUpdatedCurrentValue(UpdateItemResponse response) {
-    if (response.attributes() == null || !response.attributes().containsKey(CURRENT_VALUE_ATTRIBUTE)) {
+    if (response.attributes() == null
+        || !response.attributes().containsKey(CURRENT_VALUE_ATTRIBUTE)) {
       throw new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_INVALID_RESPONSE);
     }
 
