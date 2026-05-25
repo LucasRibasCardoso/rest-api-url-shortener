@@ -1,6 +1,6 @@
 package com.app.url_shortener.shared.presentation.filter;
 
-import com.app.url_shortener.shared.config.IdempotencyProperties;
+import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.exception.conflict.IdempotencyConflictException;
 import com.app.url_shortener.shared.exception.internalservererror.IdempotencyCacheException;
 import com.app.url_shortener.shared.exception.validation.IdempotencyHeaderMissingException;

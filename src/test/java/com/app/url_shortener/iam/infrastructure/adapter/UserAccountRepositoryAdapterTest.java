@@ -143,15 +143,22 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     @DisplayName("Deve rejeitar PlanType não permitido pelo check constraint do banco")
     void shouldRejectPlanTypeNotAllowedByDatabaseCheckConstraint() {
       // 1. Arrange
-      var user = userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac401"),
-              "anonymous-plan@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.ANONYMOUS
-      );
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac401");
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.save(user));
+      var throwableAssert = assertThatThrownBy(() -> jdbcTemplate.update(
+              """
+                      INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
+                      VALUES (?, ?, ?, ?, ?, ?, ?)
+                      """,
+              userId,
+              "Invalid Plan",
+              "invalid-plan@email.com",
+              "password-hash",
+              "PENDING_EMAIL_VERIFICATION",
+              "INVALID_PLAN",
+              false
+      ));
 
       // 3. Assert
       throwableAssert

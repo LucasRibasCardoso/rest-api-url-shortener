@@ -1,4 +1,4 @@
-package com.app.url_shortener.shared.config;
+package com.app.url_shortener.shared.config.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

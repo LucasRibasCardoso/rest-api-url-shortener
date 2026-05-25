@@ -17,7 +17,7 @@ import com.app.url_shortener.config.BaseWebSliceTest;
 import com.app.url_shortener.security.config.SecurityConfig;
 import com.app.url_shortener.security.exception.handler.CustomAccessDeniedHandler;
 import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntryPoint;
-import com.app.url_shortener.shared.config.IdempotencyProperties;
+import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
