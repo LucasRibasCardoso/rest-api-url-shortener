@@ -20,12 +20,15 @@ import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntr
 import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
+import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
 import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
 import com.app.url_shortener.shared.presentation.error.GlobalExceptionHandler;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
 import com.app.url_shortener.shared.presentation.error.ProblemType;
+import com.app.url_shortener.shared.ratelimit.key.ClientIpResolver;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -42,6 +45,7 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,6 +93,9 @@ class AuthControllerTest extends BaseWebSliceTest {
 
   @MockitoBean
   private ResendVerificationUseCase resendVerificationUseCase;
+
+  @MockitoBean
+  private ClientIpResolver clientIpResolver;
 
   @MockitoBean
   private IdempotencyStore idempotencyStore;
@@ -179,11 +186,13 @@ class AuthControllerTest extends BaseWebSliceTest {
     void shouldReturnOkSerializeResponseAndSetRefreshTokenCookie() throws Exception {
       // 1. Arrange
       var request = new LoginRequestDto("user@email.com", "secure-password");
-      var command = new LoginCommand(request.email(), request.password());
+      var clientIp = "203.0.113.10";
+      var command = new LoginCommand(request.email(), request.password(), clientIp);
       var result = loginResult("raw-refresh-token", "jwt-access-token");
       var response = loginResponseDto();
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toCommand(request, clientIp)).willReturn(command);
       given(loginUseCase.execute(command)).willReturn(result);
       given(iamWebMapper.toResponse(result)).willReturn(response);
 
@@ -202,10 +211,11 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(jsonPath("$.user.roles[0]").value("USER"))
               .andExpect(refreshTokenCookie("raw-refresh-token", "604800"));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toCommand(request, clientIp);
       verify(loginUseCase).execute(command);
       verify(iamWebMapper).toResponse(result);
-      verifyNoMoreInteractions(iamWebMapper, loginUseCase);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
 
     @ParameterizedTest
@@ -248,6 +258,39 @@ class AuthControllerTest extends BaseWebSliceTest {
               });
 
       verifyNoInteractions(iamWebMapper, loginUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 429 com ProblemDetail quando rate limit do login for excedido")
+    void shouldReturnTooManyRequestsProblemDetailWhenLoginRateLimitIsExceeded() throws Exception {
+      // 1. Arrange
+      var request = new LoginRequestDto("user@email.com", "secure-password");
+      var clientIp = "203.0.113.10";
+      var command = new LoginCommand(request.email(), request.password(), clientIp);
+
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toCommand(request, clientIp)).willReturn(command);
+      doThrow(new TooManyRequestsException(Duration.ofSeconds(30)))
+              .when(loginUseCase).execute(command);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(jsonPost("/login", request));
+
+      // 3. Assert
+      resultActions
+              .andExpect(status().isTooManyRequests())
+              .andExpect(header().string(HttpHeaders.RETRY_AFTER, "30"))
+              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+              .andExpect(jsonPath("$.type").value(ProblemType.TOO_MANY_REQUESTS))
+              .andExpect(jsonPath("$.title").value("Muitas requisições"))
+              .andExpect(jsonPath("$.status").value(429))
+              .andExpect(jsonPath("$.detail").value(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
+              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
+
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toCommand(request, clientIp);
+      verify(loginUseCase).execute(command);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
   }
 

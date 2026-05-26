@@ -1,10 +1,7 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.LoginCommand;
-import com.app.url_shortener.iam.application.port.output.AuthenticateCredentialsPort;
-import com.app.url_shortener.iam.application.port.output.IssueAccessTokenPort;
-import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
-import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
+import com.app.url_shortener.iam.application.port.output.*;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.result.LoginResult;
 import com.app.url_shortener.iam.application.usecase.LoginUseCase;
@@ -20,10 +17,11 @@ public class LoginUseCaseImpl implements LoginUseCase {
 
   private static final String TOKEN_TYPE = "Bearer";
 
-  private final IssueAccessTokenPort issueAccessTokenPort;
-  private final AuthenticateCredentialsPort authenticateCredentialsPort;
   private final SecureTokenGeneratorPort tokenGenerator;
+  private final IssueAccessTokenPort issueAccessTokenPort;
   private final RefreshTokenRepositoryPort tokenRepository;
+  private final CheckAuthRateLimitPort checkAuthRateLimitPort;
+  private final AuthenticateCredentialsPort authenticateCredentialsPort;
 
   @Override
   @Transactional
@@ -32,6 +30,8 @@ public class LoginUseCaseImpl implements LoginUseCase {
     if (email == null || email.isBlank()) {
       throw new InvalidCredentialsException();
     }
+
+    checkAuthRateLimitPort.checkLogin(command.clientIp(), command.email());
 
     AuthenticatedUserResult authenticatedUser = authenticateCredentialsPort.authenticate(email, command.password());
 

@@ -60,7 +60,7 @@ public class UrlController {
   public ResponseEntity<UrlResponseDto> shortenUrl(
           @Valid @RequestBody ShortenUrlRequestDto request,
           @AuthenticationPrincipal UserPrincipal user) {
-    ShortenUrlCommand command = urlWebMapper.toCommand(request, user.getId());
+    ShortenUrlCommand command = urlWebMapper.toCommand(request, user.getId(), user.getPlan());
     ShortenUrlResult result = shortenUrlUseCase.execute(command);
     UrlResponseDto response = urlWebMapper.toResponse(result, baseUrl);
     return ResponseEntity.created(URI.create(response.shortUrl())).body(response);

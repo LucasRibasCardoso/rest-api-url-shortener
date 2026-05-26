@@ -28,7 +28,7 @@ public class JwtTokenService {
             .issuedAt(now)
             .expiresAt(expiresAt)
             .subject(tokenProperties.id().toString())
-            .claim("plan", tokenProperties.plan())
+            .claim("plan", tokenProperties.plan().toUpperCase())
             .claim("authorities", tokenProperties.authorities())
             .build();
 

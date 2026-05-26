@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.ResendVerificationCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.ResendVerificationResult;
@@ -26,14 +27,16 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
   private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
 
   private final ApplicationEventPublisher eventPublisher;
+  private final CheckAuthRateLimitPort checkAuthRateLimitPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationTokenPort emailVerificationTokenStore;
 
   @Override
   @Transactional(readOnly = true)
   public ResendVerificationResult execute(ResendVerificationCommand command) {
-    String email = command.email();
-    Optional<UserAccount> userOpt = userAccountRepositoryPort.findByEmail(email);
+    checkAuthRateLimitPort.checkResendVerification(command.email());
+
+    Optional<UserAccount> userOpt = userAccountRepositoryPort.findByEmail(command.email());
 
     if (userOpt.isEmpty() || !userOpt.get().isPending()) {
       return new ResendVerificationResult(RESPONSE_MESSAGE);

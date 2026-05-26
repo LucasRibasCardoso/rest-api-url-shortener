@@ -24,7 +24,7 @@ public interface IamWebMapper {
 
   GenericMessageResponse toResponse(VerifyEmailResult result);
 
-  LoginCommand toCommand(LoginRequestDto request);
+  LoginCommand toCommand(LoginRequestDto request, String clientIp);
 
   LoginResponseDto toResponse(LoginResult result);
 

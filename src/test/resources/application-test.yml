@@ -41,3 +41,43 @@ app:
       secret: "rTtcljj9j9k16M65zQOnxjc1ujxwmyrmAVOJZ1dlEws="
       issuer: ${spring.application.name}
       access-token-expiration-minutes: 15
+  rate-limit:
+    enabled: true
+    key-prefix: "rate-limit"
+    email-hash-secret: "DtyLwE6d9sMslJ4WKXxZmMtYqwXRMJKuR1KlOiWBQVA="
+
+    policies:
+      auth-login:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 15m
+        fail-open: false
+
+      auth-verify-email:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 15m
+        fail-open: false
+
+      auth-resend-verification:
+        enabled: true
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 15m
+        fail-open: false
+
+      url-shorten-free:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 1h
+        fail-open: false
+
+      url-shorten-premium:
+        enabled: true
+        capacity: 1000
+        refill-tokens: 1000
+        refill-period: 1h
+        fail-open: false

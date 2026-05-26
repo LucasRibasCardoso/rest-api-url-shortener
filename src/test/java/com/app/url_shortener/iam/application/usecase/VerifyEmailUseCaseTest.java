@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.VerifyEmailCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
 import com.app.url_shortener.iam.application.port.output.RoleRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -56,6 +58,9 @@ class VerifyEmailUseCaseTest {
 
   @Mock
   private EmailVerificationTokenPort emailVerificationTokenPort;
+
+  @Mock
+  private CheckAuthRateLimitPort checkAuthRateLimitPort;
 
   @Captor
   private ArgumentCaptor<UserAccount> userAccountCaptor;
@@ -114,7 +119,12 @@ class VerifyEmailUseCaseTest {
       verify(userAccountRepositoryPort).findByEmailWithRoles("user@email.com");
       verify(roleRepositoryPort).findDefaultRole();
       verify(emailVerificationTokenPort).deleteByEmail("user@email.com");
-      verifyNoMoreInteractions(emailVerificationTokenPort, userAccountRepositoryPort, roleRepositoryPort);
+
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail("user@email.com");
+      inOrder.verify(emailVerificationTokenPort).findByEmail("user@email.com");
+
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort, userAccountRepositoryPort, roleRepositoryPort);
     }
 
     @Test
@@ -133,9 +143,12 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(EmailVerificationTokenExpiredException.class)
               .hasMessage("Token de verificação de email expirado.");
 
-      verify(emailVerificationTokenPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).findByEmail(command.email());
+
       verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(emailVerificationTokenPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort);
     }
 
     @Test
@@ -156,9 +169,12 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(EmailVerificationTokenExpiredException.class)
               .hasMessage("Token de verificação de email expirado.");
 
-      verify(emailVerificationTokenPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).findByEmail(command.email());
+
       verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(emailVerificationTokenPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort);
     }
 
     @Test
@@ -179,9 +195,12 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidVerificationCodeException.class)
               .hasMessage("Código de verificação inválido.");
 
-      verify(emailVerificationTokenPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).findByEmail(command.email());
+
       verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(emailVerificationTokenPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort);
     }
 
     @Test
@@ -203,11 +222,14 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(UserNotFoundException.class)
               .hasMessage("Usuário não encontrado.");
 
-      verify(emailVerificationTokenPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).findByEmail(command.email());
+
       verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       verifyNoInteractions(roleRepositoryPort);
       verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());
-      verifyNoMoreInteractions(emailVerificationTokenPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort, userAccountRepositoryPort);
     }
 
     @Test
@@ -234,12 +256,15 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao salvar usuário.");
 
-      verify(emailVerificationTokenPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).findByEmail(command.email());
+
       verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       verify(roleRepositoryPort).findDefaultRole();
       verify(userAccountRepositoryPort).save(pendingUser);
       verify(emailVerificationTokenPort, never()).deleteByEmail(anyString());
-      verifyNoMoreInteractions(emailVerificationTokenPort, userAccountRepositoryPort, roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort, userAccountRepositoryPort, roleRepositoryPort);
     }
   }
 

@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -35,6 +36,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -215,10 +217,10 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("Deve mapear TooManyRequestsException para 429 e ProblemType de muitas requisições")
+    @DisplayName("Deve mapear TooManyRequestsException para 429 com Retry-After em segundos")
     void shouldMapTooManyRequestsExceptionToTooManyRequests() {
       // 1. Arrange
-      var exception = new TestTooManyRequestsException();
+      var exception = new TestTooManyRequestsException(Duration.ofSeconds(30));
       var problemDetail = problemDetail(HttpStatus.TOO_MANY_REQUESTS);
 
       given(problemDetailFactory.create(
@@ -233,7 +235,42 @@ class GlobalExceptionHandlerTest {
       var result = handler.handleTooManyRequests(exception);
 
       // 3. Assert
-      assertThat(result).isSameAs(problemDetail);
+      assertAll(
+              () -> assertThat(result.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS),
+              () -> assertThat(result.getBody()).isSameAs(problemDetail),
+              () -> assertThat(result.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("30")
+      );
+
+      verify(problemDetailFactory).create(
+              HttpStatus.TOO_MANY_REQUESTS,
+              "Muitas requisições",
+              TestErrorCode.RATE_LIMITED.getMessage(),
+              ProblemType.TOO_MANY_REQUESTS,
+              TestErrorCode.RATE_LIMITED
+      );
+      verifyNoMoreInteractions(problemDetailFactory);
+    }
+
+    @Test
+    @DisplayName("Deve arredondar Retry-After para cima quando houver fração de segundo")
+    void shouldRoundRetryAfterUpWhenDurationHasFractionalSeconds() {
+      // 1. Arrange
+      var exception = new TestTooManyRequestsException(Duration.ofMillis(1500));
+      var problemDetail = problemDetail(HttpStatus.TOO_MANY_REQUESTS);
+
+      given(problemDetailFactory.create(
+              HttpStatus.TOO_MANY_REQUESTS,
+              "Muitas requisições",
+              exception.getMessage(),
+              ProblemType.TOO_MANY_REQUESTS,
+              exception.getErrorCode()
+      )).willReturn(problemDetail);
+
+      // 2. Act
+      var result = handler.handleTooManyRequests(exception);
+
+      // 3. Assert
+      assertThat(result.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("2");
 
       verify(problemDetailFactory).create(
               HttpStatus.TOO_MANY_REQUESTS,
@@ -582,8 +619,8 @@ class GlobalExceptionHandlerTest {
 
   private static class TestTooManyRequestsException extends TooManyRequestsException {
 
-    TestTooManyRequestsException() {
-      super(TestErrorCode.RATE_LIMITED);
+    TestTooManyRequestsException(Duration retryAfter) {
+      super(TestErrorCode.RATE_LIMITED, retryAfter);
     }
   }
 

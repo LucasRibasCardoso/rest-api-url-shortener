@@ -1,6 +1,8 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
+import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
+import com.app.url_shortener.url.application.port.output.CheckUrlRateLimitPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
 import com.app.url_shortener.url.application.port.output.UrlEncoderPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
@@ -12,15 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +38,9 @@ class ShortenUrlUseCaseImplTest {
   @Mock
   private UrlRepositoryPort urlRepositoryPort;
 
+  @Mock
+  private CheckUrlRateLimitPort checkUrlRateLimitPort;
+
   @InjectMocks
   private ShortenUrlUseCaseImpl shortenUrlUseCase;
 
@@ -50,7 +55,8 @@ class ShortenUrlUseCaseImplTest {
       var generatedId = 100L;
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var originalUrl = "https://google.com";
-      var command = new ShortenUrlCommand(userId, originalUrl);
+      var planType = PlanType.FREE;
+      var command = new ShortenUrlCommand(userId, originalUrl, planType);
       var shortCode = "aB3dE";
       when(idGeneratorService.generateId()).thenReturn(generatedId);
       when(urlEncoderPort.encode(generatedId)).thenReturn(shortCode);
@@ -74,7 +80,35 @@ class ShortenUrlUseCaseImplTest {
       assertThat(capturedUrl.getOriginalUrl()).isEqualTo(originalUrl);
       assertThat(capturedUrl.getCreatedAt()).isNotNull();
 
-      verifyNoMoreInteractions(idGeneratorService, urlEncoderPort, urlRepositoryPort);
+      InOrder inOrder = inOrder(checkUrlRateLimitPort, idGeneratorService, urlRepositoryPort);
+      inOrder.verify(checkUrlRateLimitPort).checkShorten(userId, planType);
+      inOrder.verify(idGeneratorService).generateId();
+      inOrder.verify(urlRepositoryPort).save(capturedUrl);
+
+      verifyNoMoreInteractions(checkUrlRateLimitPort, idGeneratorService, urlEncoderPort, urlRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Deve propagar rate limit e não persistir URL quando encurtamento for negado")
+    void shouldPropagateRateLimitAndNotPersistUrlWhenShortenIsDenied() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var originalUrl = "https://google.com";
+      var planType = PlanType.PREMIUM;
+      var command = new ShortenUrlCommand(userId, originalUrl, planType);
+      var exception = new RuntimeException("Rate limit excedido.");
+
+      doThrow(exception).when(checkUrlRateLimitPort).checkShorten(userId, planType);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> shortenUrlUseCase.execute(command));
+
+      // 3. Assert
+      throwableAssert.isSameAs(exception);
+
+      verify(checkUrlRateLimitPort).checkShorten(userId, planType);
+      verifyNoInteractions(idGeneratorService, urlEncoderPort, urlRepositoryPort);
+      verifyNoMoreInteractions(checkUrlRateLimitPort);
     }
   }
 }

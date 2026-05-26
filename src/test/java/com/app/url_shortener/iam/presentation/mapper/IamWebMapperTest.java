@@ -76,14 +76,16 @@ class IamWebMapperTest {
     void shouldMapLoginRequestToCommand() {
       // 1. Arrange
       var request = new LoginRequestDto("  USER@EMAIL.COM  ", "secure-password");
+      var clientIp = "203.0.113.10";
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toCommand(request, clientIp);
 
       // 3. Assert
       assertAll(
               () -> assertThat(command.email()).isEqualTo("user@email.com"),
-              () -> assertThat(command.password()).isEqualTo("secure-password")
+              () -> assertThat(command.password()).isEqualTo("secure-password"),
+              () -> assertThat(command.clientIp()).isEqualTo(clientIp)
       );
     }
 

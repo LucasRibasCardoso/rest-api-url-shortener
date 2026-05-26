@@ -1,5 +1,6 @@
 package com.app.url_shortener.url.presentation.mapper;
 
+import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
@@ -36,14 +37,16 @@ class UrlWebMapperTest {
       // 1. Arrange
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var request = new ShortenUrlRequestDto("  https://google.com  ");
+      var planType = PlanType.PREMIUM;
 
       // 2. Act
-      var command = mapper.toCommand(request, userId);
+      var command = mapper.toCommand(request, userId, planType);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.userId()).isEqualTo(userId),
-          () -> assertThat(command.originalUrl()).isEqualTo("https://google.com")
+          () -> assertThat(command.originalUrl()).isEqualTo("https://google.com"),
+          () -> assertThat(command.planType()).isEqualTo(planType)
       );
     }
 

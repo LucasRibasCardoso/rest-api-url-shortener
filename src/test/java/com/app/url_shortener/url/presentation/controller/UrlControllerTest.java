@@ -9,10 +9,13 @@ import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntr
 import com.app.url_shortener.security.principal.UserPrincipal;
 import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
+import com.app.url_shortener.shared.exception.CommonErrorCode;
+import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
 import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
 import com.app.url_shortener.shared.presentation.error.GlobalExceptionHandler;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.presentation.error.ProblemType;
 import com.app.url_shortener.url.application.command.DeleteUrlCommand;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
@@ -49,12 +52,14 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -141,11 +146,12 @@ class UrlControllerTest extends BaseWebSliceTest {
     void shouldReturnCreatedLocationAndResponseWhenCreatingShortUrl() throws Exception {
       // 1. Arrange
       var request = new ShortenUrlRequestDto("https://google.com");
-      var command = new ShortenUrlCommand(USER_ID, request.originalUrl());
+      var planType = PlanType.FREE;
+      var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
       var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
       var response = new UrlResponseDto(request.originalUrl(), BASE_URL + "/r/aB3dE", createdAt);
-      given(urlWebMapper.toCommand(request, USER_ID)).willReturn(command);
+      given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
       given(shortenUrlUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
 
@@ -162,7 +168,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()))
           .andExpect(jsonPath("$.createdAt").value("2026-05-10T14:30:00"));
 
-      verify(urlWebMapper).toCommand(request, USER_ID);
+      verify(urlWebMapper).toCommand(request, USER_ID, planType);
       verify(shortenUrlUseCase).execute(command);
       verify(urlWebMapper).toResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, shortenUrlUseCase);
@@ -183,6 +189,38 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isBadRequest())
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
       verifyNoInteractions(urlWebMapper, shortenUrlUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 429 com ProblemDetail quando rate limit de criação for excedido")
+    void shouldReturnTooManyRequestsProblemDetailWhenCreateRateLimitIsExceeded() throws Exception {
+      // 1. Arrange
+      var request = new ShortenUrlRequestDto("https://google.com");
+      var planType = PlanType.FREE;
+      var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
+
+      given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
+      doThrow(new TooManyRequestsException(Duration.ofSeconds(45)))
+          .when(shortenUrlUseCase).execute(command);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(jsonPost("", request)
+          .with(authenticatedUser("url:create")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isTooManyRequests())
+          .andExpect(header().string(HttpHeaders.RETRY_AFTER, "45"))
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.TOO_MANY_REQUESTS))
+          .andExpect(jsonPath("$.title").value("Muitas requisições"))
+          .andExpect(jsonPath("$.status").value(429))
+          .andExpect(jsonPath("$.detail").value(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
+          .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
+
+      verify(urlWebMapper).toCommand(request, USER_ID, planType);
+      verify(shortenUrlUseCase).execute(command);
+      verifyNoMoreInteractions(urlWebMapper, shortenUrlUseCase);
     }
   }
 

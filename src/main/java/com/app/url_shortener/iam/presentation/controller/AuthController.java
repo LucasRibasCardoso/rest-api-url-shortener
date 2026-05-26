@@ -12,6 +12,8 @@ import com.app.url_shortener.iam.presentation.dto.response.GenericMessageRespons
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
+import com.app.url_shortener.shared.ratelimit.key.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +34,7 @@ public class AuthController {
   private final IamWebMapper iamWebMapper;
   private final LoginUseCase loginUseCase;
   private final LogoutUseCase logoutUseCase;
+  private final ClientIpResolver clientIpResolver;
   private final VerifyEmailUseCase verifyEmailUseCase;
   private final RegisterUserUseCase registerUserUseCase;
   private final RefreshTokenUseCase refreshTokenUseCase;
@@ -56,8 +59,10 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
-    LoginCommand command = iamWebMapper.toCommand(request);
+  public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpServletRequest request) {
+    String clientIp = clientIpResolver.resolve(request);
+
+    LoginCommand command = iamWebMapper.toCommand(requestDto, clientIp);
     LoginResult result = loginUseCase.execute(command);
     LoginResponseDto response = iamWebMapper.toResponse(result);
 

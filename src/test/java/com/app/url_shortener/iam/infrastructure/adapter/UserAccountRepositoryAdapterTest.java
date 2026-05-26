@@ -30,13 +30,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("jpa-slice")
 @Import({
-        UserAccountRepositoryAdapter.class,
-        JpaAuditingConfig.class,
-        DataIntegrityExceptionTranslator.class,
-        PostgresConstraintExtractor.class,
-        UserAccountPersistenceMapperImpl.class,
-        RolePersistenceMapperImpl.class,
-        PermissionPersistenceMapperImpl.class
+    UserAccountRepositoryAdapter.class,
+    JpaAuditingConfig.class,
+    DataIntegrityExceptionTranslator.class,
+    PostgresConstraintExtractor.class,
+    UserAccountPersistenceMapperImpl.class,
+    RolePersistenceMapperImpl.class,
+    PermissionPersistenceMapperImpl.class
 })
 @DisplayName("Slice Data JPA - Adaptador de Repositório de Contas de Usuário")
 class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
@@ -61,17 +61,17 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldTranslateDuplicateEmailViolationToDomainException() {
       // 1. Arrange
       adapter.saveNewUserAccount(userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac101"),
-              "duplicate@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac101"),
+          "duplicate@email.com",
+          UserStatus.PENDING_EMAIL_VERIFICATION,
+          PlanType.FREE
       ));
 
       var duplicateUser = userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac102"),
-              "duplicate@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac102"),
+          "duplicate@email.com",
+          UserStatus.PENDING_EMAIL_VERIFICATION,
+          PlanType.FREE
       );
 
       // 2. Act
@@ -79,8 +79,8 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(EmailAlreadyRegisteredException.class)
-              .hasMessage("Email já cadastrado.");
+          .isInstanceOf(EmailAlreadyRegisteredException.class)
+          .hasMessage("Email já cadastrado.");
     }
 
     @Test
@@ -88,17 +88,17 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldApplyCaseInsensitiveUniqueEmailFromCitextColumn() {
       // 1. Arrange
       adapter.saveNewUserAccount(userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac201"),
-              "CaseSensitive@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac201"),
+          "CaseSensitive@email.com",
+          UserStatus.PENDING_EMAIL_VERIFICATION,
+          PlanType.FREE
       ));
 
       var duplicateUser = userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac202"),
-              "casesensitive@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac202"),
+          "casesensitive@email.com",
+          UserStatus.PENDING_EMAIL_VERIFICATION,
+          PlanType.FREE
       );
 
       // 2. Act
@@ -118,10 +118,10 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldThrowDataIntegrityViolationWhenRequiredStatusIsNull() {
       // 1. Arrange
       var user = userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac301"),
-              "null-status@email.com",
-              null,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac301"),
+          "null-status@email.com",
+          null,
+          PlanType.FREE
       );
 
       // 2. Act
@@ -129,9 +129,9 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("not-null");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("not-null");
     }
   }
 
@@ -147,24 +147,24 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> jdbcTemplate.update(
-              """
-                      INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)
-                      """,
-              userId,
-              "Invalid Plan",
-              "invalid-plan@email.com",
-              "password-hash",
-              "PENDING_EMAIL_VERIFICATION",
-              "INVALID_PLAN",
-              false
+          """
+              INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+              """,
+          userId,
+          "Invalid Plan",
+          "invalid-plan@email.com",
+          "password-hash",
+          "PENDING_EMAIL_VERIFICATION",
+          "INVALID_PLAN",
+          false
       ));
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("chk_users_plan");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("chk_users_plan");
     }
 
     @Test
@@ -175,24 +175,24 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> jdbcTemplate.update(
-              """
-                      INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)
-                      """,
-              userId,
-              "Invalid Status",
-              "invalid-status@email.com",
-              "password-hash",
-              "SUSPENDED",
-              "FREE",
-              false
+          """
+              INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+              """,
+          userId,
+          "Invalid Status",
+          "invalid-status@email.com",
+          "password-hash",
+          "SUSPENDED",
+          "FREE",
+          false
       ));
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("chk_users_status");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("chk_users_status");
     }
   }
 
@@ -208,16 +208,16 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> jdbcTemplate.update(
-              "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
-              missingUserId,
-              DEFAULT_ROLE_ID
+          "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+          missingUserId,
+          DEFAULT_ROLE_ID
       ));
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("user_roles_user_id_fkey");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("user_roles_user_id_fkey");
     }
 
     @Test
@@ -225,16 +225,16 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldCascadeDeleteUserRolesWhenUserIsDeleted() {
       // 1. Arrange
       var user = adapter.saveNewUserAccount(userAccount(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac502"),
-              "cascade@email.com",
-              UserStatus.PENDING_EMAIL_VERIFICATION,
-              PlanType.FREE
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac502"),
+          "cascade@email.com",
+          UserStatus.PENDING_EMAIL_VERIFICATION,
+          PlanType.FREE
       ));
 
       jdbcTemplate.update(
-              "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
-              user.getId(),
-              DEFAULT_ROLE_ID
+          "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+          user.getId(),
+          DEFAULT_ROLE_ID
       );
 
       // 2. Act
@@ -243,9 +243,9 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 3. Assert
       var joinRows = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM user_roles WHERE user_id = ?",
-              Integer.class,
-              user.getId()
+          "SELECT COUNT(*) FROM user_roles WHERE user_id = ?",
+          Integer.class,
+          user.getId()
       );
 
       assertThat(joinRows).isZero();
@@ -254,14 +254,14 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
   private UserAccount userAccount(UUID id, String email, UserStatus status, PlanType plan) {
     return UserAccount.restore(
-            id,
-            "User Name",
-            email,
-            "password-hash",
-            status,
-            plan,
-            false,
-            Set.of()
+        id,
+        "User Name",
+        email,
+        "password-hash",
+        status,
+        plan,
+        false,
+        Set.of()
     );
   }
 }

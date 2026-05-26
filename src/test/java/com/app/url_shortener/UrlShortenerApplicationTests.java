@@ -1,6 +1,7 @@
 package com.app.url_shortener;
 
 import com.app.url_shortener.config.PostgresContainerSupport;
+import com.app.url_shortener.config.RedisContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -18,6 +19,7 @@ class UrlShortenerApplicationTests {
 	@DynamicPropertySource
 	static void registerDynamicProperties(DynamicPropertyRegistry registry) {
 		PostgresContainerSupport.registerDatasourceProperties(registry);
+		RedisContainerSupport.registerRedisProperties(registry);
 	}
 
 	@Test

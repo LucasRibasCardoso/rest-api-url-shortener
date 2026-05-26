@@ -265,7 +265,6 @@ Não há implementação concreta de rate limit para fluxos públicos e sensíve
 | Resend verification | `ip + email` | 3 tentativas / 15 min |
 | Refresh | `ip` | 20 tentativas / 15 min |
 | Redirect | `ip` | 300 req / min |
-| Shorten anonymous | `ip` | 5 / dia |
 | Shorten FREE | `userId` | 10 / hora |
 | Shorten PREMIUM | `userId` | limite maior a definir |
 

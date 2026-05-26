@@ -9,21 +9,22 @@ import com.app.url_shortener.shared.exception.notfound.NotFoundException;
 import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
 import com.app.url_shortener.shared.exception.unauthorized.UnauthorizedException;
 import com.app.url_shortener.shared.exception.validation.DomainValidationException;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import software.amazon.awssdk.core.exception.SdkException;
-
-import java.util.List;
-import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -98,13 +99,18 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(TooManyRequestsException.class)
-  public ProblemDetail handleTooManyRequests(TooManyRequestsException exception) {
-    return buildProblemDetail(
+  public ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException exception) {
+    ProblemDetail problemDetail = buildProblemDetail(
             HttpStatus.TOO_MANY_REQUESTS,
             "Muitas requisições",
             ProblemType.TOO_MANY_REQUESTS,
             exception
     );
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterInSeconds()));
+
+    return new ResponseEntity<>(problemDetail, headers, HttpStatus.TOO_MANY_REQUESTS);
   }
 
   @ExceptionHandler(InternalServerErrorException.class)

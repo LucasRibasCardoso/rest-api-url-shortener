@@ -8,7 +8,9 @@ public enum CommonErrorCode implements ErrorCode {
   IDEMPOTENCY_HEADER_MISSING("O cabeçalho Idempotency-Key é obrigatório para esta operação."),
   IDEMPOTENCY_IN_PROCESSING("A requisição já está em processamento. Aguarde."),
   AUTH_ACCESS_DENIED("Acesso negado para esse recurso"),
-  AUTH_UNAUTHORIZED("Autenticação necessária ou token inválido.")
+  AUTH_UNAUTHORIZED("Autenticação necessária ou token inválido."),
+  TOO_MANY_REQUESTS("Muitas requisições. Por favor, tente novamente mais tarde."),
+  RATE_LIMIT_INFRASTRUCTURE_ERROR("Ocorreu um erro na infraestrutura do rate limit.")
   ;
 
   private final String message;

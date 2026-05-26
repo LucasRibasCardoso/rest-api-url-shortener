@@ -1,5 +1,6 @@
 package com.app.url_shortener.url.presentation.mapper;
 
+import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.*;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
@@ -16,7 +17,7 @@ public interface UrlWebMapper {
 
   @Mapping(target = "userId", source = "userId")
   @Mapping(target = "originalUrl", source = "request.originalUrl")
-  ShortenUrlCommand toCommand(ShortenUrlRequestDto request, UUID userId);
+  ShortenUrlCommand toCommand(ShortenUrlRequestDto request, UUID userId, PlanType planType);
 
   UrlDetailsCommand toCommand(UUID requesterId, String shortCode, boolean canReadAny);
 

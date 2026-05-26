@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.VerifyEmailCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
 import com.app.url_shortener.iam.application.port.output.RoleRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -28,6 +29,7 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
 
   private final RoleRepositoryPort roleRepositoryPort;
+  private final CheckAuthRateLimitPort  checkAuthRateLimitPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationTokenPort emailVerificationTokenPort;
 
@@ -36,6 +38,8 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   public VerifyEmailResult execute(VerifyEmailCommand command) {
     String email = command.email();
     VerificationCode code = command.code();
+
+    checkAuthRateLimitPort.checkVerifyEmail(email);
 
     EmailVerificationToken token = validateEmailVerificationToken(emailVerificationTokenPort.findByEmail(email));
     if (!token.matches(code)) {

@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.ResendVerificationCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.ResendVerificationUseCaseImpl;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,6 +53,9 @@ class ResendVerificationUseCaseTest {
 
   @Mock
   private EmailVerificationTokenPort emailVerificationTokenStore;
+
+  @Mock
+  private CheckAuthRateLimitPort checkAuthRateLimitPort;
 
   @Captor
   private ArgumentCaptor<EmailVerificationToken> emailVerificationTokenCaptor;
@@ -103,8 +108,11 @@ class ResendVerificationUseCaseTest {
               () -> assertThat(publishedEvent.code()).isEqualTo(storedToken.code())
       );
 
-      verify(userAccountRepositoryPort).findByEmail("user@email.com");
-      verifyNoMoreInteractions(userAccountRepositoryPort, emailVerificationTokenStore, eventPublisher);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
+      inOrder.verify(checkAuthRateLimitPort).checkResendVerification("user@email.com");
+      inOrder.verify(userAccountRepositoryPort).findByEmail("user@email.com");
+
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStore, eventPublisher);
     }
 
     @Test
@@ -121,9 +129,12 @@ class ResendVerificationUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(RESPONSE_MESSAGE);
 
-      verify(userAccountRepositoryPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
+      inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
+
       verifyNoInteractions(emailVerificationTokenStore, eventPublisher);
-      verifyNoMoreInteractions(userAccountRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
     @Test
@@ -141,9 +152,12 @@ class ResendVerificationUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(RESPONSE_MESSAGE);
 
-      verify(userAccountRepositoryPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
+      inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
+
       verifyNoInteractions(emailVerificationTokenStore, eventPublisher);
-      verifyNoMoreInteractions(userAccountRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
     @Test
@@ -166,10 +180,13 @@ class ResendVerificationUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao armazenar token de verificação.");
 
-      verify(userAccountRepositoryPort).findByEmail(command.email());
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
+      inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
+
       verify(emailVerificationTokenStore).store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
       verifyNoInteractions(eventPublisher);
-      verifyNoMoreInteractions(userAccountRepositoryPort, emailVerificationTokenStore);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStore);
     }
   }
 

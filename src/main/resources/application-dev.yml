@@ -49,12 +49,53 @@ app:
     min-length: 7
   id-generator:
     block-size: 10_000
+    counter-name: url_short_code
   security:
     jwt:
       secret: "X43Q+VZwzlK3qYRVPzn3fnvNJvvWJmOG+yV0r+tj9ok="
       issuer: ${spring.application.name}
       access-token-expiration-seconds: 900 # 15 minutos
       refresh-token-expiration-days: 7
+  rate-limit:
+    enabled: true
+    key-prefix: "rate-limit"
+    email-hash-secret: "DtyLwE6d9sMslJ4WKXxZmMtYqwXRMJKuR1KlOiWBQVA="
+
+    policies:
+      auth-login:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 10m
+        fail-open: false
+
+      auth-verify-email:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 15m
+        fail-open: false
+
+      auth-resend-verification:
+        enabled: true
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 15m
+        fail-open: false
+
+      url-shorten-free:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 1h
+        fail-open: false
+
+      url-shorten-premium:
+        enabled: true
+        capacity: 1000
+        refill-tokens: 1000
+        refill-period: 1h
+        fail-open: false
 
 logging:
   level:

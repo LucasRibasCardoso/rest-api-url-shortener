@@ -5,7 +5,7 @@ REGION="${AWS_REGION:-us-east-1}"
 ENDPOINT_URL="${LOCALSTACK_ENDPOINT_URL:-http://localhost:4566}"
 
 URL_TABLE_NAME="${URL_TABLE_NAME:-url}"
-COUNTER_TABLE_NAME="${COUNTER_TABLE_NAME:-url_counters}"
+COUNTER_TABLE_NAME="${COUNTER_TABLE_NAME:-url_counter}"
 URL_COUNTER_NAME="${URL_COUNTER_NAME:-url_short_code}"
 
 # Determina qual CLI usar para interagir com o DynamoDB
