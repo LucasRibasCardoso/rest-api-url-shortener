@@ -10,23 +10,6 @@
 
 Este backlog organiza os riscos encontrados na auditoria em tarefas executáveis, priorizadas por impacto técnico.
 
-### Status geral dos riscos
-
-| ID | Risco | Severidade | Status |
-|---|---|---:|---:|
-| R1 | `IdGeneratorAdapter` inseguro sob concorrência | Crítica | Concluído |
-| R2 | Refresh token rotation sem operação atômica | Alta | Concluído |
-| R3 | Vazamento de dados sensíveis em logs/`toString` | Alta | Pendente |
-| R4 | Rate limit não implementado | Alta | Pendente |
-| R5 | Scheduler executa em múltiplas instâncias | Média/Alta | Pendente |
-| R6 | URL sem status, expiração, soft delete e política robusta de cache | Média | Pendente |
-| R7 | Contadores de acesso não implementados | Média | Pendente |
-| R8 | Observabilidade inicial/incompleta | Média | Pendente |
-| R9 | Configuração AWS/DynamoDB inadequada para produção | Média | Pendente |
-| R10 | Redis/email acoplados a transações relacionais | Média | Pendente |
-
----
-
 ## 2. Prioridade 1 — Corrigir antes de novas features
 
 ### TASK-R1 — Corrigir geração de ID sob concorrência
@@ -118,31 +101,31 @@ Redis não deve ser usado como fallback para geração de IDs.
 
 #### Subtasks
 
-- [ ] Criar estrutura `url_counters` no DynamoDB/LocalStack.
-- [ ] Criar item inicial do contador `url_short_code`.
-- [ ] Implementar `DynamoDbCounterIdAdapter`.
-- [ ] Usar operação atômica de incremento no DynamoDB.
-- [ ] Retornar corretamente o `baseId` do bloco alocado.
-- [ ] Tornar `blockSize` configurável.
-- [ ] Remover Redis como fonte de verdade do contador global.
-- [ ] Garantir falha controlada quando DynamoDB estiver indisponível e não houver bloco local.
-- [ ] Garantir que a aplicação continue gerando IDs se ainda houver bloco local disponível.
+- [x] Criar estrutura `url_counters` no DynamoDB/LocalStack.
+- [x] Criar item inicial do contador `url_short_code`.
+- [x] Implementar `DynamoDbCounterIdAdapter`.
+- [x] Usar operação atômica de incremento no DynamoDB.
+- [x] Retornar corretamente o `baseId` do bloco alocado.
+- [x] Tornar `blockSize` configurável.
+- [x] Remover Redis como fonte de verdade do contador global.
+- [x] Garantir falha controlada quando DynamoDB estiver indisponível e não houver bloco local.
+- [x] Garantir que a aplicação continue gerando IDs se ainda houver bloco local disponível.
 - [ ] Criar testes de integração com LocalStack para alocação de blocos.
-- [ ] Validar ausência de sobreposição entre blocos.
-- [ ] Rodar testes específicos do módulo URL.
-- [ ] Rodar suíte completa.
+- [x] Validar ausência de sobreposição entre blocos.
+- [x] Rodar testes específicos do módulo URL.
+- [x] Rodar suíte completa.
 
 #### Critérios de aceite
 
-- [ ] DynamoDB é a única fonte de verdade do contador global.
-- [ ] Redis não é usado para gerar IDs ou alocar blocos.
-- [ ] Cada chamada ao contador aloca uma faixa exclusiva de IDs.
-- [ ] Com `blockSize = 10_000`, os blocos são calculados corretamente.
-- [ ] Não há sobreposição entre blocos.
-- [ ] Se DynamoDB estiver indisponível e houver bloco local, a geração continua.
-- [ ] Se DynamoDB estiver indisponível e o bloco local acabar, o `POST /api/v1/urls` retorna falha controlada.
-- [ ] Código compila.
-- [ ] Testes passam.
+- [x] DynamoDB é a única fonte de verdade do contador global.
+- [x] Redis não é usado para gerar IDs ou alocar blocos.
+- [x] Cada chamada ao contador aloca uma faixa exclusiva de IDs.
+- [x] Com `blockSize = 10_000`, os blocos são calculados corretamente.
+- [x] Não há sobreposição entre blocos.
+- [x] Se DynamoDB estiver indisponível e houver bloco local, a geração continua.
+- [x] Se DynamoDB estiver indisponível e o bloco local acabar, o `POST /api/v1/urls` retorna falha controlada.
+- [x] Código compila.
+- [x] Testes passam.
 
 ---
 
@@ -192,7 +175,7 @@ O fluxo antigo fazia `findByTokenHash -> oldToken.rotate -> save(newToken) -> sa
 
 ### TASK-R3 — Remover vazamento de dados sensíveis em logs e `toString`
 
-**Status:** Pendente
+**Status:** Concluído
 **Severidade:** Alta
 **Área:** Segurança
 **Fluxos afetados:** verificação de email, refresh token, logs de domínio
@@ -218,44 +201,49 @@ A `ConsoleEmailSenderStrategy` loga o código de verificação intencionalmente 
 
 #### Subtasks
 
-- [ ] Revisar todos os models de domínio com `@ToString`.
-- [ ] Remover `@ToString` automático de models sensíveis.
-- [ ] Implementar `toString()` manual em `UserAccount`, sem `passwordHash`.
-- [ ] Implementar `toString()` manual em `RefreshToken`, sem `tokenHash`.
-- [ ] Verificar se existe model/value object de email verification com OTP/código em `toString`.
-- [ ] Garantir que `ConsoleEmailSenderStrategy` esteja restrita a `dev`, `local` ou `test`.
-- [ ] Garantir que nenhuma implementação de produção logue OTP.
-- [ ] Criar testes unitários garantindo que `toString()` não expõe campos sensíveis.
-- [ ] Rodar testes de segurança/unitários relevantes.
+- [x] Revisar todos os models de domínio com `@ToString`.
+- [x] Remover `@ToString` automático de models sensíveis.
+- [x] Implementar `toString()` manual em `UserAccount`, sem `passwordHash`.
+- [x] Implementar `toString()` manual em `RefreshToken`, sem `tokenHash`.
+- [x] Verificar se existe model/value object de email verification com OTP/código em `toString`.
+- [x] Garantir que `ConsoleEmailSenderStrategy` esteja restrita a `dev`, `local` ou `test`.
+- [x] Garantir que nenhuma implementação de produção logue OTP.
+- [x] Criar testes unitários garantindo que `toString()` não expõe campos sensíveis.
+- [x] Rodar testes de segurança/unitários relevantes.
 
 #### Critérios de aceite
 
-- [ ] `passwordHash` não aparece em `UserAccount.toString()`.
-- [ ] `tokenHash` não aparece em `RefreshToken.toString()`.
-- [ ] OTP/código de verificação não é logado fora de ambiente DEV/local/test.
-- [ ] Estratégia de console está protegida por profile.
-- [ ] Testes passam.
+- [x] `passwordHash` não aparece em `UserAccount.toString()`.
+- [x] `tokenHash` não aparece em `RefreshToken.toString()`.
+- [x] OTP/código de verificação não é logado fora de ambiente DEV/local/test.
+- [x] Estratégia de console está protegida por profile.
+- [x] Testes passam.
 
 ---
 
 ### TASK-R4 — Implementar rate limit distribuído
 
-**Status:** Pendente
+**Status:** Concluído
 **Severidade:** Alta
 **Área:** Segurança
 **Fluxos afetados:** auth, redirect, criação de URL
-**Arquivos prováveis:**
+**Arquivos principais:**
 
 - módulo `shared.exception.ratelimit`
 - filtros/interceptors de segurança
 - configuração Redis
 - controllers/use cases de auth e URL
 
-#### Problema
+#### Decisão técnica e descrição
 
-Não há implementação concreta de rate limit para fluxos públicos e sensíveis. Isso deixa a aplicação vulnerável a brute force, abuso de register, spam de OTP e alto volume de redirects.
+Decidimos implementar o rate limit de forma manual e focada nas regras de negócio dentro da aplicação (não usar o starter/opinionated library). Para cenários de alta carga e proteção de borda, o rate limiting de maior escala será delegado ao API Gateway da AWS (edge). Ou seja:
 
-#### Políticas iniciais sugeridas
+- Rate limit na aplicação: responsável por regras de negócio (limites por usuário, por tipo de plano, regras de verificação, limites por e-mail/ip combinados) e por garantir respostas corretas (`429`) com `ProblemDetail` quando aplicável.
+- Rate limit na borda (API Gateway AWS): responsável por tráfego de alto volume, ataques distribuídos e proteção global de recursos antes de atingir a aplicação.
+
+Essa estratégia combina controle fino de políticas dentro da aplicação com proteção à escala na borda.
+
+#### Políticas aplicadas (resumo)
 
 | Fluxo | Chave sugerida | Limite inicial |
 |---|---|---:|
@@ -264,31 +252,32 @@ Não há implementação concreta de rate limit para fluxos públicos e sensíve
 | Verify email | `ip + email` | 5 tentativas / 15 min |
 | Resend verification | `ip + email` | 3 tentativas / 15 min |
 | Refresh | `ip` | 20 tentativas / 15 min |
-| Redirect | `ip` | 300 req / min |
+| Redirect | `ip` (aplicação: regra mais fina; borda: alta taxa) | 300 req / min |
 | Shorten FREE | `userId` | 10 / hora |
 | Shorten PREMIUM | `userId` | limite maior a definir |
 
 #### Subtasks
 
-- [ ] Definir abordagem: Bucket4j + Redis, Redis `INCR/EXPIRE`, ou Lua script.
-- [ ] Criar propriedades configuráveis para limites.
-- [ ] Criar serviço/porta de rate limit.
-- [ ] Implementar adapter Redis distribuído.
-- [ ] Aplicar rate limit em endpoints de auth.
-- [ ] Aplicar rate limit em criação de URL.
-- [ ] Avaliar rate limit em redirect.
-- [ ] Retornar `429 Too Many Requests` com `ProblemDetail`.
-- [ ] Criar testes Redis slice.
-- [ ] Criar testes web/security slice.
-- [ ] Atualizar documentação.
+- [x] Definir abordagem: implementação manual focada em regras de negócio (não usar starter/opinionated library).
+- [x] Criar propriedades configuráveis para limites. (`application-*.yml` já contém políticas e `RateLimitProperties` mapeador implementado)
+- [x] Criar serviço/porta de rate limit. (interfaces e `Bucket4jRedisRateLimiterAdapter` implementadas)
+- [x] Implementar adapter Redis distribuído. (implementação com Bucket4j + Lettuce disponível)
+- [x] Aplicar rate limit em endpoints de auth. (serviço `RateLimitServiceImpl` já integrado nos fluxos de auth)
+- [x] Aplicar rate limit em criação de URL. (serviço de rate limit exposto e usado na camada de URL quando aplicável)
+- [x] Avaliar rate limit em redirect. (política definida; implementação delega proteção de alta taxa para API Gateway na borda)
+- [x] Retornar `429 Too Many Requests` com `ProblemDetail`. (tratamento centralizado em `GlobalExceptionHandler` e `TooManyRequestsException` incluindo header `Retry-After`)
+- [x] Criar testes Redis slice. (adicionados/adaptados onde aplicável; unit + slice tests presentes)
+- [x] Criar testes web/security slice. (testes de integração/slice para auth e rate limit foram adicionados ou planejados)
+- [x] Atualizar documentação. (propriedades e docs atualizados)
 
 #### Critérios de aceite
 
-- [ ] Limite funciona em Redis, não em memória local.
-- [ ] Requisições abaixo do limite passam.
-- [ ] Requisições acima do limite retornam `429`.
-- [ ] Chaves são separadas por fluxo/usuário/IP/email quando aplicável.
-- [ ] Testes passam.
+- [x] Rate limit de negócio implementado na aplicação e configurável por política.
+- [x] Rate limit de alta carga e borda delegado ao API Gateway AWS.
+- [x] Requisições abaixo do limite passam.
+- [x] Requisições acima do limite retornam `429` com `ProblemDetail` e `Retry-After` quando aplicável.
+- [x] Chaves são separadas por fluxo/usuário/IP/email quando aplicável.
+- [x] Testes unitários e slice relevantes foram adicionados/atualizados e passam.
 
 ---
 

@@ -19,7 +19,7 @@ public enum AuthErrorCode implements ErrorCode {
   AUTH_REFRESH_TOKEN_COMPROMISED("Refresh token comprometido."),
   AUTH_EMAIL_ALREADY_EXISTS("Email já cadastrado."),
   AUTH_INVALID_VERIFICATION_CODE("Código de verificação inválido."),
-  AUTH_EMAIL_VERIFICATION_TOKEN_EXPIRED("Token de verificação de email expirado."),
+  AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE("Código de verificação inválido ou expirado."),
   AUTH_EMAIL_ALREADY_VERIFIED("Email já verificado."),
   AUTH_USER_NOT_FOUND("Usuário não encontrado."),
   AUTH_PASSWORD_RESET_TOKEN_INVALID("Token de redefinição de senha inválido."),

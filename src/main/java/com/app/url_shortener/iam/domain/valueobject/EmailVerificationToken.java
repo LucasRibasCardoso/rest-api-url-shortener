@@ -21,10 +21,6 @@ public record EmailVerificationToken(UUID userId, String email, VerificationCode
     return new EmailVerificationToken(userId, email, code, expiresAt);
   }
 
-  public boolean matches(VerificationCode code) {
-    return this.code.equals(code);
-  }
-
   public boolean isExpired() {
     return !expiresAt.isAfter(Instant.now());
   }

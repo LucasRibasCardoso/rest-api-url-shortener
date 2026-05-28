@@ -1,7 +1,5 @@
 package com.app.url_shortener.iam.domain.valueobject;
 
-import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -25,18 +23,18 @@ class EmailVerificationTokenTest {
     @Test
     @DisplayName("Deve aplicar trim no email e inicializar corretamente")
     void shouldCreateTokenAndTrimEmail() {
-      // Arrange
+      // 1. Arrange
       var userId = UUID.randomUUID();
       var unformattedEmail = "   usuario@email.com   ";
       var code = VerificationCode.of("123456");
       var expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
 
-      // Act
+      // 2. Act
       var token = EmailVerificationToken.create(userId, unformattedEmail, code, expiresAt);
 
-      // Assert
+      // 3. Assert
       assertThat(token.userId()).isEqualTo(userId);
-      assertThat(token.email()).isEqualTo("usuario@email.com"); // Garante que aplicou o trim()
+      assertThat(token.email()).isEqualTo("usuario@email.com");
       assertThat(token.code()).isEqualTo(code);
       assertThat(token.expiresAt()).isEqualTo(expiresAt);
     }
@@ -44,8 +42,16 @@ class EmailVerificationTokenTest {
     @Test
     @DisplayName("Deve lançar NullPointerException se atributos obrigatórios forem nulos")
     void shouldThrowExceptionIfAttributesAreNull() {
-      // Arrange, Act & Assert
-      assertThatThrownBy(() -> EmailVerificationToken.create(null, "email@mail.com", VerificationCode.of("123456"), Instant.now()))
+      // 1. Arrange
+      var code = VerificationCode.of("123456");
+      var expiresAt = Instant.now();
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(() -> EmailVerificationToken.create(null, "email@mail.com", code, expiresAt));
+
+      // 3. Assert
+      throwableAssert
               .isInstanceOf(NullPointerException.class)
               .hasMessageContaining("userId is required");
     }
@@ -58,63 +64,29 @@ class EmailVerificationTokenTest {
     @Test
     @DisplayName("Deve retornar true se a data de expiração for no passado")
     void shouldReturnTrueWhenExpired() {
-      // Arrange
+      // 1. Arrange
       var pastExpiration = Instant.now().minus(1, ChronoUnit.MINUTES);
       var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", VerificationCode.of("123456"), pastExpiration);
 
-      // Act
+      // 2. Act
       var isExpired = token.isExpired();
 
-      // Assert
+      // 3. Assert
       assertThat(isExpired).isTrue();
     }
 
     @Test
     @DisplayName("Deve retornar false se a data de expiração for no futuro")
     void shouldReturnFalseWhenNotExpired() {
-      // Arrange
+      // 1. Arrange
       var futureExpiration = Instant.now().plus(1, ChronoUnit.MINUTES);
       var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", VerificationCode.of("123456"), futureExpiration);
 
-      // Act
+      // 2. Act
       var isExpired = token.isExpired();
 
-      // Assert
+      // 3. Assert
       assertThat(isExpired).isFalse();
-    }
-  }
-
-  @Nested
-  @DisplayName("Regras de Comparação (matches)")
-  class MatchingTests {
-
-    @Test
-    @DisplayName("Deve retornar true se o código fornecido for igual ao do token")
-    void shouldReturnTrueWhenCodeMatches() {
-      // Arrange
-      var targetCode = VerificationCode.of("123456");
-      var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", targetCode, Instant.now());
-      var codeToTest = VerificationCode.of("123456");
-
-      // Act
-      var matches = token.matches(codeToTest);
-
-      // Assert
-      assertThat(matches).isTrue();
-    }
-
-    @Test
-    @DisplayName("Deve retornar false se o código fornecido for diferente do token")
-    void shouldReturnFalseWhenCodeDoesNotMatch() {
-      // Arrange
-      var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", VerificationCode.of("123456"), Instant.now());
-      var incorrectCode = VerificationCode.of("999999");
-
-      // Act
-      var matches = token.matches(incorrectCode);
-
-      // Assert
-      assertThat(matches).isFalse();
     }
   }
 

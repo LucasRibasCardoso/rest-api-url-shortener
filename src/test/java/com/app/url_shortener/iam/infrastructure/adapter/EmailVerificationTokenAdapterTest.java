@@ -3,15 +3,24 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,37 +76,22 @@ class EmailVerificationTokenAdapterTest extends BaseRedisSliceTest {
               .isGreaterThan(ttl.minusSeconds(5).toMillis());
     }
 
-    @Test
-    @DisplayName("Deve manter token legível antes da expiração")
-    void shouldReadTokenBeforeExpiration() {
-      // 1. Arrange
-      var token = emailVerificationToken("before-expiration@email.com");
-      adapter.store(token, Duration.ofMinutes(5));
-
-      // 2. Act
-      var result = adapter.findByEmail(token.email());
-
-      // 3. Assert
-      assertThat(result).isPresent();
-      assertThat(result.get()).isEqualTo(token);
-      assertThat(redisTemplate.getExpire(key(token.email()), TimeUnit.MILLISECONDS)).isPositive();
-    }
   }
 
   @Nested
-  @DisplayName("Leitura")
-  class FindByEmailTests {
+  @DisplayName("Consumo")
+  class ConsumeTests {
 
     @Test
-    @DisplayName("Deve desserializar token salvo diretamente no Redis")
-    void shouldDeserializeTokenStoredDirectlyInRedis() {
+    @DisplayName("Deve consumir token quando o código corresponder e remover chave")
+    void shouldConsumeTokenWhenCodeMatchesAndRemoveKey() {
       // 1. Arrange
-      var token = emailVerificationToken("serialized@email.com");
+      var token = emailVerificationToken("consume@email.com");
       var key = key(token.email());
       redisTemplate.opsForValue().set(key, serializedValue(token), Duration.ofMinutes(10));
 
       // 2. Act
-      var result = adapter.findByEmail(token.email());
+      var result = adapter.consumeByEmailAndCode(token.email(), token.code());
 
       // 3. Assert
       assertThat(result).isPresent();
@@ -105,6 +99,43 @@ class EmailVerificationTokenAdapterTest extends BaseRedisSliceTest {
       assertThat(result.get().email()).isEqualTo(token.email());
       assertThat(result.get().code()).isEqualTo(token.code());
       assertThat(result.get().expiresAt()).isEqualTo(token.expiresAt());
+      assertThat(redisTemplate.hasKey(key)).isFalse();
+      assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isEqualTo(-2L);
+    }
+
+    @Test
+    @DisplayName("Deve consumir token uma única vez")
+    void shouldConsumeTokenOnlyOnce() {
+      // 1. Arrange
+      var token = emailVerificationToken("single-use@email.com");
+      adapter.store(token, Duration.ofMinutes(10));
+
+      // 2. Act
+      var firstResult = adapter.consumeByEmailAndCode(token.email(), token.code());
+      var secondResult = adapter.consumeByEmailAndCode(token.email(), token.code());
+
+      // 3. Assert
+      assertThat(firstResult).isPresent();
+      assertThat(secondResult).isEmpty();
+      assertThat(redisTemplate.hasKey(key(token.email()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Deve retornar vazio e preservar chave quando o código não corresponder")
+    void shouldReturnEmptyAndPreserveKeyWhenCodeDoesNotMatch() {
+      // 1. Arrange
+      var token = emailVerificationToken("invalid-code@email.com");
+      var key = key(token.email());
+      adapter.store(token, Duration.ofMinutes(10));
+
+      // 2. Act
+      var result = adapter.consumeByEmailAndCode(token.email(), VerificationCode.of("654321"));
+
+      // 3. Assert
+      assertThat(result).isEmpty();
+      assertThat(redisTemplate.hasKey(key)).isTrue();
+      assertThat(redisTemplate.opsForValue().get(key)).isEqualTo(serializedValue(token));
+      assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isPositive();
     }
 
     @Test
@@ -114,33 +145,11 @@ class EmailVerificationTokenAdapterTest extends BaseRedisSliceTest {
       var email = "missing@email.com";
 
       // 2. Act
-      var result = adapter.findByEmail(email);
+      var result = adapter.consumeByEmailAndCode(email, VerificationCode.of("123456"));
 
       // 3. Assert
       assertThat(result).isEmpty();
       assertThat(redisTemplate.hasKey(key(email))).isFalse();
-    }
-  }
-
-  @Nested
-  @DisplayName("Remoção e expiração")
-  class DeleteAndExpirationTests {
-
-    @Test
-    @DisplayName("Deve remover chave e retornar vazio após deleção")
-    void shouldRemoveKeyAndReturnEmptyAfterDeletion() {
-      // 1. Arrange
-      var token = emailVerificationToken("delete@email.com");
-      var key = key(token.email());
-      adapter.store(token, Duration.ofMinutes(5));
-
-      // 2. Act
-      adapter.deleteByEmail(token.email());
-
-      // 3. Assert
-      assertThat(redisTemplate.hasKey(key)).isFalse();
-      assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isEqualTo(-2L);
-      assertThat(adapter.findByEmail(token.email())).isEmpty();
     }
 
     @Test
@@ -153,12 +162,56 @@ class EmailVerificationTokenAdapterTest extends BaseRedisSliceTest {
 
       // 2. Act
       waitUntilKeyIsMissing(key);
+      var result = adapter.consumeByEmailAndCode(token.email(), token.code());
 
       // 3. Assert
+      assertThat(result).isEmpty();
       assertThat(redisTemplate.hasKey(key)).isFalse();
       assertThat(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).isEqualTo(-2L);
-      assertThat(adapter.findByEmail(token.email())).isEmpty();
     }
+
+    @Test
+    @DisplayName("Deve permitir apenas um consumo em chamadas concorrentes")
+    void shouldAllowOnlyOneConsumptionWhenRequestsAreConcurrent() throws Exception {
+      // 1. Arrange
+      var token = emailVerificationToken("concurrent@email.com");
+      var readyLatch = new CountDownLatch(2);
+      var startLatch = new CountDownLatch(1);
+      var executor = Executors.newFixedThreadPool(2);
+      adapter.store(token, Duration.ofMinutes(10));
+
+      // 2. Act
+      try {
+        var tasks = List.of(
+                executor.submit(() -> consumeAfterStart(token, readyLatch, startLatch)),
+                executor.submit(() -> consumeAfterStart(token, readyLatch, startLatch))
+        );
+
+        var requestsAreReady = readyLatch.await(2, TimeUnit.SECONDS);
+        startLatch.countDown();
+
+        var results = List.of(tasks.get(0).get(2, TimeUnit.SECONDS), tasks.get(1).get(2, TimeUnit.SECONDS));
+
+        // 3. Assert
+        assertThat(requestsAreReady).isTrue();
+        assertThat(results).hasSize(2);
+        assertThat(results.stream().filter(Optional::isPresent)).hasSize(1);
+        assertThat(results.stream().filter(Optional::isEmpty)).hasSize(1);
+        assertThat(redisTemplate.hasKey(key(token.email()))).isFalse();
+      }
+      finally {
+        executor.shutdownNow();
+      }
+    }
+  }
+
+  private Optional<EmailVerificationToken> consumeAfterStart(
+          EmailVerificationToken token,
+          CountDownLatch readyLatch,
+          CountDownLatch startLatch) throws InterruptedException {
+    readyLatch.countDown();
+    startLatch.await();
+    return adapter.consumeByEmailAndCode(token.email(), token.code());
   }
 
   private void waitUntilKeyIsMissing(String key) throws InterruptedException {
