@@ -3,8 +3,14 @@ package com.app.url_shortener.shared.presentation.filter;
 import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.exception.conflict.IdempotencyConflictException;
 import com.app.url_shortener.shared.exception.validation.IdempotencyHeaderMissingException;
-import com.app.url_shortener.shared.infrastructure.idempotency.CachedResponse;
-import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
+import com.app.url_shortener.shared.infrastructure.idempotency.enums.IdempotencyStatus;
+import com.app.url_shortener.shared.infrastructure.idempotency.impl.PrincipalScopeResolver;
+import com.app.url_shortener.shared.infrastructure.idempotency.impl.RequestBodyHasher;
+import com.app.url_shortener.shared.infrastructure.idempotency.port.IdempotencyPort;
+import com.app.url_shortener.shared.infrastructure.idempotency.valueobjects.CachedResponse;
+import com.app.url_shortener.shared.infrastructure.idempotency.valueobjects.IdempotencyEntry;
+import com.app.url_shortener.shared.infrastructure.idempotency.valueobjects.IdempotencyKey;
+import com.app.url_shortener.shared.infrastructure.idempotency.valueobjects.RequestFingerprint;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,14 +30,22 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -40,9 +54,22 @@ class IdempotencyFilterTest {
 
   private static final String IDEMPOTENCY_KEY = "request-key-123";
   private static final String PROTECTED_URI = "/api/v1/urls";
+  private static final RequestFingerprint FINGERPRINT = new RequestFingerprint(
+          "ip:127.0.0.1",
+          "POST",
+          PROTECTED_URI,
+          "body-hash"
+  );
+  private static final IdempotencyKey GENERATED_KEY = IdempotencyKey.generate(IDEMPOTENCY_KEY, FINGERPRINT);
 
   @Mock
-  private IdempotencyStore idempotencyStore;
+  private IdempotencyPort idempotencyPort;
+
+  @Mock
+  private PrincipalScopeResolver principalScopeResolver;
+
+  @Mock
+  private RequestBodyHasher requestBodyHasher;
 
   @Mock
   private HandlerExceptionResolver exceptionResolver;
@@ -67,7 +94,7 @@ class IdempotencyFilterTest {
     @DisplayName("Deve retornar true para URI não protegida")
     void shouldReturnTrueForUnprotectedUri() {
       // 1. Arrange
-      var request = request("POST", "/api/v1/auth/login");
+      var request = request("POST", "/api/v1/users");
       given(idempotencyProperties.protectedUris()).willReturn(List.of(PROTECTED_URI));
 
       // 2. Act
@@ -84,7 +111,7 @@ class IdempotencyFilterTest {
     @DisplayName("Deve retornar false para URI protegida")
     void shouldReturnFalseForProtectedUri() {
       // 1. Arrange
-      var request = request("POST", "/api/v1/urls/shorten");
+      var request = request("POST", PROTECTED_URI);
       given(idempotencyProperties.protectedUris()).willReturn(List.of(PROTECTED_URI));
 
       // 2. Act
@@ -124,7 +151,7 @@ class IdempotencyFilterTest {
       assertThat(exceptionCaptor.getValue()).isInstanceOf(IdempotencyHeaderMissingException.class);
       assertThat(filterChain.getRequest()).isNull();
 
-      verifyNoInteractions(idempotencyStore);
+      verifyNoInteractions(idempotencyPort, principalScopeResolver, requestBodyHasher);
       verifyNoMoreInteractions(exceptionResolver);
     }
   }
@@ -137,14 +164,16 @@ class IdempotencyFilterTest {
     @DisplayName("Deve restaurar resposta cacheada sem executar o filter chain")
     void shouldRestoreCachedResponseWithoutCallingFilterChain() throws Exception {
       // 1. Arrange
-      var request = requestWithIdempotencyKey("POST", PROTECTED_URI);
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
       var response = new MockHttpServletResponse();
       var filterChain = new MockFilterChain();
-      var cachedBody = "{\"shortCode\":\"abc123\"}".getBytes(StandardCharsets.UTF_8);
-      var cachedResponse = new CachedResponse(HttpServletResponse.SC_CREATED, cachedBody);
+      var cachedResponse = new CachedResponse(HttpServletResponse.SC_CREATED, "{\"shortCode\":\"abc123\"}");
+      var entry = new IdempotencyEntry(IdempotencyStatus.COMPLETED, FINGERPRINT, cachedResponse, Instant.now());
 
-      given(idempotencyStore.saveInProgress(IDEMPOTENCY_KEY, 2L)).willReturn(false);
-      given(idempotencyStore.getState(IDEMPOTENCY_KEY)).willReturn(cachedResponse);
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(false);
+      given(idempotencyPort.find(GENERATED_KEY)).willReturn(Optional.of(entry));
 
       // 2. Act
       filter.doFilterInternal(request, response, filterChain);
@@ -153,26 +182,30 @@ class IdempotencyFilterTest {
       assertAll(
               () -> assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_CREATED),
               () -> assertThat(response.getContentType()).isEqualTo("application/json"),
-              () -> assertThat(response.getContentAsByteArray()).isEqualTo(cachedBody),
+              () -> assertThat(response.getContentAsString()).isEqualTo(cachedResponse.body()),
               () -> assertThat(filterChain.getRequest()).isNull()
       );
 
-      verify(idempotencyStore).saveInProgress(IDEMPOTENCY_KEY, 2L);
-      verify(idempotencyStore).getState(IDEMPOTENCY_KEY);
+      verify(principalScopeResolver).resolve(request);
+      verify(requestBodyHasher).sha256Hex(any(byte[].class));
+      verify(idempotencyPort).saveInProgress(GENERATED_KEY, Duration.ofMinutes(2));
+      verify(idempotencyPort).find(GENERATED_KEY);
       verifyNoInteractions(exceptionResolver);
-      verifyNoMoreInteractions(idempotencyStore);
+      verifyNoMoreInteractions(idempotencyPort, principalScopeResolver, requestBodyHasher);
     }
 
     @Test
     @DisplayName("Deve resolver conflito quando requisição estiver em processamento")
     void shouldResolveConflictWhenRequestIsInProgress() throws Exception {
       // 1. Arrange
-      var request = requestWithIdempotencyKey("POST", PROTECTED_URI);
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
       var response = new MockHttpServletResponse();
       var filterChain = new MockFilterChain();
 
-      given(idempotencyStore.saveInProgress(IDEMPOTENCY_KEY, 2L)).willReturn(false);
-      given(idempotencyStore.getState(IDEMPOTENCY_KEY)).willReturn(null);
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(false);
+      given(idempotencyPort.find(GENERATED_KEY)).willReturn(Optional.empty());
 
       // 2. Act
       filter.doFilterInternal(request, response, filterChain);
@@ -188,9 +221,9 @@ class IdempotencyFilterTest {
       assertThat(exceptionCaptor.getValue()).isInstanceOf(IdempotencyConflictException.class);
       assertThat(filterChain.getRequest()).isNull();
 
-      verify(idempotencyStore).saveInProgress(IDEMPOTENCY_KEY, 2L);
-      verify(idempotencyStore).getState(IDEMPOTENCY_KEY);
-      verifyNoMoreInteractions(idempotencyStore, exceptionResolver);
+      verify(idempotencyPort).saveInProgress(GENERATED_KEY, Duration.ofMinutes(2));
+      verify(idempotencyPort).find(GENERATED_KEY);
+      verifyNoMoreInteractions(idempotencyPort, exceptionResolver);
     }
   }
 
@@ -202,35 +235,37 @@ class IdempotencyFilterTest {
     @DisplayName("Deve executar filter chain e salvar resposta concluída com sucesso")
     void shouldCallFilterChainAndSaveCompletedResponseWhenRequestSucceeds() throws Exception {
       // 1. Arrange
-      var request = requestWithIdempotencyKey("POST", PROTECTED_URI);
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
       var response = new MockHttpServletResponse();
       var responseBody = "{\"id\":\"url-123\"}";
       var filterChain = filterChainReturning(HttpServletResponse.SC_CREATED, responseBody);
 
-      given(idempotencyStore.saveInProgress(IDEMPOTENCY_KEY, 2L)).willReturn(true);
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(true);
 
       // 2. Act
       filter.doFilterInternal(request, response, filterChain);
 
       // 3. Assert
-      verify(idempotencyStore).saveInProgress(IDEMPOTENCY_KEY, 2L);
-      verify(idempotencyStore).saveCompleted(
-              eq(IDEMPOTENCY_KEY),
+      verify(idempotencyPort).saveInProgress(GENERATED_KEY, Duration.ofMinutes(2));
+      verify(idempotencyPort).saveCompleted(
+              eq(GENERATED_KEY),
               cachedResponseCaptor.capture(),
-              eq(24L)
+              eq(Duration.ofHours(24))
       );
-      verify(idempotencyStore, never()).delete(any());
+      verify(idempotencyPort, never()).delete(GENERATED_KEY);
       verifyNoInteractions(exceptionResolver);
-      verifyNoMoreInteractions(idempotencyStore);
+      verifyNoMoreInteractions(idempotencyPort);
 
       var cachedResponse = cachedResponseCaptor.getValue();
 
       assertAll(
-              () -> assertThat(filterChain.getRequest()).isSameAs(request),
+              () -> assertThat(filterChain.getRequest()).isNotSameAs(request),
               () -> assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_CREATED),
               () -> assertThat(response.getContentAsString()).isEqualTo(responseBody),
               () -> assertThat(cachedResponse.status()).isEqualTo(HttpServletResponse.SC_CREATED),
-              () -> assertThat(cachedResponse.body()).isEqualTo(responseBody.getBytes(StandardCharsets.UTF_8))
+              () -> assertThat(cachedResponse.body()).isEqualTo(responseBody)
       );
     }
 
@@ -238,27 +273,28 @@ class IdempotencyFilterTest {
     @DisplayName("Deve excluir chave de idempotência quando resposta tiver erro 5xx")
     void shouldDeleteIdempotencyKeyWhenResponseHasServerError() throws Exception {
       // 1. Arrange
-      var request = requestWithIdempotencyKey("POST", PROTECTED_URI);
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
       var response = new MockHttpServletResponse();
       var filterChain = filterChainReturning(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "server error");
 
-      given(idempotencyStore.saveInProgress(IDEMPOTENCY_KEY, 2L)).willReturn(true);
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(true);
 
       // 2. Act
       filter.doFilterInternal(request, response, filterChain);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(filterChain.getRequest()).isSameAs(request),
               () -> assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_INTERNAL_SERVER_ERROR),
               () -> assertThat(response.getContentAsString()).isEqualTo("server error")
       );
 
-      verify(idempotencyStore).saveInProgress(IDEMPOTENCY_KEY, 2L);
-      verify(idempotencyStore).delete(IDEMPOTENCY_KEY);
-      verify(idempotencyStore, never()).saveCompleted(any(), any(), anyLong());
+      verify(idempotencyPort).saveInProgress(GENERATED_KEY, Duration.ofMinutes(2));
+      verify(idempotencyPort).delete(GENERATED_KEY);
+      verify(idempotencyPort, never()).saveCompleted(any(), any(), any());
       verifyNoInteractions(exceptionResolver);
-      verifyNoMoreInteractions(idempotencyStore);
+      verifyNoMoreInteractions(idempotencyPort);
     }
   }
 
@@ -266,9 +302,10 @@ class IdempotencyFilterTest {
     return new MockHttpServletRequest(method, uri);
   }
 
-  private static MockHttpServletRequest requestWithIdempotencyKey(String method, String uri) {
+  private static MockHttpServletRequest requestWithIdempotencyKey(String method, String uri, String body) {
     var request = request(method, uri);
     request.addHeader("Idempotency-Key", IDEMPOTENCY_KEY);
+    request.setContent(body.getBytes(StandardCharsets.UTF_8));
     return request;
   }
 
@@ -278,7 +315,7 @@ class IdempotencyFilterTest {
       @Override
       protected void service(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
         response.setStatus(status);
-        response.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+        response.getWriter().write(body);
       }
     });
   }

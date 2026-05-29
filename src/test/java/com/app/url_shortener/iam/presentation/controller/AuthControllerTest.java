@@ -21,7 +21,7 @@ import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
-import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
+import com.app.url_shortener.shared.infrastructure.idempotency.port.IdempotencyPort;
 import com.app.url_shortener.shared.presentation.error.GlobalExceptionHandler;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
@@ -98,7 +98,7 @@ class AuthControllerTest extends BaseWebSliceTest {
   private ClientIpResolver clientIpResolver;
 
   @MockitoBean
-  private IdempotencyStore idempotencyStore;
+  private IdempotencyPort idempotencyStore;
 
   @MockitoBean
   private IdempotencyProperties idempotencyProperties;

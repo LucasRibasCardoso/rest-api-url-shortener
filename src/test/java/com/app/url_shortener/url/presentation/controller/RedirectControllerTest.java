@@ -7,7 +7,7 @@ import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import com.app.url_shortener.shared.config.JacksonConfig;
 import com.app.url_shortener.shared.config.properties.IdempotencyProperties;
-import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
+import com.app.url_shortener.shared.infrastructure.idempotency.port.IdempotencyPort;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +50,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
   private UrlWebMapper urlWebMapper;
 
   @MockitoBean
-  private IdempotencyStore idempotencyStore;
+  private IdempotencyPort idempotencyStore;
 
   @MockitoBean
   private IdempotencyProperties idempotencyProperties;
