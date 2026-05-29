@@ -8,7 +8,6 @@ import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPo
 import com.app.url_shortener.iam.application.result.VerifyEmailResult;
 import com.app.url_shortener.iam.application.usecase.VerifyEmailUseCase;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidOrExpiredEmailVerificationCodeException;
-import com.app.url_shortener.iam.domain.exception.user.UserNotFoundException;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
@@ -21,8 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
 
-  private static final String SUCCESS_MESSAGE =
-      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
 
   private final RoleRepositoryPort roleRepositoryPort;
   private final CheckAuthRateLimitPort checkAuthRateLimitPort;
@@ -34,13 +32,13 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   public VerifyEmailResult execute(VerifyEmailCommand command) {
 
     checkAuthRateLimitPort.checkVerifyEmail(command.email());
-    consumeAndValidateToken(command.code(), command.email());
-    verifyAccountEmail(command.email());
+    EmailVerificationToken token = consumeAndValidateToken(command.code(), command.email());
+    verifyAccountEmail(command.email(), token);
 
     return new VerifyEmailResult(SUCCESS_MESSAGE);
   }
 
-  private void consumeAndValidateToken(VerificationCode code, String email) {
+  private EmailVerificationToken consumeAndValidateToken(VerificationCode code, String email) {
     EmailVerificationToken token =
         emailVerificationTokenPort
             .consumeByEmailAndCode(email, code)
@@ -49,13 +47,20 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
     if (token.isExpired()) {
       throw new InvalidOrExpiredEmailVerificationCodeException();
     }
+
+    return token;
   }
 
-  private void verifyAccountEmail(String email) {
+  private void verifyAccountEmail(String email, EmailVerificationToken token) {
     UserAccount user =
         userAccountRepositoryPort
             .findByEmailWithRoles(email)
-            .orElseThrow(UserNotFoundException::new);
+            .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
+
+    if (!token.userId().equals(user.getId())) {
+      throw new InvalidOrExpiredEmailVerificationCodeException();
+    }
+
     Role defaultRole = roleRepositoryPort.findDefaultRole();
     user.verifyEmail(defaultRole);
     userAccountRepositoryPort.save(user);

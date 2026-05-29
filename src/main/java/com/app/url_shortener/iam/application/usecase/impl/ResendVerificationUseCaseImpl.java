@@ -32,7 +32,7 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
   private final EmailVerificationTokenPort emailVerificationTokenStore;
 
   @Override
-  @Transactional(readOnly = true)
+  @Transactional
   public ResendVerificationResult execute(ResendVerificationCommand command) {
     checkAuthRateLimitPort.checkResendVerification(command.email());
 

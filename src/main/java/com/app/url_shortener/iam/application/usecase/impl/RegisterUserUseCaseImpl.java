@@ -33,11 +33,9 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
   @Override
   @Transactional
   public RegisterUserResult execute(RegisterUserCommand command) {
-    String email = command.email();
-    String name = command.name();
     String passwordHash = passwordEncoder.encode(command.password());
 
-    UserAccount userAccount = UserAccount.createPendingRegistration(name, email, passwordHash);
+    UserAccount userAccount = UserAccount.createPendingRegistration(command.name(), command.email(), passwordHash);
     UserAccount savedUser = userAccountRepositoryPort.saveNewUserAccount(userAccount);
 
     VerificationCode code = VerificationCode.generate();

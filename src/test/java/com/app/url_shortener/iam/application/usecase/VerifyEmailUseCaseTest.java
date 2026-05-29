@@ -9,7 +9,6 @@ import com.app.url_shortener.iam.application.usecase.impl.VerifyEmailUseCaseImpl
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidOrExpiredEmailVerificationCodeException;
-import com.app.url_shortener.iam.domain.exception.user.UserNotFoundException;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
@@ -45,6 +44,7 @@ class VerifyEmailUseCaseTest {
 
   private static final String SUCCESS_MESSAGE =
           "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final UUID PENDING_USER_ID = UUID.fromString("019a19f7-9705-7954-a0df-b93678630003");
 
   @Mock
   private RoleRepositoryPort roleRepositoryPort;
@@ -183,8 +183,8 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
-    @DisplayName("Deve lançar exceção quando o usuário do e-mail não for encontrado")
-    void shouldThrowExceptionWhenUserIsNotFound() {
+    @DisplayName("Deve lançar exceção genérica quando o usuário do e-mail não for encontrado")
+    void shouldThrowGenericExceptionWhenUserIsNotFound() {
       // 1. Arrange
       var code = VerificationCode.of("123456");
       var command = new VerifyEmailCommand("user@email.com", code);
@@ -198,8 +198,41 @@ class VerifyEmailUseCaseTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(UserNotFoundException.class)
-              .hasMessage("Usuário não encontrado.");
+              .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
+              .hasMessage("Código de verificação inválido ou expirado.");
+
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
+      inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(emailVerificationTokenPort).consumeByEmailAndCode(command.email(), code);
+
+      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
+      verifyNoInteractions(roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenPort, userAccountRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção genérica quando o token pertencer a outro usuário")
+    void shouldThrowGenericExceptionWhenTokenBelongsToAnotherUser() {
+      // 1. Arrange
+      var code = VerificationCode.of("123456");
+      var command = new VerifyEmailCommand("user@email.com", code);
+      var token = tokenForUser(
+              UUID.fromString("019a19f7-9705-7954-a0df-b93678630009"),
+              command.email(),
+              code,
+              Instant.now().plus(10, ChronoUnit.MINUTES));
+      var pendingUser = pendingUser();
+
+      given(emailVerificationTokenPort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> verifyEmailUseCase.execute(command));
+
+      // 3. Assert
+      throwableAssert
+              .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
+              .hasMessage("Código de verificação inválido ou expirado.");
 
       InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenPort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
@@ -246,11 +279,19 @@ class VerifyEmailUseCaseTest {
   }
 
   private EmailVerificationToken validToken(String email, VerificationCode code) {
+    return tokenForUser(PENDING_USER_ID, email, code, Instant.now().plus(10, ChronoUnit.MINUTES));
+  }
+
+  private EmailVerificationToken tokenForUser(
+          UUID userId,
+          String email,
+          VerificationCode code,
+          Instant expiresAt) {
     return EmailVerificationToken.create(
-            UUID.fromString("019a19f7-9705-7954-a0df-b93678630001"),
+            userId,
             email,
             code,
-            Instant.now().plus(10, ChronoUnit.MINUTES)
+            expiresAt
     );
   }
 
@@ -265,7 +306,7 @@ class VerifyEmailUseCaseTest {
 
   private UserAccount pendingUser() {
     return UserAccount.restore(
-            UUID.fromString("019a19f7-9705-7954-a0df-b93678630003"),
+            PENDING_USER_ID,
             "User Name",
             "user@email.com",
             "encoded-password",
