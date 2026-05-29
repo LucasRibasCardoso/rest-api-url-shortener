@@ -17,13 +17,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
 
-  private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String SUCCESS_MESSAGE =
+      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
 
   private final RoleRepositoryPort roleRepositoryPort;
   private final CheckAuthRateLimitPort checkAuthRateLimitPort;
@@ -53,7 +52,8 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   }
 
   private void verifyAccountEmail(String email) {
-    UserAccount user = userAccountRepositoryPort
+    UserAccount user =
+        userAccountRepositoryPort
             .findByEmailWithRoles(email)
             .orElseThrow(UserNotFoundException::new);
     Role defaultRole = roleRepositoryPort.findDefaultRole();
