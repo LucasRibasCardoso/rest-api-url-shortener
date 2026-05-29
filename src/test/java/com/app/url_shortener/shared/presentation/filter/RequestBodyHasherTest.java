@@ -1,6 +1,6 @@
 package com.app.url_shortener.shared.presentation.filter;
 
-import com.app.url_shortener.shared.infrastructure.idempotency.impl.RequestBodyHasher;
+import com.app.url_shortener.shared.idempotency.impl.RequestBodyHasher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

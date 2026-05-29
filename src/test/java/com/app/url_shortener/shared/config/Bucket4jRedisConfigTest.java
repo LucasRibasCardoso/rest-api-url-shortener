@@ -1,6 +1,7 @@
 package com.app.url_shortener.shared.config;
 
 import com.app.url_shortener.config.BaseRedisSliceTest;
+import com.app.url_shortener.shared.ratelimit.config.Bucket4jRedisConfig;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;

@@ -9,8 +9,8 @@ import com.app.url_shortener.iam.infrastructure.persistence.mapper.PermissionPer
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.RolePersistenceMapperImpl;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.UserAccountPersistenceMapperImpl;
 import com.app.url_shortener.shared.config.JpaAuditingConfig;
-import com.app.url_shortener.shared.infrastructure.persistence.DataIntegrityExceptionTranslator;
-import com.app.url_shortener.shared.infrastructure.persistence.PostgresConstraintExtractor;
+import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
+import com.app.url_shortener.shared.database.PostgresConstraintExtractor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

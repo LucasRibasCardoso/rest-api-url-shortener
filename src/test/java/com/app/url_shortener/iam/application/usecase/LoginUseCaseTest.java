@@ -10,7 +10,7 @@ import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.usecase.impl.LoginUseCaseImpl;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsException;
 import com.app.url_shortener.iam.domain.model.RefreshToken;
-import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

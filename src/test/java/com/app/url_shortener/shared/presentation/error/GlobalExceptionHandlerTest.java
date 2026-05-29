@@ -9,7 +9,7 @@ import com.app.url_shortener.shared.exception.AppBusinessException;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.ErrorCode;
 import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
-import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import org.junit.jupiter.api.DisplayName;

@@ -1,7 +1,7 @@
 package com.app.url_shortener.config;
 
-import com.app.url_shortener.shared.infrastructure.idempotency.impl.PrincipalScopeResolver;
-import com.app.url_shortener.shared.infrastructure.idempotency.impl.RequestBodyHasher;
+import com.app.url_shortener.shared.idempotency.impl.PrincipalScopeResolver;
+import com.app.url_shortener.shared.idempotency.impl.RequestBodyHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;

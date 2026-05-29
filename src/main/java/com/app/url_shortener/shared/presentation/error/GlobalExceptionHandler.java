@@ -6,7 +6,7 @@ import com.app.url_shortener.shared.exception.conflict.ConflictException;
 import com.app.url_shortener.shared.exception.forbidden.ForbiddenException;
 import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
 import com.app.url_shortener.shared.exception.notfound.NotFoundException;
-import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.exception.unauthorized.UnauthorizedException;
 import com.app.url_shortener.shared.exception.validation.DomainValidationException;
 import java.util.List;

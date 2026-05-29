@@ -1,6 +1,6 @@
 package com.app.url_shortener.shared.ratelimit.key;
 
-import com.app.url_shortener.shared.config.properties.RateLimitProperties;
+import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;

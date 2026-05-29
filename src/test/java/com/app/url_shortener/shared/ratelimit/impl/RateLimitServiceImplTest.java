@@ -1,10 +1,10 @@
 package com.app.url_shortener.shared.ratelimit.impl;
 
 import com.app.url_shortener.iam.domain.enums.PlanType;
-import com.app.url_shortener.shared.config.properties.RateLimitPolicyProperties;
-import com.app.url_shortener.shared.config.properties.RateLimitProperties;
-import com.app.url_shortener.shared.exception.ratelimit.RateLimitInfrastructureException;
-import com.app.url_shortener.shared.exception.ratelimit.TooManyRequestsException;
+import com.app.url_shortener.shared.ratelimit.config.RateLimitPolicyProperties;
+import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
+import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitDecision;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
 import com.app.url_shortener.shared.ratelimit.core.RateLimiterPort;
@@ -12,6 +12,8 @@ import com.app.url_shortener.shared.ratelimit.key.RateLimitKey;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKeyResolver;
 import java.time.Duration;
 import java.util.UUID;
+
+import com.app.url_shortener.shared.ratelimit.service.RateLimitServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

@@ -3,7 +3,7 @@ package com.app.url_shortener.shared.ratelimit.key;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.app.url_shortener.shared.config.properties.RateLimitProperties;
+import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

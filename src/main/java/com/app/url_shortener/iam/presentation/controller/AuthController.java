@@ -12,7 +12,7 @@ import com.app.url_shortener.iam.presentation.dto.response.GenericMessageRespons
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
-import com.app.url_shortener.shared.ratelimit.key.ClientIpResolver;
+import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

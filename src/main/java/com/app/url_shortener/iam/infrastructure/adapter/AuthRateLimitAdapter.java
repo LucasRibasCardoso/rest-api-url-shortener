@@ -1,7 +1,7 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.shared.ratelimit.RateLimitService;
+import com.app.url_shortener.shared.ratelimit.service.RateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

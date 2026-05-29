@@ -1,5 +1,6 @@
 package com.app.url_shortener.shared.ratelimit.key;
 
+import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

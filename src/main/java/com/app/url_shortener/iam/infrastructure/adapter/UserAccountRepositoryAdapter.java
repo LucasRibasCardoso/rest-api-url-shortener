@@ -5,7 +5,7 @@ import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
 import com.app.url_shortener.iam.infrastructure.persistence.mapper.UserAccountPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.persistence.repository.UserJpaRepository;
-import com.app.url_shortener.shared.infrastructure.persistence.DataIntegrityExceptionTranslator;
+import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

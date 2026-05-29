@@ -1,7 +1,7 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.iam.domain.enums.PlanType;
-import com.app.url_shortener.shared.ratelimit.RateLimitService;
+import com.app.url_shortener.shared.ratelimit.service.RateLimitService;
 import com.app.url_shortener.url.application.port.output.CheckUrlRateLimitPort;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
