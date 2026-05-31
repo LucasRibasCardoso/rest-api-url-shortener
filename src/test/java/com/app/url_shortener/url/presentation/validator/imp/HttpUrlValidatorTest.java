@@ -32,7 +32,12 @@ class HttpUrlValidatorTest {
         "https://www.google.com/search?q=url-shortener",
         "HTTP://example.com",
         "HTTPS://example.com/path",
-        "  https://google.com  "
+        "  https://google.com  ",
+        "https://example.com:8080",
+        "https://example.com:1",
+        "https://example.com:65535",
+        "https://[2001:db8::1]",
+        "https://[2001:db8::1]:8080"
     })
     @DisplayName("Deve retornar verdadeiro para URLs HTTP e HTTPS válidas")
     void shouldReturnTrueForValidHttpAndHttpsUrls(String value) {
@@ -68,10 +73,17 @@ class HttpUrlValidatorTest {
         "google.com",
         "ftp://google.com",
         "file:///tmp/file.txt",
-        "mailto:user@example.com"
+        "mailto:user@example.com",
+        "https://user@example.com",
+        "https://user:pass@example.com",
+        "https://google.com@evil.com",
+        "https://example.com:0",
+        "https://example.com:65536",
+        "https://example.com:",
+        "https://example.com:abc"
     })
-    @DisplayName("Deve retornar falso para URIs inválidas, sem host ou com esquema não permitido")
-    void shouldReturnFalseForInvalidUrisMissingHostOrUnsupportedSchemes(String value) {
+    @DisplayName("Deve retornar falso para URIs inválidas, sem host, com userinfo, porta ou esquema inválido")
+    void shouldReturnFalseForInvalidUrisMissingHostUserInfoInvalidPortOrUnsupportedSchemes(String value) {
       // 1. Arrange
 
       // 2. Act
