@@ -7,6 +7,7 @@ import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
+import com.app.url_shortener.url.application.validation.UrlSafetyValidator;
 import com.app.url_shortener.url.domain.model.Url;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,12 @@ public class ShortenUrlUseCaseImpl implements ShortenUrlUseCase {
   private final UrlEncoderPort urlEncoderPort;
   private final IdGeneratorPort idGeneratorService;
   private final UrlRepositoryPort urlRepositoryPort;
-  private final CheckUrlRateLimitPort  checkUrlRateLimitPort;
+  private final CheckUrlRateLimitPort checkUrlRateLimitPort;
+  private final UrlSafetyValidator urlSafetyValidator;
 
   @Override
   public ShortenUrlResult execute(ShortenUrlCommand command) {
+    urlSafetyValidator.validate(command.originalUrl());
     checkUrlRateLimitPort.checkShorten(command.userId(), command.planType());
 
     long uniqueId = idGeneratorService.generateId();

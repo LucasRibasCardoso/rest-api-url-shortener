@@ -20,6 +20,7 @@ public class RefreshTokenCleanupTask {
   /**
    * Roda automaticamente todos os dias às 03:00 da manhã.
    * O formato Cron é: "Segundo Minuto Hora Dia Mes DiaDaSemana"
+   * O formato Cron é: "Segundo Minuto Hora Dia Mes DiaDaSemana"
    */
   @Scheduled(cron = "0 0 3 * * *")
   @Transactional
