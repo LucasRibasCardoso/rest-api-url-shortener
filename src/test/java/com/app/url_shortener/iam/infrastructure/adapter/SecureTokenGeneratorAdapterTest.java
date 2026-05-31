@@ -1,6 +1,5 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.infrastructure.adapter.SecureTokenGeneratorAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

@@ -1,7 +1,6 @@
 package com.app.url_shortener.iam.domain.valueobject;
 
 import com.app.url_shortener.iam.domain.exception.user.InvalidVerificationCodeException;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

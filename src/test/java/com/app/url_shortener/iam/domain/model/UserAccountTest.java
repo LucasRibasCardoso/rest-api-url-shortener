@@ -3,8 +3,6 @@ package com.app.url_shortener.iam.domain.model;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
-import com.app.url_shortener.iam.domain.model.Role;
-import com.app.url_shortener.iam.domain.model.UserAccount;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

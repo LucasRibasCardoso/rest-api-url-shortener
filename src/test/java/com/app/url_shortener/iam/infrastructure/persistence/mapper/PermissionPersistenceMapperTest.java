@@ -2,7 +2,6 @@ package com.app.url_shortener.iam.infrastructure.persistence.mapper;
 
 import com.app.url_shortener.iam.domain.model.Permission;
 import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.PermissionPersistenceMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
