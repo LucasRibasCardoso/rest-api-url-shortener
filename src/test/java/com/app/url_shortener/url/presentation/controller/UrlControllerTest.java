@@ -53,7 +53,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -148,7 +148,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var request = new ShortenUrlRequestDto("https://google.com");
       var planType = PlanType.FREE;
       var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
       var response = new UrlResponseDto(request.originalUrl(), BASE_URL + "/r/aB3dE", createdAt);
       given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
@@ -166,7 +166,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.originalUrl").value(response.originalUrl()))
           .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()))
-          .andExpect(jsonPath("$.createdAt").value("2026-05-10T14:30:00"));
+          .andExpect(jsonPath("$.createdAt").value("2026-05-10T14:30:00Z"));
 
       verify(urlWebMapper).toCommand(request, USER_ID, planType);
       verify(shortenUrlUseCase).execute(command);
@@ -248,7 +248,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
       var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
       given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
@@ -278,7 +278,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, true);
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
       var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
       given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
@@ -456,7 +456,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var limit = 20;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null);
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var pageResult = new PageUrlResult(List.of(new UrlDetailsResult("https://google.com", "aB3dE", createdAt)), "next");
       var response = new PageUrlResponseDto(List.of(
           new UrlResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt)

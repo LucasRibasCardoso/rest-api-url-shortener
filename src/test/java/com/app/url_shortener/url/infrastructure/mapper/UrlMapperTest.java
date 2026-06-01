@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +34,7 @@ class UrlMapperTest {
     @DisplayName("Deve mapear domínio para entidade com data convertida para texto")
     void shouldMapDomainToEntityWithCreatedAtConvertedToString() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 7, 10, 15, 30);
+      var createdAt = Instant.parse("2026-05-07T10:15:30Z");
       var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt);
 
       // 2. Act
@@ -44,7 +44,7 @@ class UrlMapperTest {
       assertThat(result.getUserId()).isEqualTo(USER_ID);
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
-      assertThat(result.getCreatedAt()).isEqualTo("2026-05-07T10:15:30");
+      assertThat(result.getCreatedAt()).isEqualTo("2026-05-07T10:15:30Z");
     }
 
     @Test
@@ -66,8 +66,8 @@ class UrlMapperTest {
   class ToDomainTests {
 
     @Test
-    @DisplayName("Deve mapear entidade para domínio com data convertida para LocalDateTime")
-    void shouldMapEntityToDomainWithCreatedAtConvertedToLocalDateTime() {
+    @DisplayName("Deve mapear entidade para domínio com data convertida para Instant")
+    void shouldMapEntityToDomainWithCreatedAtConvertedToInstant() {
       // 1. Arrange
       var entity = urlEntity();
 
@@ -78,7 +78,7 @@ class UrlMapperTest {
       assertThat(result.getUserId()).isEqualTo(USER_ID);
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
-      assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 7, 10, 15, 30));
+      assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
     }
 
     @Test
@@ -112,7 +112,7 @@ class UrlMapperTest {
       assertThat(result.getUserId()).isEqualTo(USER_ID);
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
-      assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 7, 10, 15, 30));
+      assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
     }
 
     @Test
@@ -134,52 +134,52 @@ class UrlMapperTest {
   class DateConversionTests {
 
     @Test
-    @DisplayName("Deve converter LocalDateTime para texto")
-    void shouldConvertLocalDateTimeToString() {
+    @DisplayName("Deve converter Instant para texto")
+    void shouldConvertInstantToString() {
       // 1. Arrange
-      var value = LocalDateTime.of(2026, 5, 7, 10, 15, 30);
+      var value = Instant.parse("2026-05-07T10:15:30Z");
 
       // 2. Act
-      var result = mapper.localDateTimeToString(value);
+      var result = mapper.instantToString(value);
 
       // 3. Assert
-      assertThat(result).isEqualTo("2026-05-07T10:15:30");
+      assertThat(result).isEqualTo("2026-05-07T10:15:30Z");
     }
 
     @Test
-    @DisplayName("Deve converter texto para LocalDateTime")
-    void shouldConvertStringToLocalDateTime() {
+    @DisplayName("Deve converter texto para Instant")
+    void shouldConvertStringToInstant() {
       // 1. Arrange
-      var value = "2026-05-07T10:15:30";
+      var value = "2026-05-07T10:15:30Z";
 
       // 2. Act
-      var result = mapper.stringToLocalDateTime(value);
+      var result = mapper.stringToInstant(value);
 
       // 3. Assert
-      assertThat(result).isEqualTo(LocalDateTime.of(2026, 5, 7, 10, 15, 30));
+      assertThat(result).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
     }
 
     @Test
-    @DisplayName("Deve retornar nulo ao converter LocalDateTime nulo para texto")
-    void shouldReturnNullWhenConvertingNullLocalDateTimeToString() {
+    @DisplayName("Deve retornar nulo ao converter Instant nulo para texto")
+    void shouldReturnNullWhenConvertingNullInstantToString() {
       // 1. Arrange
-      LocalDateTime value = null;
+      Instant value = null;
 
       // 2. Act
-      var result = mapper.localDateTimeToString(value);
+      var result = mapper.instantToString(value);
 
       // 3. Assert
       assertThat(result).isNull();
     }
 
     @Test
-    @DisplayName("Deve retornar nulo ao converter texto nulo para LocalDateTime")
-    void shouldReturnNullWhenConvertingNullStringToLocalDateTime() {
+    @DisplayName("Deve retornar nulo ao converter texto nulo para Instant")
+    void shouldReturnNullWhenConvertingNullStringToInstant() {
       // 1. Arrange
       String value = null;
 
       // 2. Act
-      var result = mapper.stringToLocalDateTime(value);
+      var result = mapper.stringToInstant(value);
 
       // 3. Assert
       assertThat(result).isNull();
@@ -190,7 +190,7 @@ class UrlMapperTest {
     return UrlEntity.builder()
         .shortCode("aB3dE")
         .originalUrl("https://google.com")
-        .createdAt("2026-05-07T10:15:30")
+        .createdAt("2026-05-07T10:15:30Z")
         .userId(USER_ID)
         .build();
   }

@@ -20,7 +20,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.*;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +66,7 @@ class UrlRepositoryAdapterTest {
     @DisplayName("Deve mapear domínio e salvar entidade com condição contra colisão de código curto")
     void shouldMapDomainAndSaveEntityWithShortCodeCollisionCondition() {
       // 1. Arrange
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", LocalDateTime.of(2026, 5, 7, 10, 0));
+      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var entity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       when(urlMapper.toEntity(url)).thenReturn(entity);
 
@@ -90,7 +90,7 @@ class UrlRepositoryAdapterTest {
     @DisplayName("Deve traduzir falha condicional do DynamoDB para colisão de código curto")
     void shouldTranslateConditionalCheckFailureToShortCodeCollisionException() {
       // 1. Arrange
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", LocalDateTime.of(2026, 5, 7, 10, 0));
+      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var entity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var exception = ConditionalCheckFailedException.builder().message("collision").build();
       when(urlMapper.toEntity(url)).thenReturn(entity);
@@ -115,7 +115,7 @@ class UrlRepositoryAdapterTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var entity = urlEntity(shortCode, "https://google.com", "2026-05-07T10:00");
-      var url = Url.restore(USER_ID, shortCode, "https://google.com", LocalDateTime.of(2026, 5, 7, 10, 0));
+      var url = Url.restore(USER_ID, shortCode, "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       when(urlTable.getItem(anyGetItemRequestConsumer())).thenReturn(entity);
       when(urlMapper.toDomain(entity)).thenReturn(url);
 
@@ -183,8 +183,8 @@ class UrlRepositoryAdapterTest {
       String cursor = null;
       var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
-      var firstUrl = Url.restore(USER_ID, "aB3dE", "https://google.com", LocalDateTime.of(2026, 5, 7, 10, 0));
-      var secondUrl = Url.restore(USER_ID, "fG4hI", "https://spring.io", LocalDateTime.of(2026, 5, 8, 11, 30));
+      var firstUrl = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var secondUrl = Url.restore(USER_ID, "fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
       when(urlTable.index("user-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
@@ -200,10 +200,10 @@ class UrlRepositoryAdapterTest {
       assertThat(result.urls()).hasSize(2);
       assertThat(result.urls().get(0).originalUrl()).isEqualTo("https://google.com");
       assertThat(result.urls().get(0).shortCode()).isEqualTo("aB3dE");
-      assertThat(result.urls().get(0).createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 7, 10, 0));
+      assertThat(result.urls().get(0).createdAt()).isEqualTo(Instant.parse("2026-05-07T10:00:00Z"));
       assertThat(result.urls().get(1).originalUrl()).isEqualTo("https://spring.io");
       assertThat(result.urls().get(1).shortCode()).isEqualTo("fG4hI");
-      assertThat(result.urls().get(1).createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 8, 11, 30));
+      assertThat(result.urls().get(1).createdAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
       assertThat(result.nextCursor()).isNull();
 
       var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);

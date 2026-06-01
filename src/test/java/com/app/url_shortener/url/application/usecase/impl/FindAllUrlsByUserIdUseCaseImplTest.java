@@ -13,7 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,11 +49,11 @@ class FindAllUrlsByUserIdUseCaseImplTest {
           new UrlDetailsResult(
               "https://google.com",
               "aB3dE",
-              LocalDateTime.of(2026, 5, 10, 14, 30)),
+              Instant.parse("2026-05-10T14:30:00Z")),
           new UrlDetailsResult(
               "https://spring.io",
               "fG4hI",
-              LocalDateTime.of(2026, 5, 10, 15, 45))
+              Instant.parse("2026-05-10T15:45:00Z"))
       ), "following-page-cursor");
       when(urlRepositoryPort.findAllByUserId(userId, limit, cursor)).thenReturn(pageUrlResult);
 

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -129,7 +129,7 @@ class UrlWebMapperTest {
     @DisplayName("Deve mapear resultado de encurtamento para resposta com URL curta completa")
     void shouldMapShortenUrlResultToResponseWithFullShortUrl() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult("https://google.com", "aB3dE", createdAt);
       var baseUrl = "https://sho.rt";
 
@@ -148,7 +148,7 @@ class UrlWebMapperTest {
     @DisplayName("Deve mapear resultado de detalhes para resposta com URL base terminada em barra")
     void shouldMapUrlDetailsResultToResponseWhenBaseUrlEndsWithSlash() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new UrlDetailsResult("https://google.com", "aB3dE", createdAt);
       var baseUrl = "https://sho.rt/";
 
@@ -167,8 +167,8 @@ class UrlWebMapperTest {
     @DisplayName("Deve mapear resultado paginado para resposta propagando URL base")
     void shouldMapPageUrlResultToResponsePropagatingBaseUrl() {
       // 1. Arrange
-      var firstCreatedAt = LocalDateTime.of(2026, 5, 10, 14, 30);
-      var secondCreatedAt = LocalDateTime.of(2026, 5, 10, 15, 45);
+      var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
+      var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
       var result = new PageUrlResult(List.of(
           new UrlDetailsResult("https://google.com", "aB3dE", firstCreatedAt),
           new UrlDetailsResult("https://spring.io", "fG4hI", secondCreatedAt)

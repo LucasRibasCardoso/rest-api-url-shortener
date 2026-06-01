@@ -7,7 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,7 +67,7 @@ class UrlTest {
       // 1. Arrange
       var shortCode = "abc123";
       var originalUrl = "https://example.com/articles/1";
-      var createdAt = LocalDateTime.of(2026, 5, 7, 10, 15);
+      var createdAt = Instant.parse("2026-05-07T10:15:00Z");
 
       // 2. Act
       var url = Url.restore(USER_ID, shortCode, originalUrl, createdAt);
@@ -163,7 +163,7 @@ class UrlTest {
     @DisplayName("Deve considerar URLs iguais quando todos os campos forem iguais")
     void shouldBeEqualWhenAllFieldsAreEqual() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 7, 10, 15);
+      var createdAt = Instant.parse("2026-05-07T10:15:00Z");
       var firstUrl = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
       var secondUrl = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
 
@@ -177,7 +177,7 @@ class UrlTest {
     @DisplayName("Deve considerar URLs diferentes quando algum campo for diferente")
     void shouldNotBeEqualWhenAnyFieldIsDifferent() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 7, 10, 15);
+      var createdAt = Instant.parse("2026-05-07T10:15:00Z");
       var url = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
       var differentUserId = Url.restore(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002"),
@@ -190,7 +190,7 @@ class UrlTest {
               USER_ID,
               "abc123",
               "https://example.com/articles/1",
-              createdAt.plusMinutes(1));
+              createdAt.plusSeconds(60));
 
       // 2. Act & 3. Assert
       assertThat(url).isNotEqualTo(differentUserId);

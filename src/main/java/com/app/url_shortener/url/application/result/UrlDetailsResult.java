@@ -1,6 +1,6 @@
 package com.app.url_shortener.url.application.result;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-public record UrlDetailsResult(String originalUrl, String shortCode, LocalDateTime createdAt) {
+public record UrlDetailsResult(String originalUrl, String shortCode, Instant createdAt) {
 }

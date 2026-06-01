@@ -13,7 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,7 +45,7 @@ class FindUrlDetailsUseCaseImplTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var shortCode = "aB3dE";
       var originalUrl = "https://google.com";
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var url = Url.restore(userId, shortCode, originalUrl, createdAt);
       var command = new UrlDetailsCommand(userId, shortCode, false);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
@@ -69,7 +69,7 @@ class FindUrlDetailsUseCaseImplTest {
       var requesterId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
       var shortCode = "aB3dE";
       var originalUrl = "https://google.com";
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var url = Url.restore(ownerId, shortCode, originalUrl, createdAt);
       var command = new UrlDetailsCommand(requesterId, shortCode, true);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
