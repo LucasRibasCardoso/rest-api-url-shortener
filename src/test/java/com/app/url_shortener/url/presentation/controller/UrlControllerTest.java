@@ -299,6 +299,63 @@ class UrlControllerTest extends BaseWebSliceTest {
       verify(urlWebMapper).toResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
+
+    @Test
+    @DisplayName("Deve retornar detalhes quando código curto tiver tamanho máximo permitido")
+    void shouldReturnDetailsWhenShortCodeHasMaximumAllowedLength() throws Exception {
+      // 1. Arrange
+      var shortCode = "a".repeat(64);
+      var command = new UrlDetailsCommand(USER_ID, shortCode, false);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
+      var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
+      given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
+      given(findUrlDetailsUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
+          .with(authenticatedUser("url:read:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()));
+
+      verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
+      verify(findUrlDetailsUseCase).execute(command);
+      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 sem delegar quando código curto de detalhes exceder o tamanho máximo")
+    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeExceedsMaximumLength() throws Exception {
+      // 1. Arrange
+      var shortCode = "a".repeat(65);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
+          .with(authenticatedUser("url:read:own")));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verifyNoInteractions(urlWebMapper, findUrlDetailsUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 sem delegar quando código curto de detalhes tiver caracteres especiais")
+    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeHasSpecialCharacters() throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/invalid-code!")
+          .with(authenticatedUser("url:read:own")));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verifyNoInteractions(urlWebMapper, findUrlDetailsUseCase);
+    }
   }
 
   @Nested
@@ -339,6 +396,57 @@ class UrlControllerTest extends BaseWebSliceTest {
       verify(urlWebMapper).toCommandDelete(USER_ID, shortCode, false);
       verify(deleteUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, deleteUrlUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 204 quando código curto tiver tamanho máximo permitido")
+    void shouldReturnNoContentWhenDeleteShortCodeHasMaximumAllowedLength() throws Exception {
+      // 1. Arrange
+      var shortCode = "a".repeat(64);
+      var command = new DeleteUrlCommand(USER_ID, shortCode, false);
+      given(urlWebMapper.toCommandDelete(USER_ID, shortCode, false)).willReturn(command);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortCode}", shortCode)
+          .with(authenticatedUser("url:delete:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isNoContent())
+          .andExpect(content().string(""));
+
+      verify(urlWebMapper).toCommandDelete(USER_ID, shortCode, false);
+      verify(deleteUrlUseCase).execute(command);
+      verifyNoMoreInteractions(urlWebMapper, deleteUrlUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 sem delegar quando código curto de exclusão exceder o tamanho máximo")
+    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeExceedsMaximumLength() throws Exception {
+      // 1. Arrange
+      var shortCode = "a".repeat(65);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortCode}", shortCode)
+          .with(authenticatedUser("url:delete:own")));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verifyNoInteractions(urlWebMapper, deleteUrlUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 sem delegar quando código curto de exclusão tiver caracteres especiais")
+    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeHasSpecialCharacters() throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/invalid-code!")
+          .with(authenticatedUser("url:delete:own")));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verifyNoInteractions(urlWebMapper, deleteUrlUseCase);
     }
 
     @Test

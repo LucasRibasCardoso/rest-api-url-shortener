@@ -56,6 +56,12 @@ app:
       issuer: ${spring.application.name}
       access-token-expiration-seconds: 900 # 15 minutos
       refresh-token-expiration-days: 7
+  url:
+    redirect-cache:
+      ttl:
+        active: 15m
+        deleted: 1h
+        not-found: 5m
   rate-limit:
     enabled: true
     key-prefix: "rate-limit"

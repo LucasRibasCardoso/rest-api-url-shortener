@@ -2,6 +2,7 @@ package com.app.url_shortener.url.application.usecase.impl;
 
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
 import com.app.url_shortener.url.application.port.output.CheckUrlRateLimitPort;
+import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlEncoderPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
@@ -19,6 +20,7 @@ public class ShortenUrlUseCaseImpl implements ShortenUrlUseCase {
   private final UrlEncoderPort urlEncoderPort;
   private final IdGeneratorPort idGeneratorService;
   private final UrlRepositoryPort urlRepositoryPort;
+  private final RedirectCachePort redirectCachePort;
   private final CheckUrlRateLimitPort checkUrlRateLimitPort;
   private final UrlSafetyValidator urlSafetyValidator;
 
@@ -32,6 +34,7 @@ public class ShortenUrlUseCaseImpl implements ShortenUrlUseCase {
 
     Url url = Url.create(command.userId(), shortCode, command.originalUrl());
     urlRepositoryPort.save(url);
+    redirectCachePort.saveActive(url.getShortCode(), url.getOriginalUrl());
 
     return toResult(url);
   }

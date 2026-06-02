@@ -319,6 +319,7 @@ class UrlRepositoryAdapterTest {
     var request = requestBuilder.build();
 
     assertThat(request.key().partitionKeyValue().s()).isEqualTo(shortCode);
+    assertThat(request.consistentRead()).isTrue();
   }
 
   private void assertThatDeleteItemRequestUsesShortCode(

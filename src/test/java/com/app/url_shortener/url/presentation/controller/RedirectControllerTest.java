@@ -10,6 +10,8 @@ import com.app.url_shortener.shared.idempotency.config.IdempotencyProperties;
 import com.app.url_shortener.shared.idempotency.port.IdempotencyPort;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
 import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.presentation.error.GlobalExceptionHandler;
+import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -37,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Import({
     JacksonConfig.class,
+    GlobalExceptionHandler.class,
     ProblemDetailFactory.class,
     ProblemDetailResponseWriter.class
 })
@@ -86,6 +90,26 @@ class RedirectControllerTest extends BaseWebSliceTest {
       verify(resolveUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, resolveUrlUseCase);
     }
+
+    @Test
+    @DisplayName("Deve retornar 404 quando resolução da URL não for encontrada")
+    void shouldReturnNotFoundWhenUrlResolutionIsNotFound() throws Exception {
+      // 1. Arrange
+      var shortCode = "aB3dE";
+      var command = new ResolveUrlCommand(shortCode);
+      given(urlWebMapper.toCommand(shortCode)).willReturn(command);
+      doThrow(new UrlNotFoundException())
+          .when(resolveUrlUseCase).execute(command);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get("/r/{shortCode}", shortCode));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verify(urlWebMapper).toCommand(shortCode);
+      verify(resolveUrlUseCase).execute(command);
+      verifyNoMoreInteractions(urlWebMapper, resolveUrlUseCase);
+    }
   }
 
   @Nested
@@ -99,6 +123,20 @@ class RedirectControllerTest extends BaseWebSliceTest {
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get("/r/invalid-code!"));
+
+      // 3. Assert
+      resultActions.andExpect(status().isNotFound());
+      verifyNoInteractions(urlWebMapper, resolveUrlUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 sem delegar quando código curto exceder o tamanho máximo")
+    void shouldReturnNotFoundWithoutDelegatingWhenShortCodeExceedsMaximumLength() throws Exception {
+      // 1. Arrange
+      var shortCode = "a".repeat(65);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get("/r/{shortCode}", shortCode));
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());

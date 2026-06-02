@@ -4,6 +4,7 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
 import com.app.url_shortener.url.application.port.output.CheckUrlRateLimitPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
+import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlEncoderPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.domain.model.Url;
@@ -40,6 +41,9 @@ class ShortenUrlUseCaseImplTest {
   private UrlRepositoryPort urlRepositoryPort;
 
   @Mock
+  private RedirectCachePort redirectCachePort;
+
+  @Mock
   private CheckUrlRateLimitPort checkUrlRateLimitPort;
 
   @Mock
@@ -53,8 +57,8 @@ class ShortenUrlUseCaseImplTest {
   class ExecuteTests {
 
     @Test
-    @DisplayName("Deve gerar código curto, persistir e retornar a URL encurtada")
-    void shouldGenerateShortCodeSaveAndReturnShortenedUrl() {
+    @DisplayName("Deve gerar código curto, persistir, salvar cache ativo e retornar a URL encurtada")
+    void shouldGenerateShortCodeSaveActiveCacheAndReturnShortenedUrl() {
       // 1. Arrange
       var generatedId = 100L;
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
@@ -77,6 +81,7 @@ class ShortenUrlUseCaseImplTest {
       verify(idGeneratorService).generateId();
       verify(urlEncoderPort).encode(generatedId);
       verify(urlRepositoryPort).save(urlCaptor.capture());
+      verify(redirectCachePort).saveActive(shortCode, originalUrl);
       verify(urlSafetyValidator).validate(originalUrl);
 
       var capturedUrl = urlCaptor.getValue();
@@ -90,20 +95,23 @@ class ShortenUrlUseCaseImplTest {
           checkUrlRateLimitPort,
           idGeneratorService,
           urlEncoderPort,
-          urlRepositoryPort
+          urlRepositoryPort,
+          redirectCachePort
       );
       inOrder.verify(urlSafetyValidator).validate(originalUrl);
       inOrder.verify(checkUrlRateLimitPort).checkShorten(userId, planType);
       inOrder.verify(idGeneratorService).generateId();
       inOrder.verify(urlEncoderPort).encode(generatedId);
       inOrder.verify(urlRepositoryPort).save(capturedUrl);
+      inOrder.verify(redirectCachePort).saveActive(shortCode, originalUrl);
 
       verifyNoMoreInteractions(
           urlSafetyValidator,
           checkUrlRateLimitPort,
           idGeneratorService,
           urlEncoderPort,
-          urlRepositoryPort
+          urlRepositoryPort,
+          redirectCachePort
       );
     }
 
@@ -127,7 +135,7 @@ class ShortenUrlUseCaseImplTest {
 
       verify(urlSafetyValidator).validate(originalUrl);
       verify(checkUrlRateLimitPort).checkShorten(userId, planType);
-      verifyNoInteractions(idGeneratorService, urlEncoderPort, urlRepositoryPort);
+      verifyNoInteractions(idGeneratorService, urlEncoderPort, urlRepositoryPort, redirectCachePort);
       verifyNoMoreInteractions(urlSafetyValidator, checkUrlRateLimitPort);
     }
 
@@ -154,7 +162,8 @@ class ShortenUrlUseCaseImplTest {
           checkUrlRateLimitPort,
           idGeneratorService,
           urlEncoderPort,
-          urlRepositoryPort
+          urlRepositoryPort,
+          redirectCachePort
       );
       verifyNoMoreInteractions(urlSafetyValidator);
     }

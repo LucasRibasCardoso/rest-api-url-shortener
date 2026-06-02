@@ -33,6 +33,8 @@ import java.util.UUID;
 @RequestMapping("/api/v1/urls")
 public class UrlController {
 
+  private static final String SHORT_CODE_PATH = "/{shortCode:[a-zA-Z0-9]{1,64}}";
+
   private final String baseUrl;
   private final UrlWebMapper urlWebMapper;
   private final DeleteUrlUseCase deleteUrlUseCase;
@@ -66,25 +68,25 @@ public class UrlController {
     return ResponseEntity.created(URI.create(response.shortUrl())).body(response);
   }
 
-  @GetMapping("/{shortcode}")
+  @GetMapping(SHORT_CODE_PATH)
   @PreAuthorize("hasAuthority('url:read:own') or hasAuthority('url:read:any')")
   public ResponseEntity<UrlResponseDto> findUrlDetails(
-          @PathVariable String shortcode,
+          @PathVariable String shortCode,
           @AuthenticationPrincipal UserPrincipal user) {
     boolean canReadAny = user.getAuthorities().stream().anyMatch(a -> Objects.equals(a.getAuthority(), "url:read:any"));
-    UrlDetailsCommand command = urlWebMapper.toCommand(user.getId(), shortcode, canReadAny);
+    UrlDetailsCommand command = urlWebMapper.toCommand(user.getId(), shortCode, canReadAny);
     UrlDetailsResult result = findUrlDetailsUseCase.execute(command);
     UrlResponseDto response = urlWebMapper.toResponse(result, baseUrl);
     return ResponseEntity.ok(response);
   }
 
-  @DeleteMapping("/{shortcode}")
+  @DeleteMapping(SHORT_CODE_PATH)
   @PreAuthorize("hasAuthority('url:delete:own') or hasAuthority('url:delete:any')")
   public ResponseEntity<Void> deleteUrl(
-          @PathVariable String shortcode,
+          @PathVariable String shortCode,
           @AuthenticationPrincipal UserPrincipal user) {
     boolean canDeleteAny = user.getAuthorities().stream().anyMatch(a -> Objects.equals(a.getAuthority(), "url:delete:any"));
-    DeleteUrlCommand command = urlWebMapper.toCommandDelete(user.getId(), shortcode, canDeleteAny);
+    DeleteUrlCommand command = urlWebMapper.toCommandDelete(user.getId(), shortCode, canDeleteAny);
     deleteUrlUseCase.execute(command);
     return ResponseEntity.noContent().build();
   }

@@ -8,8 +8,9 @@ import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
 import com.app.url_shortener.url.infrastructure.utils.CursorUtil;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -20,10 +21,6 @@ import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public class UrlRepositoryAdapter implements UrlRepositoryPort {
@@ -61,15 +58,13 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   }
 
   @Override
-  @Cacheable(value = "urls", key = "#shortCode", unless = "#result == null")
   public Optional<Url> findByShortCode(String shortCode) {
     Key key = Key.builder().partitionValue(shortCode).build();
-    UrlEntity entity = urlTable.getItem(r -> r.key(key));
+    UrlEntity entity = urlTable.getItem(r -> r.key(key).consistentRead(true));
     return Optional.ofNullable(entity).map(urlMapper::toDomain);
   }
 
   @Override
-  @CacheEvict(value = "urls", key = "#shortCode")
   public void delete(String shortCode) {
     Key key = Key.builder()
             .partitionValue(shortCode)
