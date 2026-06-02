@@ -57,7 +57,12 @@ class FindUrlDetailsUseCaseImplTest {
       // 3. Assert
       assertThat(result.originalUrl()).isEqualTo(originalUrl);
       assertThat(result.shortCode()).isEqualTo(shortCode);
+      assertThat(result.userId()).isEqualTo(userId);
+      assertThat(result.status()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.createdAt()).isEqualTo(createdAt);
+      assertThat(result.updatedAt()).isEqualTo(createdAt);
+      assertThat(result.deletedAt()).isNull();
+      assertThat(result.deletedBy()).isNull();
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort);
     }
@@ -81,7 +86,73 @@ class FindUrlDetailsUseCaseImplTest {
       // 3. Assert
       assertThat(result.originalUrl()).isEqualTo(originalUrl);
       assertThat(result.shortCode()).isEqualTo(shortCode);
+      assertThat(result.userId()).isEqualTo(ownerId);
+      assertThat(result.status()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.createdAt()).isEqualTo(createdAt);
+      assertThat(result.updatedAt()).isEqualTo(createdAt);
+      assertThat(result.deletedAt()).isNull();
+      assertThat(result.deletedBy()).isNull();
+      verify(urlRepositoryPort).findByShortCode(shortCode);
+      verifyNoMoreInteractions(urlRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Deve retornar os detalhes de URL deletada quando o solicitante for o dono")
+    void shouldReturnDeletedUrlDetailsWhenRequesterIsOwner() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var shortCode = "aB3dE";
+      var originalUrl = "https://google.com";
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var url = Url.restore(userId, shortCode, originalUrl, createdAt, UrlStatus.DELETED, deletedAt, deletedBy, deletedAt);
+      var command = new UrlDetailsCommand(userId, shortCode, false);
+      when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
+
+      // 2. Act
+      var result = findUrlDetailsUseCase.execute(command);
+
+      // 3. Assert
+      assertThat(result.shortCode()).isEqualTo(shortCode);
+      assertThat(result.originalUrl()).isEqualTo(originalUrl);
+      assertThat(result.userId()).isEqualTo(userId);
+      assertThat(result.status()).isEqualTo(UrlStatus.DELETED);
+      assertThat(result.createdAt()).isEqualTo(createdAt);
+      assertThat(result.updatedAt()).isEqualTo(deletedAt);
+      assertThat(result.deletedAt()).isEqualTo(deletedAt);
+      assertThat(result.deletedBy()).isEqualTo(deletedBy);
+      verify(urlRepositoryPort).findByShortCode(shortCode);
+      verifyNoMoreInteractions(urlRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Deve retornar os detalhes de URL deletada quando o solicitante puder ler qualquer URL")
+    void shouldReturnDeletedUrlDetailsWhenRequesterCanReadAny() {
+      // 1. Arrange
+      var ownerId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var requesterId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac003");
+      var shortCode = "aB3dE";
+      var originalUrl = "https://google.com";
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var url = Url.restore(ownerId, shortCode, originalUrl, createdAt, UrlStatus.DELETED, deletedAt, deletedBy, deletedAt);
+      var command = new UrlDetailsCommand(requesterId, shortCode, true);
+      when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
+
+      // 2. Act
+      var result = findUrlDetailsUseCase.execute(command);
+
+      // 3. Assert
+      assertThat(result.shortCode()).isEqualTo(shortCode);
+      assertThat(result.originalUrl()).isEqualTo(originalUrl);
+      assertThat(result.userId()).isEqualTo(ownerId);
+      assertThat(result.status()).isEqualTo(UrlStatus.DELETED);
+      assertThat(result.createdAt()).isEqualTo(createdAt);
+      assertThat(result.updatedAt()).isEqualTo(deletedAt);
+      assertThat(result.deletedAt()).isEqualTo(deletedAt);
+      assertThat(result.deletedBy()).isEqualTo(deletedBy);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort);
     }

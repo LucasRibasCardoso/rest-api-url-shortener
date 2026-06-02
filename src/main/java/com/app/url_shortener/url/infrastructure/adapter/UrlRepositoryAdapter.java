@@ -2,7 +2,7 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.PageUrlResult;
-import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
@@ -86,7 +86,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
 
     Page<UrlEntity> page = userIndex.query(requestBuilder.build()).iterator().next();
 
-    List<UrlDetailsResult> urls = page.items().stream()
+    List<UrlListItemResult> urls = page.items().stream()
             .map(urlMapper::toDomain)
             .map(this::toResult)
             .toList();
@@ -98,7 +98,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     return new PageUrlResult(urls, nextCursor);
   }
 
-  private UrlDetailsResult toResult(Url url) {
-    return new UrlDetailsResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt());
+  private UrlListItemResult toResult(Url url) {
+    return new UrlListItemResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt());
   }
 }

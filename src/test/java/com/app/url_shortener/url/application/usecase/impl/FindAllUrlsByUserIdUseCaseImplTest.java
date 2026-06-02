@@ -3,7 +3,7 @@ package com.app.url_shortener.url.application.usecase.impl;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.PageUrlResult;
-import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -46,11 +46,11 @@ class FindAllUrlsByUserIdUseCaseImplTest {
       var cursor = "next-page-cursor";
       var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor);
       var pageUrlResult = new PageUrlResult(List.of(
-          new UrlDetailsResult(
+          new UrlListItemResult(
               "https://google.com",
               "aB3dE",
               Instant.parse("2026-05-10T14:30:00Z")),
-          new UrlDetailsResult(
+          new UrlListItemResult(
               "https://spring.io",
               "fG4hI",
               Instant.parse("2026-05-10T15:45:00Z"))

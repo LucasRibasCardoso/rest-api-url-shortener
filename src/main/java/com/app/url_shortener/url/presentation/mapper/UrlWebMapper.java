@@ -5,8 +5,10 @@ import com.app.url_shortener.url.application.command.*;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
 import org.mapstruct.*;
 
@@ -30,8 +32,10 @@ public interface UrlWebMapper {
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
   UrlResponseDto toResponse(ShortenUrlResult result, @Context String baseUrl);
 
+  UrlDetailsResponseDto toResponse(UrlDetailsResult result);
+
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
-  UrlResponseDto toResponse(UrlDetailsResult result, @Context String baseUrl);
+  UrlResponseDto toResponse(UrlListItemResult result, @Context String baseUrl);
 
   PageUrlResponseDto toResponse(PageUrlResult result, @Context String baseUrl);
 

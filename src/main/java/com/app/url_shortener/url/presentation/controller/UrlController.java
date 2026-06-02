@@ -14,6 +14,7 @@ import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
 import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import jakarta.validation.Valid;
@@ -70,13 +71,13 @@ public class UrlController {
 
   @GetMapping(SHORT_CODE_PATH)
   @PreAuthorize("hasAuthority('url:read:own') or hasAuthority('url:read:any')")
-  public ResponseEntity<UrlResponseDto> findUrlDetails(
+  public ResponseEntity<UrlDetailsResponseDto> findUrlDetails(
           @PathVariable String shortCode,
           @AuthenticationPrincipal UserPrincipal user) {
     boolean canReadAny = user.getAuthorities().stream().anyMatch(a -> Objects.equals(a.getAuthority(), "url:read:any"));
     UrlDetailsCommand command = urlWebMapper.toCommand(user.getId(), shortCode, canReadAny);
     UrlDetailsResult result = findUrlDetailsUseCase.execute(command);
-    UrlResponseDto response = urlWebMapper.toResponse(result, baseUrl);
+    UrlDetailsResponseDto response = urlWebMapper.toResponse(result);
     return ResponseEntity.ok(response);
   }
 

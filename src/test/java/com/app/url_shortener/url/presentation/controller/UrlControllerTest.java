@@ -23,14 +23,17 @@ import com.app.url_shortener.url.application.command.UrlDetailsCommand;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.application.usecase.DeleteUrlUseCase;
 import com.app.url_shortener.url.application.usecase.FindAllUrlsByUserIdUseCase;
 import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
 import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -249,11 +252,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
-      var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -263,12 +266,18 @@ class UrlControllerTest extends BaseWebSliceTest {
       resultActions
           .andExpect(status().isOk())
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.shortCode").value(response.shortCode()))
           .andExpect(jsonPath("$.originalUrl").value(response.originalUrl()))
-          .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()));
+          .andExpect(jsonPath("$.userId").value(response.userId().toString()))
+          .andExpect(jsonPath("$.status").value(response.status().name()))
+          .andExpect(jsonPath("$.createdAt").value(response.createdAt().toString()))
+          .andExpect(jsonPath("$.updatedAt").value(response.updatedAt().toString()))
+          .andExpect(jsonPath("$.deletedAt").doesNotExist())
+          .andExpect(jsonPath("$.deletedBy").doesNotExist());
 
       verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -279,11 +288,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, true);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
-      var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -292,11 +301,51 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 3. Assert
       resultActions
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()));
+          .andExpect(jsonPath("$.shortCode").value(response.shortCode()))
+          .andExpect(jsonPath("$.userId").value(response.userId().toString()))
+          .andExpect(jsonPath("$.status").value(response.status().name()));
 
       verify(urlWebMapper).toCommand(USER_ID, shortCode, true);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toResponse(result);
+      verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar detalhes de URL deletada com metadados de exclusão")
+    void shouldReturnDeletedUrlDetailsWithDeletionMetadata() throws Exception {
+      // 1. Arrange
+      var shortCode = "aB3dE";
+      var command = new UrlDetailsCommand(USER_ID, shortCode, true);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac003");
+      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy);
+      given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
+      given(findUrlDetailsUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toResponse(result)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
+          .with(authenticatedUser("url:read:any")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.shortCode").value(response.shortCode()))
+          .andExpect(jsonPath("$.originalUrl").value(response.originalUrl()))
+          .andExpect(jsonPath("$.userId").value(response.userId().toString()))
+          .andExpect(jsonPath("$.status").value(response.status().name()))
+          .andExpect(jsonPath("$.createdAt").value(response.createdAt().toString()))
+          .andExpect(jsonPath("$.updatedAt").value(response.updatedAt().toString()))
+          .andExpect(jsonPath("$.deletedAt").value(response.deletedAt().toString()))
+          .andExpect(jsonPath("$.deletedBy").value(response.deletedBy().toString()));
+
+      verify(urlWebMapper).toCommand(USER_ID, shortCode, true);
+      verify(findUrlDetailsUseCase).execute(command);
+      verify(urlWebMapper).toResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -307,11 +356,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "a".repeat(64);
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult("https://google.com", shortCode, createdAt);
-      var response = new UrlResponseDto(result.originalUrl(), BASE_URL + "/r/" + shortCode, createdAt);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
@@ -320,11 +369,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 3. Assert
       resultActions
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()));
+          .andExpect(jsonPath("$.shortCode").value(response.shortCode()));
 
       verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -565,7 +614,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var pageResult = new PageUrlResult(List.of(new UrlDetailsResult("https://google.com", "aB3dE", createdAt)), "next");
+      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt)), "next");
       var response = new PageUrlResponseDto(List.of(
           new UrlResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt)
       ), "next");

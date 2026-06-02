@@ -4,6 +4,8 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -145,21 +147,69 @@ class UrlWebMapperTest {
     }
 
     @Test
-    @DisplayName("Deve mapear resultado de detalhes para resposta com URL base terminada em barra")
-    void shouldMapUrlDetailsResultToResponseWhenBaseUrlEndsWithSlash() {
+    @DisplayName("Deve mapear resultado de detalhes para resposta completa")
+    void shouldMapUrlDetailsResultToFullDetailsResponse() {
       // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult("https://google.com", "aB3dE", createdAt);
-      var baseUrl = "https://sho.rt/";
+      var updatedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var result = new UrlDetailsResult(
+          "aB3dE",
+          "https://google.com",
+          userId,
+          UrlStatus.ACTIVE,
+          createdAt,
+          updatedAt,
+          null,
+          null);
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toResponse(result);
 
       // 3. Assert
       assertAll(
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
-          () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
-          () -> assertThat(response.createdAt()).isEqualTo(createdAt)
+          () -> assertThat(response.userId()).isEqualTo(userId),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE),
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.updatedAt()).isEqualTo(updatedAt),
+          () -> assertThat(response.deletedAt()).isNull(),
+          () -> assertThat(response.deletedBy()).isNull()
+      );
+    }
+
+    @Test
+    @DisplayName("Deve mapear resultado de detalhes deletado para resposta completa")
+    void shouldMapDeletedUrlDetailsResultToFullDetailsResponse() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var result = new UrlDetailsResult(
+          "aB3dE",
+          "https://google.com",
+          userId,
+          UrlStatus.DELETED,
+          createdAt,
+          deletedAt,
+          deletedAt,
+          deletedBy);
+
+      // 2. Act
+      var response = mapper.toResponse(result);
+
+      // 3. Assert
+      assertAll(
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
+          () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
+          () -> assertThat(response.userId()).isEqualTo(userId),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.DELETED),
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.updatedAt()).isEqualTo(deletedAt),
+          () -> assertThat(response.deletedAt()).isEqualTo(deletedAt),
+          () -> assertThat(response.deletedBy()).isEqualTo(deletedBy)
       );
     }
 
@@ -170,8 +220,8 @@ class UrlWebMapperTest {
       var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
       var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
       var result = new PageUrlResult(List.of(
-          new UrlDetailsResult("https://google.com", "aB3dE", firstCreatedAt),
-          new UrlDetailsResult("https://spring.io", "fG4hI", secondCreatedAt)
+          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt),
+          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt)
       ), "next-page-cursor");
       var baseUrl = "https://sho.rt";
 

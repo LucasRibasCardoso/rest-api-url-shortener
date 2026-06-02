@@ -25,6 +25,14 @@ public class FindUrlDetailsUseCaseImpl implements FindUrlDetailsUseCase {
   }
 
   private UrlDetailsResult toResult(Url url) {
-    return new UrlDetailsResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt());
+    return new UrlDetailsResult(
+        url.getShortCode(),
+        url.getOriginalUrl(),
+        url.getUserId(),
+        url.getStatus(),
+        url.getCreatedAt(),
+        url.getUpdatedAt(),
+        url.getDeletedAt(),
+        url.getDeletedBy());
   }
 }
