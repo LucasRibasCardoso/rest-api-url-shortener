@@ -4,6 +4,7 @@ import com.app.url_shortener.url.application.command.UrlDetailsCommand;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -46,7 +47,7 @@ class FindUrlDetailsUseCaseImplTest {
       var shortCode = "aB3dE";
       var originalUrl = "https://google.com";
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var url = Url.restore(userId, shortCode, originalUrl, createdAt);
+      var url = activeUrl(userId, shortCode, originalUrl, createdAt);
       var command = new UrlDetailsCommand(userId, shortCode, false);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -70,7 +71,7 @@ class FindUrlDetailsUseCaseImplTest {
       var shortCode = "aB3dE";
       var originalUrl = "https://google.com";
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var url = Url.restore(ownerId, shortCode, originalUrl, createdAt);
+      var url = activeUrl(ownerId, shortCode, originalUrl, createdAt);
       var command = new UrlDetailsCommand(requesterId, shortCode, true);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -118,5 +119,9 @@ class FindUrlDetailsUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort);
     }
+  }
+
+  private static Url activeUrl(UUID userId, String shortCode, String originalUrl, Instant createdAt) {
+    return Url.restore(userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt);
   }
 }

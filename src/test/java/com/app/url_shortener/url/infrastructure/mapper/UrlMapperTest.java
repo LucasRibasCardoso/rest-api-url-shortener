@@ -1,6 +1,7 @@
 package com.app.url_shortener.url.infrastructure.mapper;
 
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +36,7 @@ class UrlMapperTest {
     void shouldMapDomainToEntityWithCreatedAtConvertedToString() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:30Z");
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt);
+      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt, UrlStatus.ACTIVE, null, null, createdAt);
 
       // 2. Act
       var result = mapper.toEntity(url);
@@ -45,6 +46,10 @@ class UrlMapperTest {
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
       assertThat(result.getCreatedAt()).isEqualTo("2026-05-07T10:15:30Z");
+      assertThat(result.getUpdatedAt()).isEqualTo("2026-05-07T10:15:30Z");
+      assertThat(result.getStatus()).isEqualTo("ACTIVE");
+      assertThat(result.getDeletedAt()).isNull();
+      assertThat(result.getDeletedBy()).isNull();
     }
 
     @Test
@@ -79,6 +84,10 @@ class UrlMapperTest {
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
       assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
+      assertThat(result.getUpdatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
+      assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
+      assertThat(result.getDeletedAt()).isNull();
+      assertThat(result.getDeletedBy()).isNull();
     }
 
     @Test
@@ -113,6 +122,8 @@ class UrlMapperTest {
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
       assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
+      assertThat(result.getUpdatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
+      assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
     }
 
     @Test
@@ -191,6 +202,8 @@ class UrlMapperTest {
         .shortCode("aB3dE")
         .originalUrl("https://google.com")
         .createdAt("2026-05-07T10:15:30Z")
+        .updatedAt("2026-05-07T10:15:30Z")
+        .status("ACTIVE")
         .userId(USER_ID)
         .build();
   }

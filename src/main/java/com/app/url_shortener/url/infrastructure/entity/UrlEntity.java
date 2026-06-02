@@ -17,6 +17,10 @@ public class UrlEntity {
   private final String shortCode;
   private final String originalUrl;
   private final String createdAt;
+  private final String updatedAt;
+  private final String status;
+  private final String deletedAt;
+  private final UUID deletedBy;
 
   @DynamoDbPartitionKey
   public String getShortCode() {

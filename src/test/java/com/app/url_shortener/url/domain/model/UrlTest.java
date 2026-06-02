@@ -70,7 +70,7 @@ class UrlTest {
       var createdAt = Instant.parse("2026-05-07T10:15:00Z");
 
       // 2. Act
-      var url = Url.restore(USER_ID, shortCode, originalUrl, createdAt);
+      var url = activeUrl(USER_ID, shortCode, originalUrl, createdAt);
 
       // 3. Assert
       assertThat(url.getUserId()).isEqualTo(USER_ID);
@@ -164,8 +164,8 @@ class UrlTest {
     void shouldBeEqualWhenAllFieldsAreEqual() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:00Z");
-      var firstUrl = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
-      var secondUrl = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
+      var firstUrl = activeUrl(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
+      var secondUrl = activeUrl(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
 
       // 2. Act & 3. Assert
       assertThat(firstUrl)
@@ -178,15 +178,15 @@ class UrlTest {
     void shouldNotBeEqualWhenAnyFieldIsDifferent() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:00Z");
-      var url = Url.restore(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
-      var differentUserId = Url.restore(
+      var url = activeUrl(USER_ID, "abc123", "https://example.com/articles/1", createdAt);
+      var differentUserId = activeUrl(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002"),
               "abc123",
               "https://example.com/articles/1",
               createdAt);
-      var differentShortCode = Url.restore(USER_ID, "xyz789", "https://example.com/articles/1", createdAt);
-      var differentOriginalUrl = Url.restore(USER_ID, "abc123", "https://example.com/articles/2", createdAt);
-      var differentCreatedAt = Url.restore(
+      var differentShortCode = activeUrl(USER_ID, "xyz789", "https://example.com/articles/1", createdAt);
+      var differentOriginalUrl = activeUrl(USER_ID, "abc123", "https://example.com/articles/2", createdAt);
+      var differentCreatedAt = activeUrl(
               USER_ID,
               "abc123",
               "https://example.com/articles/1",
@@ -198,5 +198,9 @@ class UrlTest {
       assertThat(url).isNotEqualTo(differentOriginalUrl);
       assertThat(url).isNotEqualTo(differentCreatedAt);
     }
+  }
+
+  private static Url activeUrl(UUID userId, String shortCode, String originalUrl, Instant createdAt) {
+    return Url.restore(userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt);
   }
 }

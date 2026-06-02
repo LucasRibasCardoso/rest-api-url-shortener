@@ -1,6 +1,7 @@
 package com.app.url_shortener.url.infrastructure.mapper;
 
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import java.time.Instant;
 import org.mapstruct.Mapper;
@@ -12,6 +13,8 @@ import org.mapstruct.ReportingPolicy;
 public interface UrlMapper {
 
   @Mapping(target = "createdAt", source = "createdAt", qualifiedByName = "instantToString")
+  @Mapping(target = "updatedAt", source = "updatedAt", qualifiedByName = "instantToString")
+  @Mapping(target = "deletedAt", source = "deletedAt", qualifiedByName = "instantToString")
   UrlEntity toEntity(Url domain);
 
   default Url toDomain(UrlEntity entity) {
@@ -23,7 +26,11 @@ public interface UrlMapper {
             entity.getUserId(),
             entity.getShortCode(),
             entity.getOriginalUrl(),
-            stringToInstant(entity.getCreatedAt()));
+            stringToInstant(entity.getCreatedAt()),
+            stringToUrlStatus(entity.getStatus()),
+            stringToInstant(entity.getDeletedAt()),
+            entity.getDeletedBy(),
+            stringToInstant(entity.getUpdatedAt()));
   }
 
   default Url createUrl(UrlEntity entity) {
@@ -40,4 +47,7 @@ public interface UrlMapper {
     return value == null ? null : Instant.parse(value);
   }
 
+  default UrlStatus stringToUrlStatus(String value) {
+    return value == null ? null : UrlStatus.valueOf(value);
+  }
 }

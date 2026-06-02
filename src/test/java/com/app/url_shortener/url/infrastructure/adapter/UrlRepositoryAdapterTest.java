@@ -2,6 +2,7 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
 import com.app.url_shortener.url.infrastructure.utils.CursorUtil;
@@ -66,7 +67,7 @@ class UrlRepositoryAdapterTest {
     @DisplayName("Deve mapear domínio e salvar entidade com condição contra colisão de código curto")
     void shouldMapDomainAndSaveEntityWithShortCodeCollisionCondition() {
       // 1. Arrange
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var url = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var entity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       when(urlMapper.toEntity(url)).thenReturn(entity);
 
@@ -90,7 +91,7 @@ class UrlRepositoryAdapterTest {
     @DisplayName("Deve traduzir falha condicional do DynamoDB para colisão de código curto")
     void shouldTranslateConditionalCheckFailureToShortCodeCollisionException() {
       // 1. Arrange
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var url = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var entity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var exception = ConditionalCheckFailedException.builder().message("collision").build();
       when(urlMapper.toEntity(url)).thenReturn(entity);
@@ -115,7 +116,7 @@ class UrlRepositoryAdapterTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var entity = urlEntity(shortCode, "https://google.com", "2026-05-07T10:00");
-      var url = Url.restore(USER_ID, shortCode, "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var url = activeUrl(shortCode, "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       when(urlTable.getItem(anyGetItemRequestConsumer())).thenReturn(entity);
       when(urlMapper.toDomain(entity)).thenReturn(url);
 
@@ -183,8 +184,8 @@ class UrlRepositoryAdapterTest {
       String cursor = null;
       var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
-      var firstUrl = Url.restore(USER_ID, "aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
-      var secondUrl = Url.restore(USER_ID, "fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
+      var firstUrl = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var secondUrl = activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
       when(urlTable.index("user-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
@@ -292,6 +293,10 @@ class UrlRepositoryAdapterTest {
             .createdAt(createdAt)
             .userId(USER_ID)
             .build();
+  }
+
+  private Url activeUrl(String shortCode, String originalUrl, Instant createdAt) {
+    return Url.restore(USER_ID, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt);
   }
 
   private Consumer<GetItemEnhancedRequest.Builder> anyGetItemRequestConsumer() {
