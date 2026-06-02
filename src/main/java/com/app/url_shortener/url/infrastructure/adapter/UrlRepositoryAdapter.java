@@ -5,10 +5,13 @@ import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
 import com.app.url_shortener.url.infrastructure.utils.CursorUtil;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -16,10 +19,13 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
+import software.amazon.awssdk.enhanced.dynamodb.model.IgnoreNullsMode;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.UpdateItemEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 
 @Repository
@@ -38,17 +44,17 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   @Override
   public void save(Url url) {
     Expression condition =
-            Expression.builder()
-                    .expression("attribute_not_exists(#pk)")
-                    .putExpressionName("#pk", SHORT_CODE_ATTRIBUTE)
-                    .build();
+        Expression.builder()
+            .expression("attribute_not_exists(#pk)")
+            .putExpressionName("#pk", SHORT_CODE_ATTRIBUTE)
+            .build();
 
     UrlEntity entity = urlMapper.toEntity(url);
     PutItemEnhancedRequest<UrlEntity> request =
-            PutItemEnhancedRequest.builder(UrlEntity.class)
-                    .item(entity)
-                    .conditionExpression(condition)
-                    .build();
+        PutItemEnhancedRequest.builder(UrlEntity.class)
+            .item(entity)
+            .conditionExpression(condition)
+            .build();
 
     try {
       urlTable.putItem(request);
@@ -65,18 +71,45 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   }
 
   @Override
-  public void delete(String shortCode) {
-    Key key = Key.builder()
-            .partitionValue(shortCode)
+  public void softDeleteByShortCode(String shortCode, UUID deletedBy) {
+    String now = Instant.now().toString();
+
+    UrlEntity softDeleteEntity =
+        UrlEntity.builder()
+            .shortCode(shortCode)
+            .status(UrlStatus.DELETED.name())
+            .deletedAt(now)
+            .deletedBy(deletedBy)
+            .updatedAt(now)
             .build();
 
-    urlTable.deleteItem(r -> r.key(key));
+    Expression condition =
+        Expression.builder()
+            .expression("attribute_exists(#pk) AND #status = :active")
+            .expressionNames(Map.of("#pk", SHORT_CODE_ATTRIBUTE, "#status", "status"))
+            .expressionValues(Map.of(":active", toAttributeValue(UrlStatus.ACTIVE.name())))
+            .build();
+
+    var request =
+        UpdateItemEnhancedRequest.builder(UrlEntity.class)
+            .item(softDeleteEntity)
+            .ignoreNullsMode(IgnoreNullsMode.SCALAR_ONLY)
+            .conditionExpression(condition)
+            .build();
+
+    try {
+      urlTable.updateItem(request);
+    } catch (ConditionalCheckFailedException exception) {
+      // A leitura consistente do use case já validou existência e permissão. Neste ponto, uma
+      // falha condicional significa que outra requisição deletou a URL primeiro.
+    }
   }
 
   @Override
   public PageUrlResult findAllByUserId(UUID userId, int limit, String cursor) {
     DynamoDbIndex<UrlEntity> userIndex = urlTable.index("user-index");
-    QueryEnhancedRequest.Builder requestBuilder = QueryEnhancedRequest.builder()
+    QueryEnhancedRequest.Builder requestBuilder =
+        QueryEnhancedRequest.builder()
             .queryConditional(QueryConditional.keyEqualTo(k -> k.partitionValue(userId.toString())))
             .limit(limit);
 
@@ -86,19 +119,20 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
 
     Page<UrlEntity> page = userIndex.query(requestBuilder.build()).iterator().next();
 
-    List<UrlListItemResult> urls = page.items().stream()
-            .map(urlMapper::toDomain)
-            .map(this::toResult)
-            .toList();
+    List<UrlListItemResult> urls =
+        page.items().stream().map(urlMapper::toDomain).map(this::toResult).toList();
 
-    String nextCursor = (page.lastEvaluatedKey() != null)
-            ? CursorUtil.encode(page.lastEvaluatedKey())
-            : null;
+    String nextCursor =
+        (page.lastEvaluatedKey() != null) ? CursorUtil.encode(page.lastEvaluatedKey()) : null;
 
     return new PageUrlResult(urls, nextCursor);
   }
 
   private UrlListItemResult toResult(Url url) {
     return new UrlListItemResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt());
+  }
+
+  private AttributeValue toAttributeValue(String value) {
+    return AttributeValue.builder().s(value).build();
   }
 }

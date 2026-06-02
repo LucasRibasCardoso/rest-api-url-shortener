@@ -2,7 +2,6 @@ package com.app.url_shortener.url.application.port.output;
 
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.domain.model.Url;
-
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,6 +13,5 @@ public interface UrlRepositoryPort {
 
   PageUrlResult findAllByUserId(UUID userId, int limit, String cursor);
 
-  void delete(String shortCode);
-
+  void softDeleteByShortCode(String shortCode, UUID deletedBy);
 }

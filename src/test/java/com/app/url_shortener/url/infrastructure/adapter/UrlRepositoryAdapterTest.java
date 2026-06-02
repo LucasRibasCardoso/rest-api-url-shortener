@@ -152,22 +152,59 @@ class UrlRepositoryAdapterTest {
   }
 
   @Nested
-  @DisplayName("Exclusão")
-  class DeleteTests {
+  @DisplayName("Soft delete")
+  class SoftDeleteTests {
 
     @Test
-    @DisplayName("Deve excluir entidade no DynamoDB usando o código curto como chave de partição")
-    void shouldDeleteEntityFromDynamoDbUsingShortCodeAsPartitionKey() {
+    @DisplayName("Deve atualizar somente metadados de exclusão com condição contra concorrência")
+    void shouldUpdateOnlyDeleteMetadataWithConcurrencyCondition() {
       // 1. Arrange
       var shortCode = "aB3dE";
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
 
       // 2. Act
-      adapter.delete(shortCode);
+      adapter.softDeleteByShortCode(shortCode, deletedBy);
 
       // 3. Assert
-      var consumerCaptor = deleteItemRequestConsumerCaptor();
-      verify(urlTable).deleteItem(consumerCaptor.capture());
-      assertThatDeleteItemRequestUsesShortCode(consumerCaptor.getValue(), shortCode);
+      var requestCaptor = ArgumentCaptor.forClass(UpdateItemEnhancedRequest.class);
+      verify(urlTable).updateItem(requestCaptor.capture());
+
+      var request = (UpdateItemEnhancedRequest<UrlEntity>) requestCaptor.getValue();
+      var item = request.item();
+      assertThat(item.getShortCode()).isEqualTo(shortCode);
+      assertThat(item.getStatus()).isEqualTo(UrlStatus.DELETED.name());
+      assertThat(item.getDeletedBy()).isEqualTo(deletedBy);
+      assertThat(item.getDeletedAt()).isNotBlank();
+      assertThat(item.getUpdatedAt()).isEqualTo(item.getDeletedAt());
+      assertThat(item.getUserId()).isNull();
+      assertThat(item.getOriginalUrl()).isNull();
+      assertThat(item.getCreatedAt()).isNull();
+      assertThat(Instant.parse(item.getDeletedAt())).isNotNull();
+      assertThat(request.ignoreNullsMode()).isEqualTo(IgnoreNullsMode.SCALAR_ONLY);
+      assertThat(request.conditionExpression().expression())
+          .isEqualTo("attribute_exists(#pk) AND #status = :active");
+      assertThat(request.conditionExpression().expressionNames())
+          .containsEntry("#pk", "shortCode")
+          .containsEntry("#status", "status");
+      assertThat(request.conditionExpression().expressionValues())
+          .containsEntry(":active", AttributeValue.builder().s(UrlStatus.ACTIVE.name()).build());
+      verifyNoMoreInteractions(urlTable, urlMapper);
+    }
+
+    @Test
+    @DisplayName("Deve ignorar falha condicional quando outra requisição já deletou a URL")
+    void shouldIgnoreConditionalFailureWhenAnotherRequestAlreadyDeletedUrl() {
+      // 1. Arrange
+      var shortCode = "aB3dE";
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var exception = ConditionalCheckFailedException.builder().message("already deleted").build();
+      doThrow(exception).when(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
+
+      // 2. Act
+      adapter.softDeleteByShortCode(shortCode, deletedBy);
+
+      // 3. Assert
+      verify(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
       verifyNoMoreInteractions(urlTable, urlMapper);
     }
   }
@@ -303,10 +340,6 @@ class UrlRepositoryAdapterTest {
     return any(Consumer.class);
   }
 
-  private ArgumentCaptor<Consumer<DeleteItemEnhancedRequest.Builder>> deleteItemRequestConsumerCaptor() {
-    return ArgumentCaptor.forClass((Class) Consumer.class);
-  }
-
   private ArgumentCaptor<Consumer<GetItemEnhancedRequest.Builder>> getItemRequestConsumerCaptor() {
     return ArgumentCaptor.forClass((Class) Consumer.class);
   }
@@ -320,15 +353,5 @@ class UrlRepositoryAdapterTest {
 
     assertThat(request.key().partitionKeyValue().s()).isEqualTo(shortCode);
     assertThat(request.consistentRead()).isTrue();
-  }
-
-  private void assertThatDeleteItemRequestUsesShortCode(
-          Consumer<DeleteItemEnhancedRequest.Builder> requestConsumer,
-          String shortCode) {
-    var requestBuilder = DeleteItemEnhancedRequest.builder();
-    requestConsumer.accept(requestBuilder);
-    var request = requestBuilder.build();
-
-    assertThat(request.key().partitionKeyValue().s()).isEqualTo(shortCode);
   }
 }

@@ -14,10 +14,10 @@ public class Url implements Serializable {
   private final String shortCode;
   private final String originalUrl;
   private final Instant createdAt;
-  private UrlStatus status;
-  private Instant deletedAt;
-  private UUID deletedBy;
-  private Instant updatedAt;
+  private final UrlStatus status;
+  private final Instant deletedAt;
+  private final UUID deletedBy;
+  private final Instant updatedAt;
 
   private Url(
       UUID userId,
@@ -55,14 +55,7 @@ public class Url implements Serializable {
       UUID deletedBy,
       Instant updatedAt) {
     return new Url(
-        userId,
-        shortCode,
-        originalUrl,
-        createdAt,
-        urlStatus,
-        deletedAt,
-        deletedBy,
-        updatedAt);
+        userId, shortCode, originalUrl, createdAt, urlStatus, deletedAt, deletedBy, updatedAt);
   }
 
   public boolean isDeleted() {
@@ -75,17 +68,6 @@ public class Url implements Serializable {
 
   public boolean isRedirectable() {
     return isActive();
-  }
-
-  public void softDelete(Instant deletedAt, UUID deletedBy) {
-    if (isDeleted()) {
-      return;
-    }
-
-    this.status = UrlStatus.DELETED;
-    this.deletedAt = Objects.requireNonNull(deletedAt, "deletedAt is required.");
-    this.deletedBy = Objects.requireNonNull(deletedBy, "deletedBy is required.");
-    this.updatedAt = Objects.requireNonNull(deletedAt, "updatedAt is required.");
   }
 
   /**

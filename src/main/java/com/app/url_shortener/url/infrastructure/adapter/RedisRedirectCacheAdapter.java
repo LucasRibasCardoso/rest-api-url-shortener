@@ -10,7 +10,6 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
@@ -39,44 +38,61 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
 
   @Override
   public Optional<UrlRedirectCacheEntry> findByShortCode(String shortCode) {
-    String value = redisTemplate.opsForValue().get(key(shortCode));
+    return executeCacheSupplier(
+        () -> {
+          String value = redisTemplate.opsForValue().get(key(shortCode));
 
-    if (value == null || value.isBlank()) {
-      return Optional.empty();
-    }
+          if (value == null || value.isBlank()) {
+            return Optional.empty();
+          }
 
-    return Optional.of(deserialize(value));
+          return Optional.of(deserialize(value));
+        });
   }
 
   @Override
   public boolean saveActiveIfAbsent(String shortCode, String longUrl) {
-    var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
-    return Boolean.TRUE.equals(
-        redisTemplate.opsForValue().setIfAbsent(key(shortCode), serialize(entry), ttlActive));
+    return executeCacheSupplier(
+        () -> {
+          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          return Boolean.TRUE.equals(
+              redisTemplate.opsForValue().setIfAbsent(key(shortCode), serialize(entry), ttlActive));
+        });
   }
 
   @Override
   public void saveActive(String shortCode, String longUrl) {
-    var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
-    redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlActive);
+    executeCacheOperation(
+        () -> {
+          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlActive);
+        });
   }
 
   @Override
   public void saveDeleted(String shortCode) {
-    var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null);
-    redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlDeleted);
+    executeCacheOperation(
+        () -> {
+          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null);
+          redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlDeleted);
+        });
   }
 
   @Override
   public boolean saveNotFoundIfAbsent(String shortCode) {
-    var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
-    return Boolean.TRUE.equals(
-        redisTemplate.opsForValue().setIfAbsent(key(shortCode), serialize(entry), ttlNotFound));
+    return executeCacheSupplier(
+        () -> {
+          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
+          return Boolean.TRUE.equals(
+              redisTemplate
+                  .opsForValue()
+                  .setIfAbsent(key(shortCode), serialize(entry), ttlNotFound));
+        });
   }
 
   @Override
   public void evict(String shortCode) {
-    redisTemplate.delete(key(shortCode));
+    executeCacheOperation(() -> redisTemplate.delete(key(shortCode)));
   }
 
   private String key(String shortCode) {
@@ -84,18 +100,36 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   }
 
   private String serialize(UrlRedirectCacheEntry entry) {
-    try {
-      return objectMapper.writeValueAsString(entry);
-    } catch (JacksonException e) {
-      throw new RedirectCacheException(e);
-    }
+    return objectMapper.writeValueAsString(entry);
   }
 
   private UrlRedirectCacheEntry deserialize(String value) {
+    return objectMapper.readValue(value, UrlRedirectCacheEntry.class);
+  }
+
+  private void executeCacheOperation(CacheOperation operation) {
     try {
-      return objectMapper.readValue(value, UrlRedirectCacheEntry.class);
-    } catch (JacksonException e) {
-      throw new RedirectCacheException(e);
+      operation.execute();
+    } catch (RuntimeException exception) {
+      throw new RedirectCacheException(exception);
     }
+  }
+
+  private <T> T executeCacheSupplier(CacheSupplier<T> supplier) {
+    try {
+      return supplier.get();
+    } catch (RuntimeException exception) {
+      throw new RedirectCacheException(exception);
+    }
+  }
+
+  @FunctionalInterface
+  private interface CacheOperation {
+    void execute();
+  }
+
+  @FunctionalInterface
+  private interface CacheSupplier<T> {
+    T get();
   }
 }
