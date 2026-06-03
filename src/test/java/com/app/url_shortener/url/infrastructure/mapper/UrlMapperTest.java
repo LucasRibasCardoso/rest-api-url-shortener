@@ -32,8 +32,8 @@ class UrlMapperTest {
   class ToEntityTests {
 
     @Test
-    @DisplayName("Deve mapear domínio para entidade com data convertida para texto")
-    void shouldMapDomainToEntityWithCreatedAtConvertedToString() {
+    @DisplayName("Deve mapear domínio para entidade com tipos nativos")
+    void shouldMapDomainToEntityWithNativeTypes() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:30Z");
       var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt, UrlStatus.ACTIVE, null, null, createdAt);
@@ -45,9 +45,9 @@ class UrlMapperTest {
       assertThat(result.getUserId()).isEqualTo(USER_ID);
       assertThat(result.getShortCode()).isEqualTo("aB3dE");
       assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
-      assertThat(result.getCreatedAt()).isEqualTo("2026-05-07T10:15:30Z");
-      assertThat(result.getUpdatedAt()).isEqualTo("2026-05-07T10:15:30Z");
-      assertThat(result.getStatus()).isEqualTo("ACTIVE");
+      assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+      assertThat(result.getUpdatedAt()).isEqualTo(createdAt);
+      assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.getDeletedAt()).isNull();
       assertThat(result.getDeletedBy()).isNull();
     }
@@ -71,8 +71,8 @@ class UrlMapperTest {
   class ToDomainTests {
 
     @Test
-    @DisplayName("Deve mapear entidade para domínio com data convertida para Instant")
-    void shouldMapEntityToDomainWithCreatedAtConvertedToInstant() {
+    @DisplayName("Deve mapear entidade para domínio com tipos nativos")
+    void shouldMapEntityToDomainWithNativeTypes() {
       // 1. Arrange
       var entity = urlEntity();
 
@@ -140,70 +140,13 @@ class UrlMapperTest {
     }
   }
 
-  @Nested
-  @DisplayName("Conversão de datas")
-  class DateConversionTests {
-
-    @Test
-    @DisplayName("Deve converter Instant para texto")
-    void shouldConvertInstantToString() {
-      // 1. Arrange
-      var value = Instant.parse("2026-05-07T10:15:30Z");
-
-      // 2. Act
-      var result = mapper.instantToString(value);
-
-      // 3. Assert
-      assertThat(result).isEqualTo("2026-05-07T10:15:30Z");
-    }
-
-    @Test
-    @DisplayName("Deve converter texto para Instant")
-    void shouldConvertStringToInstant() {
-      // 1. Arrange
-      var value = "2026-05-07T10:15:30Z";
-
-      // 2. Act
-      var result = mapper.stringToInstant(value);
-
-      // 3. Assert
-      assertThat(result).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
-    }
-
-    @Test
-    @DisplayName("Deve retornar nulo ao converter Instant nulo para texto")
-    void shouldReturnNullWhenConvertingNullInstantToString() {
-      // 1. Arrange
-      Instant value = null;
-
-      // 2. Act
-      var result = mapper.instantToString(value);
-
-      // 3. Assert
-      assertThat(result).isNull();
-    }
-
-    @Test
-    @DisplayName("Deve retornar nulo ao converter texto nulo para Instant")
-    void shouldReturnNullWhenConvertingNullStringToInstant() {
-      // 1. Arrange
-      String value = null;
-
-      // 2. Act
-      var result = mapper.stringToInstant(value);
-
-      // 3. Assert
-      assertThat(result).isNull();
-    }
-  }
-
   private UrlEntity urlEntity() {
     return UrlEntity.builder()
         .shortCode("aB3dE")
         .originalUrl("https://google.com")
-        .createdAt("2026-05-07T10:15:30Z")
-        .updatedAt("2026-05-07T10:15:30Z")
-        .status("ACTIVE")
+        .createdAt(Instant.parse("2026-05-07T10:15:30Z"))
+        .updatedAt(Instant.parse("2026-05-07T10:15:30Z"))
+        .status(UrlStatus.ACTIVE)
         .userId(USER_ID)
         .build();
   }
