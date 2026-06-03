@@ -7,6 +7,7 @@ import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlEncoderPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
+import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.application.validation.UrlSafetyValidator;
 import com.app.url_shortener.url.domain.exception.UnsafeUrlException;
@@ -104,6 +105,52 @@ class ShortenUrlUseCaseImplTest {
       inOrder.verify(urlEncoderPort).encode(generatedId);
       inOrder.verify(urlRepositoryPort).save(capturedUrl);
       inOrder.verify(redirectCachePort).saveActive(shortCode, originalUrl);
+
+      verifyNoMoreInteractions(
+          urlSafetyValidator,
+          checkUrlRateLimitPort,
+          idGeneratorService,
+          urlEncoderPort,
+          urlRepositoryPort,
+          redirectCachePort
+      );
+    }
+
+    @Test
+    @DisplayName("Deve retornar URL encurtada quando escrita no cache de redirecionamento falhar")
+    void shouldReturnShortenedUrlWhenRedirectCacheWriteFails() {
+      // 1. Arrange
+      var generatedId = 100L;
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var originalUrl = "https://google.com";
+      var planType = PlanType.FREE;
+      var command = new ShortenUrlCommand(userId, originalUrl, planType);
+      var shortCode = "aB3dE";
+      var exception = new RedirectCacheException(new RuntimeException("Redis unavailable"));
+      when(idGeneratorService.generateId()).thenReturn(generatedId);
+      when(urlEncoderPort.encode(generatedId)).thenReturn(shortCode);
+      doThrow(exception).when(redirectCachePort).saveActive(shortCode, originalUrl);
+
+      // 2. Act
+      var result = shortenUrlUseCase.execute(command);
+
+      // 3. Assert
+      assertThat(result.shortCode()).isEqualTo(shortCode);
+      assertThat(result.originalUrl()).isEqualTo(originalUrl);
+      assertThat(result.createdAt()).isNotNull();
+
+      var urlCaptor = ArgumentCaptor.forClass(Url.class);
+      verify(urlSafetyValidator).validate(originalUrl);
+      verify(checkUrlRateLimitPort).checkShorten(userId, planType);
+      verify(idGeneratorService).generateId();
+      verify(urlEncoderPort).encode(generatedId);
+      verify(urlRepositoryPort).save(urlCaptor.capture());
+      verify(redirectCachePort).saveActive(shortCode, originalUrl);
+
+      var capturedUrl = urlCaptor.getValue();
+      assertThat(capturedUrl.getUserId()).isEqualTo(userId);
+      assertThat(capturedUrl.getShortCode()).isEqualTo(shortCode);
+      assertThat(capturedUrl.getOriginalUrl()).isEqualTo(originalUrl);
 
       verifyNoMoreInteractions(
           urlSafetyValidator,
