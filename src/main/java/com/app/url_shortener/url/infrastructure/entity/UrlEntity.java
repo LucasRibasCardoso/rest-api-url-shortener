@@ -1,12 +1,13 @@
 package com.app.url_shortener.url.infrastructure.entity;
 
+import com.app.url_shortener.url.domain.model.UrlStatus;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbImmutable;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
-
-import java.util.UUID;
 
 @Getter
 @Builder
@@ -16,10 +17,10 @@ public class UrlEntity {
   private final UUID userId;
   private final String shortCode;
   private final String originalUrl;
-  private final String createdAt;
-  private final String updatedAt;
-  private final String status;
-  private final String deletedAt;
+  private final Instant createdAt;
+  private final Instant updatedAt;
+  private final UrlStatus status;
+  private final Instant deletedAt;
   private final UUID deletedBy;
 
   @DynamoDbPartitionKey
@@ -31,5 +32,4 @@ public class UrlEntity {
   public UUID getUserId() {
     return userId;
   }
-
 }
