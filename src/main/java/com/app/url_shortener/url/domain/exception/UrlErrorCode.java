@@ -7,6 +7,7 @@ public enum UrlErrorCode implements ErrorCode {
   URL_ORIGINAL_URL_REQUIRED("URL original e obrigatoria."),
   URL_SHORT_CODE_COLLISION("O codigo curto informado ja existe."),
   URL_NOT_FOUND("URL nao encontrada."),
+  URL_CURSOR_INVALID("Cursor de paginação inválido."),
   URL_DELETE_FORBIDDEN("Não há permissão para excluir esta URL."),
   URL_UNSAFE_DESTINATION("URL de destino nao permitida."),
   COUNTER_ID_INVALID_RESPONSE("Resposta invalida do DynamoDB ao alocar bloco de IDs."),

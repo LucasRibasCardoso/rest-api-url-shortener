@@ -1,5 +1,9 @@
-package com.app.url_shortener.url.infrastructure.utils;
+package com.app.url_shortener.url.infrastructure.cursor;
 
+import com.app.url_shortener.url.domain.exception.InvalidUrlCursorException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -9,41 +13,67 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Map;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Testes de Unidade - Utilitário de Cursor")
-class CursorUtilTest {
+@DisplayName("Testes de Unidade - Codec de Cursor DynamoDB")
+class DynamoDbCursorCodecTest {
+
+  private final DynamoDbCursorCodec codec = new DynamoDbCursorCodec(new ObjectMapper());
 
   @Nested
   @DisplayName("Codificação")
   class EncodeTests {
 
     @Test
-    @DisplayName("Deve codificar chave do DynamoDB como cursor em Base64")
-    void shouldEncodeDynamoDbKeyAsBase64Cursor() {
+    @DisplayName("Deve codificar chave do DynamoDB como cursor opaco em Base64 URL-safe")
+    void shouldEncodeDynamoDbKeyAsUrlSafeBase64Cursor() {
       // 1. Arrange
       var lastKey = Map.of(
           "shortCode", AttributeValue.builder().s("aB3dE").build(),
           "sequence", AttributeValue.builder().n("100").build());
 
       // 2. Act
-      var result = CursorUtil.encode(lastKey);
+      var result = codec.encode(lastKey);
 
       // 3. Assert
       assertThat(result).isNotBlank();
-      var decodedJson = new String(Base64.getDecoder().decode(result), StandardCharsets.UTF_8);
+      assertThat(result).doesNotContain("=");
+      var decodedJson = new String(Base64.getUrlDecoder().decode(result), StandardCharsets.UTF_8);
       assertThat(decodedJson)
+          .contains("\"version\":1")
           .contains("\"shortCode\":{\"S\":\"aB3dE\"")
           .contains("\"sequence\":{\"N\":\"100\"");
+    }
+
+    @Test
+    @DisplayName("Deve retornar nulo quando chave avaliada for nula")
+    void shouldReturnNullWhenLastEvaluatedKeyIsNull() {
+      // 1. Arrange
+
+      // 2. Act
+      var result = codec.encode(null);
+
+      // 3. Assert
+      assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("Deve retornar nulo quando chave avaliada for vazia")
+    void shouldReturnNullWhenLastEvaluatedKeyIsEmpty() {
+      // 1. Arrange
+
+      // 2. Act
+      var result = codec.encode(Map.of());
+
+      // 3. Assert
+      assertThat(result).isNull();
     }
 
     @Test
@@ -53,7 +83,7 @@ class CursorUtilTest {
       var lastKey = Map.of("active", AttributeValue.builder().bool(true).build());
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> CursorUtil.encode(lastKey))
+      assertThatThrownBy(() -> codec.encode(lastKey))
           .isInstanceOf(RuntimeException.class)
           .hasMessage("Erro ao codificar cursor");
     }
@@ -68,12 +98,13 @@ class CursorUtilTest {
     void shouldDecodeCursorToDynamoDbKey() {
       // 1. Arrange
       var json = """
-          {"shortCode":{"S":"aB3dE"},"sequence":{"N":"100"}}
+          {"version":1,"key":{"shortCode":{"S":"aB3dE"},"sequence":{"N":"100"}}}
           """;
-      var cursor = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+      var cursor = Base64.getUrlEncoder().withoutPadding()
+          .encodeToString(json.getBytes(StandardCharsets.UTF_8));
 
       // 2. Act
-      var result = CursorUtil.decode(cursor);
+      var result = codec.decode(cursor);
 
       // 3. Assert
       assertThat(result)
@@ -89,7 +120,7 @@ class CursorUtilTest {
       // 1. Arrange
 
       // 2. Act
-      var result = CursorUtil.decode(cursor);
+      var result = codec.decode(cursor);
 
       // 3. Assert
       assertThat(result).isNull();
@@ -102,9 +133,23 @@ class CursorUtilTest {
       var cursor = "invalid";
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> CursorUtil.decode(cursor))
-          .isInstanceOf(RuntimeException.class)
-          .hasMessage("Erro ao decodificar cursor");
+      assertThatThrownBy(() -> codec.decode(cursor))
+          .isInstanceOf(InvalidUrlCursorException.class);
+    }
+
+    @Test
+    @DisplayName("Deve lançar RuntimeException quando versão do cursor não for suportada")
+    void shouldThrowRuntimeExceptionWhenCursorVersionIsUnsupported() {
+      // 1. Arrange
+      var json = """
+          {"version":2,"key":{"shortCode":{"S":"aB3dE"}}}
+          """;
+      var cursor = Base64.getUrlEncoder().withoutPadding()
+          .encodeToString(json.getBytes(StandardCharsets.UTF_8));
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> codec.decode(cursor))
+          .isInstanceOf(InvalidUrlCursorException.class);
     }
   }
 
@@ -116,13 +161,15 @@ class CursorUtilTest {
     @DisplayName("Deve preservar valores de chave ao codificar e decodificar cursor")
     void shouldPreserveKeyValuesWhenEncodingAndDecodingCursor() {
       // 1. Arrange
+      var binary = SdkBytes.fromUtf8String("binary-value");
       var lastKey = Map.of(
           "userId", AttributeValue.builder().s("019a16f1-ae7f-7c9d-9e18-44773f1ac001").build(),
-          "shortCode", AttributeValue.builder().s("aB3dE").build());
+          "sequence", AttributeValue.builder().n("100").build(),
+          "binary", AttributeValue.builder().b(binary).build());
 
       // 2. Act
-      var cursor = CursorUtil.encode(lastKey);
-      var result = CursorUtil.decode(cursor);
+      var cursor = codec.encode(lastKey);
+      var result = codec.decode(cursor);
 
       // 3. Assert
       assertThat(result).containsAllEntriesOf(lastKey);
