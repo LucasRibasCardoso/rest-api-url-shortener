@@ -20,6 +20,7 @@ import com.app.url_shortener.url.application.command.DeleteUrlCommand;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
 import com.app.url_shortener.url.application.command.UrlDetailsCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
@@ -545,10 +546,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var limit = 10;
       var cursor = "next-page-cursor";
-      var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor);
+      var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       var result = new PageUrlResult(List.of(), null);
       var response = new PageUrlResponseDto(List.of(), null);
-      given(urlWebMapper.toCommand(USER_ID, limit, cursor)).willReturn(command);
+      given(urlWebMapper.toCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
 
@@ -565,10 +566,57 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls").isArray())
           .andExpect(jsonPath("$.nextCursor").doesNotExist());
 
-      verify(urlWebMapper).toCommand(USER_ID, limit, cursor);
+      verify(urlWebMapper).toCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
       verify(urlWebMapper).toResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar URLs deletadas do usuário autenticado quando filtro for DELETED")
+    void shouldReturnAuthenticatedUserDeletedUrlsWhenStatusFilterIsDeleted() throws Exception {
+      // 1. Arrange
+      var limit = 20;
+      var status = UrlStatusFilter.DELETED;
+      var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
+      var result = new PageUrlResult(List.of(), null);
+      var response = new PageUrlResponseDto(List.of(), null);
+      given(urlWebMapper.toCommand(USER_ID, limit, null, status)).willReturn(command);
+      given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
+          .queryParam("status", status.name())
+          .with(authenticatedUser("url:list:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.urls").isArray());
+
+      verify(urlWebMapper).toCommand(USER_ID, limit, null, status);
+      verify(findAllUrlsByUserIdUseCase).execute(command);
+      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 400 quando filtro de status do usuário autenticado for inválido")
+    void shouldReturnBadRequestWhenMineStatusFilterIsInvalid() throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
+          .queryParam("status", "INVALID")
+          .with(authenticatedUser("url:list:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+      verifyNoInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
     @Test
@@ -612,13 +660,13 @@ class UrlControllerTest extends BaseWebSliceTest {
     void shouldReturnUrlsForRequestedUser() throws Exception {
       // 1. Arrange
       var limit = 20;
-      var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null);
+      var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt)), "next");
       var response = new PageUrlResponseDto(List.of(
           new UrlResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt)
       ), "next");
-      given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null)).willReturn(command);
+      given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
       given(urlWebMapper.toResponse(pageResult, BASE_URL)).willReturn(response);
 
@@ -634,9 +682,39 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].shortUrl").value(BASE_URL + "/r/aB3dE"))
           .andExpect(jsonPath("$.nextCursor").value("next"));
 
-      verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null);
+      verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
       verify(urlWebMapper).toResponse(pageResult, BASE_URL);
+      verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar todas as URLs do usuário informado quando filtro for ALL")
+    void shouldReturnAllUrlsForRequestedUserWhenStatusFilterIsAll() throws Exception {
+      // 1. Arrange
+      var limit = 20;
+      var status = UrlStatusFilter.ALL;
+      var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
+      var result = new PageUrlResult(List.of(), null);
+      var response = new PageUrlResponseDto(List.of(), null);
+      given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
+      given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
+          .queryParam("status", status.name())
+          .with(authenticatedUser("url:list:any")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.urls").isArray());
+
+      verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, status);
+      verify(findAllUrlsByUserIdUseCase).execute(command);
+      verify(urlWebMapper).toResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 

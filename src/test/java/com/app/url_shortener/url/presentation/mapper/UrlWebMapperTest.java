@@ -1,6 +1,8 @@
 package com.app.url_shortener.url.presentation.mapper;
 
 import com.app.url_shortener.iam.domain.enums.PlanType;
+import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
@@ -97,16 +99,32 @@ class UrlWebMapperTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var limit = 20;
       var cursor = "  next-page-cursor  ";
+      var status = UrlStatusFilter.DELETED;
 
       // 2. Act
-      var command = mapper.toCommand(userId, limit, cursor);
+      var command = mapper.toCommand(userId, limit, cursor, status);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.userId()).isEqualTo(userId),
           () -> assertThat(command.limit()).isEqualTo(limit),
-          () -> assertThat(command.cursor()).isEqualTo("next-page-cursor")
+          () -> assertThat(command.cursor()).isEqualTo("next-page-cursor"),
+          () -> assertThat(command.status()).isEqualTo(status)
       );
+    }
+
+    @Test
+    @DisplayName("Deve usar filtro ACTIVE quando comando de listagem receber status nulo")
+    void shouldUseActiveFilterWhenFindAllCommandReceivesNullStatus() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var limit = 20;
+
+      // 2. Act
+      var command = new FindAllUrlsByUserIdCommand(userId, limit, null, null);
+
+      // 3. Assert
+      assertThat(command.status()).isEqualTo(UrlStatusFilter.ACTIVE);
     }
 
     @Test

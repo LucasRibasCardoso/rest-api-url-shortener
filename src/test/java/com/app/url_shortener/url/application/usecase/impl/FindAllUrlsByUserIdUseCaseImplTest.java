@@ -1,6 +1,7 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
@@ -44,7 +45,8 @@ class FindAllUrlsByUserIdUseCaseImplTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var limit = 10;
       var cursor = "next-page-cursor";
-      var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor);
+      var status = UrlStatusFilter.ALL;
+      var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor, status);
       var pageUrlResult = new PageUrlResult(List.of(
           new UrlListItemResult(
               "https://google.com",
@@ -55,14 +57,14 @@ class FindAllUrlsByUserIdUseCaseImplTest {
               "fG4hI",
               Instant.parse("2026-05-10T15:45:00Z"))
       ), "following-page-cursor");
-      when(urlRepositoryPort.findAllByUserId(userId, limit, cursor)).thenReturn(pageUrlResult);
+      when(urlRepositoryPort.findAllByUserId(userId, limit, cursor, status)).thenReturn(pageUrlResult);
 
       // 2. Act
       var result = findAllUrlsByUserIdUseCase.execute(command);
 
       // 3. Assert
       assertThat(result).isSameAs(pageUrlResult);
-      verify(urlRepositoryPort).findAllByUserId(userId, limit, cursor);
+      verify(urlRepositoryPort).findAllByUserId(userId, limit, cursor, status);
       verifyNoMoreInteractions(urlRepositoryPort);
     }
 
@@ -73,16 +75,17 @@ class FindAllUrlsByUserIdUseCaseImplTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var limit = 20;
       String cursor = null;
-      var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor);
+      var status = UrlStatusFilter.ACTIVE;
+      var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor, status);
       var pageUrlResult = new PageUrlResult(List.of(), null);
-      when(urlRepositoryPort.findAllByUserId(userId, limit, cursor)).thenReturn(pageUrlResult);
+      when(urlRepositoryPort.findAllByUserId(userId, limit, cursor, status)).thenReturn(pageUrlResult);
 
       // 2. Act
       var result = findAllUrlsByUserIdUseCase.execute(command);
 
       // 3. Assert
       assertThat(result).isSameAs(pageUrlResult);
-      verify(urlRepositoryPort).findAllByUserId(userId, limit, cursor);
+      verify(urlRepositoryPort).findAllByUserId(userId, limit, cursor, status);
       verifyNoMoreInteractions(urlRepositoryPort);
     }
   }

@@ -5,6 +5,7 @@ import com.app.url_shortener.url.application.command.DeleteUrlCommand;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
 import com.app.url_shortener.url.application.command.UrlDetailsCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
@@ -97,8 +98,9 @@ public class UrlController {
   public ResponseEntity<PageUrlResponseDto> findAllMyUrls(
           @AuthenticationPrincipal UserPrincipal user,
           @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+          @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
           @RequestParam(required = false) String cursor) {
-    FindAllUrlsByUserIdCommand command = urlWebMapper.toCommand(user.getId(), limit, cursor);
+    FindAllUrlsByUserIdCommand command = urlWebMapper.toCommand(user.getId(), limit, cursor, status);
     PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
     PageUrlResponseDto response = urlWebMapper.toResponse(result, baseUrl);
     return ResponseEntity.ok(response);
@@ -109,8 +111,9 @@ public class UrlController {
   public ResponseEntity<PageUrlResponseDto> findAllUrlsByUserId(
           @PathVariable UUID userId,
           @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+          @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
           @RequestParam(required = false) String cursor) {
-    FindAllUrlsByUserIdCommand command = urlWebMapper.toCommand(userId, limit, cursor);
+    FindAllUrlsByUserIdCommand command = urlWebMapper.toCommand(userId, limit, cursor, status);
     PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
     PageUrlResponseDto response = urlWebMapper.toResponse(result, baseUrl);
     return ResponseEntity.ok(response);

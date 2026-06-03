@@ -25,7 +25,7 @@ public interface UrlWebMapper {
 
   DeleteUrlCommand toCommandDelete(UUID requesterId, String shortCode, boolean canDeleteAny);
 
-  FindAllUrlsByUserIdCommand toCommand(UUID userId, int limit, String cursor);
+  FindAllUrlsByUserIdCommand toCommand(UUID userId, int limit, String cursor, UrlStatusFilter status);
 
   ResolveUrlCommand toCommand(String shortCode);
 
