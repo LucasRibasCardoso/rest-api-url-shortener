@@ -8,6 +8,7 @@ import lombok.Getter;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbImmutable;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
 
 @Getter
 @Builder
@@ -23,13 +24,26 @@ public class UrlEntity {
   private final Instant deletedAt;
   private final UUID deletedBy;
 
+  private final String createdAtShortCodeGsi;
+  private final String statusCreatedAtShortCodeGsi;
+
   @DynamoDbPartitionKey
   public String getShortCode() {
     return shortCode;
   }
 
-  @DynamoDbSecondaryPartitionKey(indexNames = "user-index")
+  @DynamoDbSecondaryPartitionKey(indexNames = {"user-index", "user-status-index"})
   public UUID getUserId() {
     return userId;
+  }
+
+  @DynamoDbSecondarySortKey(indexNames = "user-index")
+  public String getCreatedAtShortCodeGsi() {
+    return createdAtShortCodeGsi;
+  }
+
+  @DynamoDbSecondarySortKey(indexNames = "user-status-index")
+  public String getStatusCreatedAtShortCodeGsi() {
+    return statusCreatedAtShortCodeGsi;
   }
 }

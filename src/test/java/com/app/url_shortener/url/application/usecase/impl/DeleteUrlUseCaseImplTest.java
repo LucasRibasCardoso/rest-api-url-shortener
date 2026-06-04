@@ -59,7 +59,7 @@ class DeleteUrlUseCaseImplTest {
 
       // 3. Assert
       verify(urlRepositoryPort).findByShortCode(shortCode);
-      verify(urlRepositoryPort).softDeleteByShortCode(shortCode, userId);
+      verify(urlRepositoryPort).softDeleteByShortCode(url, userId);
       verify(redirectCachePort).saveDeleted(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort, redirectCachePort);
     }
@@ -80,7 +80,7 @@ class DeleteUrlUseCaseImplTest {
 
       // 3. Assert
       verify(urlRepositoryPort).findByShortCode(shortCode);
-      verify(urlRepositoryPort).softDeleteByShortCode(shortCode, requesterId);
+      verify(urlRepositoryPort).softDeleteByShortCode(url, requesterId);
       verify(redirectCachePort).saveDeleted(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort, redirectCachePort);
     }
@@ -164,7 +164,7 @@ class DeleteUrlUseCaseImplTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> deleteUrlUseCase.execute(command)).isSameAs(exception);
       verify(urlRepositoryPort).findByShortCode(shortCode);
-      verify(urlRepositoryPort).softDeleteByShortCode(shortCode, userId);
+      verify(urlRepositoryPort).softDeleteByShortCode(url, userId);
       verify(redirectCachePort).saveDeleted(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort, redirectCachePort);
     }

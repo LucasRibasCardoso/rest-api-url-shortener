@@ -37,9 +37,30 @@ create_url_table() {
 
     "${DDB_CMD[@]}" create-table \
         --table-name "$URL_TABLE_NAME" \
-        --attribute-definitions AttributeName=shortCode,AttributeType=S AttributeName=userId,AttributeType=S \
+        --attribute-definitions \
+            AttributeName=shortCode,AttributeType=S \
+            AttributeName=userId,AttributeType=S \
+            AttributeName=createdAtShortCodeGsi,AttributeType=S \
+            AttributeName=statusCreatedAtShortCodeGsi,AttributeType=S \
         --key-schema AttributeName=shortCode,KeyType=HASH \
-        --global-secondary-indexes "IndexName=user-index,KeySchema=[{AttributeName=userId,KeyType=HASH}],Projection={ProjectionType=ALL}" \
+        --global-secondary-indexes '[
+            {
+                "IndexName": "user-index",
+                "KeySchema": [
+                    {"AttributeName": "userId", "KeyType": "HASH"},
+                    {"AttributeName": "createdAtShortCodeGsi", "KeyType": "RANGE"}
+                ],
+                "Projection": {"ProjectionType": "ALL"}
+            },
+            {
+                "IndexName": "user-status-index",
+                "KeySchema": [
+                    {"AttributeName": "userId", "KeyType": "HASH"},
+                    {"AttributeName": "statusCreatedAtShortCodeGsi", "KeyType": "RANGE"}
+                ],
+                "Projection": {"ProjectionType": "ALL"}
+            }
+        ]' \
         --billing-mode PAY_PER_REQUEST \
         --region "$REGION"
 

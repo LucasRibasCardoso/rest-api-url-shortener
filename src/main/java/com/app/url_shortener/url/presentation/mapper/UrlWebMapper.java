@@ -30,6 +30,7 @@ public interface UrlWebMapper {
   ResolveUrlCommand toCommand(String shortCode);
 
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
+  @Mapping(target = "status", constant = "ACTIVE")
   UrlResponseDto toResponse(ShortenUrlResult result, @Context String baseUrl);
 
   UrlDetailsResponseDto toResponse(UrlDetailsResult result);

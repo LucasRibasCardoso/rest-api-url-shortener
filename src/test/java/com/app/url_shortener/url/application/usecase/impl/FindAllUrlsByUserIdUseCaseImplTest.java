@@ -5,6 +5,7 @@ import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -51,11 +52,13 @@ class FindAllUrlsByUserIdUseCaseImplTest {
           new UrlListItemResult(
               "https://google.com",
               "aB3dE",
-              Instant.parse("2026-05-10T14:30:00Z")),
+              Instant.parse("2026-05-10T14:30:00Z"),
+              UrlStatus.ACTIVE),
           new UrlListItemResult(
               "https://spring.io",
               "fG4hI",
-              Instant.parse("2026-05-10T15:45:00Z"))
+              Instant.parse("2026-05-10T15:45:00Z"),
+              UrlStatus.DELETED)
       ), "following-page-cursor");
       when(urlRepositoryPort.findAllByUserId(userId, limit, cursor, status)).thenReturn(pageUrlResult);
 

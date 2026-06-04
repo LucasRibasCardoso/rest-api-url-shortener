@@ -14,5 +14,5 @@ public interface UrlRepositoryPort {
 
   PageUrlResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter status);
 
-  void softDeleteByShortCode(String shortCode, UUID deletedBy);
+  void softDeleteByShortCode(Url url, UUID deletedBy);
 }

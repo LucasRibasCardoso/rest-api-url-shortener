@@ -61,11 +61,50 @@ public final class LocalStackContainerSupport {
                               AttributeDefinition.builder()
                                       .attributeName("shortCode")
                                       .attributeType(ScalarAttributeType.S)
+                                      .build(),
+                              AttributeDefinition.builder()
+                                      .attributeName("userId")
+                                      .attributeType(ScalarAttributeType.S)
+                                      .build(),
+                              AttributeDefinition.builder()
+                                      .attributeName("createdAtShortCodeGsi")
+                                      .attributeType(ScalarAttributeType.S)
+                                      .build(),
+                              AttributeDefinition.builder()
+                                      .attributeName("statusCreatedAtShortCodeGsi")
+                                      .attributeType(ScalarAttributeType.S)
                                       .build())
                       .keySchema(
                               KeySchemaElement.builder()
                                       .attributeName("shortCode")
                                       .keyType(KeyType.HASH)
+                                      .build())
+                      .globalSecondaryIndexes(
+                              GlobalSecondaryIndex.builder()
+                                      .indexName("user-index")
+                                      .keySchema(
+                                              KeySchemaElement.builder()
+                                                      .attributeName("userId")
+                                                      .keyType(KeyType.HASH)
+                                                      .build(),
+                                              KeySchemaElement.builder()
+                                                      .attributeName("createdAtShortCodeGsi")
+                                                      .keyType(KeyType.RANGE)
+                                                      .build())
+                                      .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                                      .build(),
+                              GlobalSecondaryIndex.builder()
+                                      .indexName("user-status-index")
+                                      .keySchema(
+                                              KeySchemaElement.builder()
+                                                      .attributeName("userId")
+                                                      .keyType(KeyType.HASH)
+                                                      .build(),
+                                              KeySchemaElement.builder()
+                                                      .attributeName("statusCreatedAtShortCodeGsi")
+                                                      .keyType(KeyType.RANGE)
+                                                      .build())
+                                      .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
                                       .build())
                       .billingMode(BillingMode.PAY_PER_REQUEST)
                       .build();

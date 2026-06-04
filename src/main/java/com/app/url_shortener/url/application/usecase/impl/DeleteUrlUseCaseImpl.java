@@ -29,7 +29,7 @@ public class DeleteUrlUseCaseImpl implements DeleteUrlUseCase {
     validateCanDelete(url, requesterId, canDeleteAny);
 
     if (!url.isDeleted()) {
-      urlRepositoryPort.softDeleteByShortCode(shortCode, requesterId);
+      urlRepositoryPort.softDeleteByShortCode(url, requesterId);
     }
 
     redirectCachePort.saveDeleted(shortCode);

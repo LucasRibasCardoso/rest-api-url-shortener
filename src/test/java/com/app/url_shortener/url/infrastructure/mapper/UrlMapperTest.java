@@ -50,6 +50,8 @@ class UrlMapperTest {
       assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.getDeletedAt()).isNull();
       assertThat(result.getDeletedBy()).isNull();
+      assertThat(result.getCreatedAtShortCodeGsi()).isEqualTo("2026-05-07T10:15:30Z#aB3dE");
+      assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("ACTIVE#2026-05-07T10:15:30Z#aB3dE");
     }
 
     @Test
@@ -140,6 +142,40 @@ class UrlMapperTest {
     }
   }
 
+  @Nested
+  @DisplayName("Mapeamento para item de listagem")
+  class ToListItemResultTests {
+
+    @Test
+    @DisplayName("Deve mapear domínio para resultado de listagem")
+    void shouldMapDomainToListItemResult() {
+      // 1. Arrange
+      var createdAt = Instant.parse("2026-05-07T10:15:30Z");
+      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt, UrlStatus.ACTIVE, null, null, createdAt);
+
+      // 2. Act
+      var result = mapper.toListItemResult(url);
+
+      // 3. Assert
+      assertThat(result.originalUrl()).isEqualTo("https://google.com");
+      assertThat(result.shortCode()).isEqualTo("aB3dE");
+      assertThat(result.createdAt()).isEqualTo(createdAt);
+    }
+
+    @Test
+    @DisplayName("Deve retornar nulo quando domínio for nulo")
+    void shouldReturnNullWhenDomainIsNull() {
+      // 1. Arrange
+      Url url = null;
+
+      // 2. Act
+      var result = mapper.toListItemResult(url);
+
+      // 3. Assert
+      assertThat(result).isNull();
+    }
+  }
+
   private UrlEntity urlEntity() {
     return UrlEntity.builder()
         .shortCode("aB3dE")
@@ -148,6 +184,8 @@ class UrlMapperTest {
         .updatedAt(Instant.parse("2026-05-07T10:15:30Z"))
         .status(UrlStatus.ACTIVE)
         .userId(USER_ID)
+        .createdAtShortCodeGsi("2026-05-07T10:15:30Z#aB3dE")
+        .statusCreatedAtShortCodeGsi("ACTIVE#2026-05-07T10:15:30Z#aB3dE")
         .build();
   }
 }

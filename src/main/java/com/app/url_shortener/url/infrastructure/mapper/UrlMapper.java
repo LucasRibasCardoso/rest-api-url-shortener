@@ -1,13 +1,17 @@
 package com.app.url_shortener.url.infrastructure.mapper;
 
 import com.app.url_shortener.url.domain.model.Url;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface UrlMapper {
 
+  @Mapping(target = "createdAtShortCodeGsi", expression = "java(toCreatedAtShortCodeGsi(domain))")
+  @Mapping(target = "statusCreatedAtShortCodeGsi", expression = "java(toStatusCreatedAtShortCodeGsi(domain))")
   UrlEntity toEntity(Url domain);
 
   default Url toDomain(UrlEntity entity) {
@@ -28,5 +32,29 @@ public interface UrlMapper {
 
   default Url createUrl(UrlEntity entity) {
     return toDomain(entity);
+  }
+
+  default UrlListItemResult toListItemResult(Url url) {
+    if (url == null) {
+      return null;
+    }
+
+    return new UrlListItemResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt(), url.getStatus());
+  }
+
+  default String toCreatedAtShortCodeGsi(Url url) {
+    if (url == null) {
+      return null;
+    }
+
+    return url.getCreatedAt() + "#" + url.getShortCode();
+  }
+
+  default String toStatusCreatedAtShortCodeGsi(Url url) {
+    if (url == null) {
+      return null;
+    }
+
+    return url.getStatus().name() + "#" + url.getCreatedAt() + "#" + url.getShortCode();
   }
 }

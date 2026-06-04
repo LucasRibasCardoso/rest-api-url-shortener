@@ -159,8 +159,10 @@ class UrlWebMapperTest {
       // 3. Assert
       assertAll(
           () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
-          () -> assertThat(response.createdAt()).isEqualTo(createdAt)
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE)
       );
     }
 
@@ -238,8 +240,8 @@ class UrlWebMapperTest {
       var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
       var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
       var result = new PageUrlResult(List.of(
-          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt),
-          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt)
+          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
+          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)
       ), "next-page-cursor");
       var baseUrl = "https://sho.rt";
 
@@ -251,11 +253,15 @@ class UrlWebMapperTest {
           () -> assertThat(response.nextCursor()).isEqualTo(result.nextCursor()),
           () -> assertThat(response.urls()).hasSize(2),
           () -> assertThat(response.urls().get(0).originalUrl()).isEqualTo("https://google.com"),
+          () -> assertThat(response.urls().get(0).shortCode()).isEqualTo("aB3dE"),
           () -> assertThat(response.urls().get(0).shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
           () -> assertThat(response.urls().get(0).createdAt()).isEqualTo(firstCreatedAt),
+          () -> assertThat(response.urls().get(0).status()).isEqualTo(UrlStatus.ACTIVE),
           () -> assertThat(response.urls().get(1).originalUrl()).isEqualTo("https://spring.io"),
+          () -> assertThat(response.urls().get(1).shortCode()).isEqualTo("fG4hI"),
           () -> assertThat(response.urls().get(1).shortUrl()).isEqualTo("https://sho.rt/r/fG4hI"),
-          () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt)
+          () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt),
+          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED)
       );
     }
   }

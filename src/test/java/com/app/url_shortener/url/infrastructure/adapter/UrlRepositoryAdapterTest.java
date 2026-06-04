@@ -1,11 +1,13 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
-import com.app.url_shortener.url.infrastructure.utils.CursorUtil;
+import com.app.url_shortener.url.infrastructure.cursor.DynamoDbCursorCodec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -22,7 +24,6 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +49,9 @@ class UrlRepositoryAdapterTest {
   private UrlMapper urlMapper;
 
   @Mock
+  private DynamoDbCursorCodec cursorCodec;
+
+  @Mock
   private DynamoDbIndex<UrlEntity> userIndex;
 
   @Mock
@@ -55,6 +59,9 @@ class UrlRepositoryAdapterTest {
 
   @Mock
   private Page<UrlEntity> page;
+
+  @Mock
+  private Page<UrlEntity> secondPage;
 
   @InjectMocks
   private UrlRepositoryAdapter adapter;
@@ -161,9 +168,11 @@ class UrlRepositoryAdapterTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var createdAt = Instant.parse("2026-05-07T10:00:00Z");
+      var url = activeUrl(shortCode, "https://google.com", createdAt);
 
       // 2. Act
-      adapter.softDeleteByShortCode(shortCode, deletedBy);
+      adapter.softDeleteByShortCode(url, deletedBy);
 
       // 3. Assert
       var requestCaptor = ArgumentCaptor.forClass(UpdateItemEnhancedRequest.class);
@@ -172,14 +181,14 @@ class UrlRepositoryAdapterTest {
       var request = (UpdateItemEnhancedRequest<UrlEntity>) requestCaptor.getValue();
       var item = request.item();
       assertThat(item.getShortCode()).isEqualTo(shortCode);
-      assertThat(item.getStatus()).isEqualTo(UrlStatus.DELETED.name());
+      assertThat(item.getStatus()).isEqualTo(UrlStatus.DELETED);
       assertThat(item.getDeletedBy()).isEqualTo(deletedBy);
-      assertThat(item.getDeletedAt()).isNotBlank();
+      assertThat(item.getDeletedAt()).isNotNull();
       assertThat(item.getUpdatedAt()).isEqualTo(item.getDeletedAt());
+      assertThat(item.getStatusCreatedAtShortCodeGsi()).isEqualTo("DELETED#2026-05-07T10:00:00Z#aB3dE");
       assertThat(item.getUserId()).isNull();
       assertThat(item.getOriginalUrl()).isNull();
       assertThat(item.getCreatedAt()).isNull();
-      assertThat(Instant.parse(item.getDeletedAt())).isNotNull();
       assertThat(request.ignoreNullsMode()).isEqualTo(IgnoreNullsMode.SCALAR_ONLY);
       assertThat(request.conditionExpression().expression())
           .isEqualTo("attribute_exists(#pk) AND #status = :active");
@@ -197,11 +206,12 @@ class UrlRepositoryAdapterTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var url = activeUrl(shortCode, "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var exception = ConditionalCheckFailedException.builder().message("already deleted").build();
       doThrow(exception).when(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
 
       // 2. Act
-      adapter.softDeleteByShortCode(shortCode, deletedBy);
+      adapter.softDeleteByShortCode(url, deletedBy);
 
       // 3. Assert
       verify(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
@@ -214,8 +224,8 @@ class UrlRepositoryAdapterTest {
   class FindAllByUserIdTests {
 
     @Test
-    @DisplayName("Deve buscar primeira página sem cursor inicial e mapear entidades para detalhes de URL")
-    void shouldFindFirstPageWithoutExclusiveStartKeyAndMapEntitiesToUrlDetails() {
+    @DisplayName("Deve buscar URLs ativas no índice por usuário e status")
+    void shouldFindActiveUrlsUsingUserStatusIndex() {
       // 1. Arrange
       var limit = 10;
       String cursor = null;
@@ -223,6 +233,91 @@ class UrlRepositoryAdapterTest {
       var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
       var firstUrl = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var secondUrl = activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
+      var firstListItem = new UrlListItemResult("https://google.com", "aB3dE", Instant.parse("2026-05-07T10:00:00Z"), UrlStatus.ACTIVE);
+      var secondListItem = new UrlListItemResult("https://spring.io", "fG4hI", Instant.parse("2026-05-08T11:30:00Z"), UrlStatus.ACTIVE);
+      when(urlTable.index("user-status-index")).thenReturn(userIndex);
+      when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
+      when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
+      when(page.items()).thenReturn(List.of(firstEntity, secondEntity));
+      when(page.lastEvaluatedKey()).thenReturn(null);
+      when(urlMapper.toDomain(firstEntity)).thenReturn(firstUrl);
+      when(urlMapper.toDomain(secondEntity)).thenReturn(secondUrl);
+      when(urlMapper.toListItemResult(firstUrl)).thenReturn(firstListItem);
+      when(urlMapper.toListItemResult(secondUrl)).thenReturn(secondListItem);
+
+      // 2. Act
+      var result = adapter.findAllByUserId(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
+
+      // 3. Assert
+      assertThat(result.urls()).hasSize(2);
+      assertThat(result.urls().get(0).originalUrl()).isEqualTo("https://google.com");
+      assertThat(result.urls().get(0).shortCode()).isEqualTo("aB3dE");
+      assertThat(result.urls().get(0).createdAt()).isEqualTo(Instant.parse("2026-05-07T10:00:00Z"));
+      assertThat(result.urls().get(0).status()).isEqualTo(UrlStatus.ACTIVE);
+      assertThat(result.urls().get(1).originalUrl()).isEqualTo("https://spring.io");
+      assertThat(result.urls().get(1).shortCode()).isEqualTo("fG4hI");
+      assertThat(result.urls().get(1).createdAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
+      assertThat(result.urls().get(1).status()).isEqualTo(UrlStatus.ACTIVE);
+      assertThat(result.nextCursor()).isNull();
+
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-status-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
+      assertThat(requestCaptor.getValue().exclusiveStartKey()).isNull();
+      assertThat(requestCaptor.getValue().filterExpression()).isNull();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.sortBeginsWith(key -> key
+              .partitionValue(USER_ID.toString())
+              .sortValue("ACTIVE#")));
+      verify(urlMapper).toDomain(firstEntity);
+      verify(urlMapper).toDomain(secondEntity);
+      verify(urlMapper).toListItemResult(firstUrl);
+      verify(urlMapper).toListItemResult(secondUrl);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
+    }
+
+    @Test
+    @DisplayName("Deve buscar URLs deletadas no índice por usuário e status")
+    void shouldFindDeletedUrlsUsingUserStatusIndex() {
+      // 1. Arrange
+      var limit = 5;
+      when(urlTable.index("user-status-index")).thenReturn(userIndex);
+      when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
+      when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
+      when(page.items()).thenReturn(List.of());
+      when(page.lastEvaluatedKey()).thenReturn(null);
+
+      // 2. Act
+      var result = adapter.findAllByUserId(USER_ID, limit, null, UrlStatusFilter.DELETED);
+
+      // 3. Assert
+      assertThat(result.urls()).isEmpty();
+      assertThat(result.nextCursor()).isNull();
+
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-status-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
+      assertThat(requestCaptor.getValue().filterExpression()).isNull();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.sortBeginsWith(key -> key
+              .partitionValue(USER_ID.toString())
+              .sortValue("DELETED#")));
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
+    }
+
+    @Test
+    @DisplayName("Deve buscar todas as URLs no índice por usuário")
+    void shouldFindAllUrlsUsingUserIndex() {
+      // 1. Arrange
+      var limit = 10;
+      var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
+      var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
+      var firstUrl = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var secondUrl = activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
+      var firstListItem = new UrlListItemResult("https://google.com", "aB3dE", Instant.parse("2026-05-07T10:00:00Z"), UrlStatus.ACTIVE);
+      var secondListItem = new UrlListItemResult("https://spring.io", "fG4hI", Instant.parse("2026-05-08T11:30:00Z"), UrlStatus.ACTIVE);
       when(urlTable.index("user-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
@@ -230,28 +325,28 @@ class UrlRepositoryAdapterTest {
       when(page.lastEvaluatedKey()).thenReturn(null);
       when(urlMapper.toDomain(firstEntity)).thenReturn(firstUrl);
       when(urlMapper.toDomain(secondEntity)).thenReturn(secondUrl);
+      when(urlMapper.toListItemResult(firstUrl)).thenReturn(firstListItem);
+      when(urlMapper.toListItemResult(secondUrl)).thenReturn(secondListItem);
 
       // 2. Act
-      var result = adapter.findAllByUserId(USER_ID, limit, cursor);
+      var result = adapter.findAllByUserId(USER_ID, limit, null, UrlStatusFilter.ALL);
 
       // 3. Assert
       assertThat(result.urls()).hasSize(2);
-      assertThat(result.urls().get(0).originalUrl()).isEqualTo("https://google.com");
-      assertThat(result.urls().get(0).shortCode()).isEqualTo("aB3dE");
-      assertThat(result.urls().get(0).createdAt()).isEqualTo(Instant.parse("2026-05-07T10:00:00Z"));
-      assertThat(result.urls().get(1).originalUrl()).isEqualTo("https://spring.io");
-      assertThat(result.urls().get(1).shortCode()).isEqualTo("fG4hI");
-      assertThat(result.urls().get(1).createdAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
       assertThat(result.nextCursor()).isNull();
 
       var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
       verify(urlTable).index("user-index");
       verify(userIndex).query(requestCaptor.capture());
       assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
-      assertThat(requestCaptor.getValue().exclusiveStartKey()).isNull();
+      assertThat(requestCaptor.getValue().filterExpression()).isNull();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.keyEqualTo(key -> key.partitionValue(USER_ID.toString())));
       verify(urlMapper).toDomain(firstEntity);
       verify(urlMapper).toDomain(secondEntity);
-      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper);
+      verify(urlMapper).toListItemResult(firstUrl);
+      verify(urlMapper).toListItemResult(secondUrl);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
 
     @Test
@@ -260,66 +355,57 @@ class UrlRepositoryAdapterTest {
       // 1. Arrange
       var limit = 5;
       var startKey = Map.of("shortCode", AttributeValue.builder().s("aB3dE").build());
-      var cursor = Base64.getEncoder().encodeToString("valid-cursor".getBytes());
-      when(urlTable.index("user-index")).thenReturn(userIndex);
+      var cursor = "valid-cursor";
+      when(urlTable.index("user-status-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
       when(page.items()).thenReturn(List.of());
       when(page.lastEvaluatedKey()).thenReturn(null);
+      when(cursorCodec.decode(cursor)).thenReturn(startKey);
 
-      try (var cursorUtil = mockStatic(CursorUtil.class)) {
-        cursorUtil.when(() -> CursorUtil.decode(cursor)).thenReturn(startKey);
+      // 2. Act
+      var result = adapter.findAllByUserId(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
 
-        // 2. Act
-        var result = adapter.findAllByUserId(USER_ID, limit, cursor);
+      // 3. Assert
+      assertThat(result.urls()).isEmpty();
+      assertThat(result.nextCursor()).isNull();
 
-        // 3. Assert
-        assertThat(result.urls()).isEmpty();
-        assertThat(result.nextCursor()).isNull();
-
-        var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
-        verify(urlTable).index("user-index");
-        verify(userIndex).query(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
-        assertThat(requestCaptor.getValue().exclusiveStartKey()).containsEntry(
-                "shortCode",
-                AttributeValue.builder().s("aB3dE").build());
-        cursorUtil.verify(() -> CursorUtil.decode(cursor));
-        verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper);
-      }
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-status-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
+      assertThat(requestCaptor.getValue().exclusiveStartKey()).containsEntry(
+              "shortCode",
+              AttributeValue.builder().s("aB3dE").build());
+      verify(cursorCodec).decode(cursor);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
 
     @Test
-    @DisplayName("Deve gerar próximo cursor quando DynamoDB retornar última chave avaliada")
-    void shouldGenerateNextCursorWhenDynamoDbReturnsLastEvaluatedKey() {
+    @DisplayName("Deve gerar próximo cursor quando índice retornar última chave avaliada")
+    void shouldGenerateNextCursorWhenIndexReturnsLastEvaluatedKey() {
       // 1. Arrange
-      var limit = 10;
-      var lastEvaluatedKey = Map.of("shortCode", AttributeValue.builder().s("fG4hI").build());
-      var nextCursor = Base64.getEncoder().encodeToString("next-cursor".getBytes());
+      var limit = 5;
+      var lastEvaluatedKey = Map.of("shortCode", AttributeValue.builder().s("aB3dE").build());
+      var nextCursor = "next-cursor";
       when(urlTable.index("user-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
       when(page.items()).thenReturn(List.of());
       when(page.lastEvaluatedKey()).thenReturn(lastEvaluatedKey);
+      when(cursorCodec.encode(lastEvaluatedKey)).thenReturn(nextCursor);
 
-      try (var cursorUtil = mockStatic(CursorUtil.class)) {
-        cursorUtil.when(() -> CursorUtil.encode(lastEvaluatedKey)).thenReturn(nextCursor);
+      // 2. Act
+      var result = adapter.findAllByUserId(USER_ID, limit, " ", UrlStatusFilter.ALL);
 
-        // 2. Act
-        var result = adapter.findAllByUserId(USER_ID, limit, " ");
+      // 3. Assert
+      assertThat(result.urls()).isEmpty();
+      assertThat(result.nextCursor()).isEqualTo(nextCursor);
 
-        // 3. Assert
-        assertThat(result.urls()).isEmpty();
-        assertThat(result.nextCursor()).isEqualTo(nextCursor);
-
-        var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
-        verify(urlTable).index("user-index");
-        verify(userIndex).query(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
-        assertThat(requestCaptor.getValue().exclusiveStartKey()).isNull();
-        cursorUtil.verify(() -> CursorUtil.encode(lastEvaluatedKey));
-        verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper);
-      }
+      verify(urlTable).index("user-index");
+      verify(userIndex).query(any(QueryEnhancedRequest.class));
+      verify(cursorCodec).encode(lastEvaluatedKey);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
   }
 
@@ -327,7 +413,7 @@ class UrlRepositoryAdapterTest {
     return UrlEntity.builder()
             .shortCode(shortCode)
             .originalUrl(originalUrl)
-            .createdAt(createdAt)
+            .createdAt(Instant.parse(createdAt + ":00Z"))
             .userId(USER_ID)
             .build();
   }
