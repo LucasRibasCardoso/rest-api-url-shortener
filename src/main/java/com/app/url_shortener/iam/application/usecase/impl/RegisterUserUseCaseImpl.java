@@ -6,7 +6,7 @@ import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenP
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.result.RegisterUserResult;
 import com.app.url_shortener.iam.application.usecase.RegisterUserUseCase;
-import com.app.url_shortener.iam.domain.event.EmailVerificationEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;

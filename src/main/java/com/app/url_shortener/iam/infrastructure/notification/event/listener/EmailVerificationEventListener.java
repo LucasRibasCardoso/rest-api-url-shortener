@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.notification.event.listener;
 
-import com.app.url_shortener.iam.domain.event.EmailVerificationEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
 import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.app.url_shortener.iam.domain.event;
+package com.app.url_shortener.iam.application.event;
 
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 

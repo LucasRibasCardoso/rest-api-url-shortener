@@ -2,6 +2,7 @@ package com.app.url_shortener.iam.domain.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;

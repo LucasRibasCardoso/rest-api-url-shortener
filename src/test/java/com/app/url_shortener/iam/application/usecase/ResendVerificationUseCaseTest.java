@@ -7,7 +7,7 @@ import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPo
 import com.app.url_shortener.iam.application.usecase.impl.ResendVerificationUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.domain.event.EmailVerificationEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import org.junit.jupiter.api.DisplayName;
