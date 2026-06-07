@@ -102,7 +102,9 @@ class DeleteUrlUseCaseImplTest {
               UrlStatus.DELETED,
               deletedAt,
               userId,
-              deletedAt);
+              deletedAt,
+              0,
+              null);
       var command = new DeleteUrlCommand(userId, shortCode, false);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
