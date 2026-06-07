@@ -9,6 +9,4 @@ public record UrlResponseDto(
     String shortCode,
     String shortUrl,
     Instant createdAt,
-    UrlStatus status,
-    long accessCount,
-    Instant lastAccessedAt) {}
+    UrlStatus status) {}

@@ -154,7 +154,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
-      var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 0, null);
+      var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE);
       given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
       given(shortenUrlUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
@@ -173,7 +173,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()))
           .andExpect(jsonPath("$.createdAt").value("2026-05-10T14:30:00Z"))
           .andExpect(jsonPath("$.status").value(response.status().name()))
-          .andExpect(jsonPath("$.accessCount").value(0))
+          .andExpect(jsonPath("$.accessCount").doesNotExist())
           .andExpect(jsonPath("$.lastAccessedAt").doesNotExist());
 
       verify(urlWebMapper).toCommand(request, USER_ID, planType);
@@ -669,10 +669,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)), "next");
+      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
       var response = new PageUrlResponseDto(List.of(
-          new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
+          new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
       ), "next");
       given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
@@ -690,8 +689,8 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].shortCode").value("aB3dE"))
           .andExpect(jsonPath("$.urls[0].shortUrl").value(BASE_URL + "/r/aB3dE"))
           .andExpect(jsonPath("$.urls[0].status").value(UrlStatus.ACTIVE.name()))
-          .andExpect(jsonPath("$.urls[0].accessCount").value(42))
-          .andExpect(jsonPath("$.urls[0].lastAccessedAt").value(lastAccessedAt.toString()))
+          .andExpect(jsonPath("$.urls[0].accessCount").doesNotExist())
+          .andExpect(jsonPath("$.urls[0].lastAccessedAt").doesNotExist())
           .andExpect(jsonPath("$.nextCursor").value("next"));
 
       verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);

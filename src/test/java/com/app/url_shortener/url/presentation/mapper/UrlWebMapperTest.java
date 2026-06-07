@@ -162,9 +162,7 @@ class UrlWebMapperTest {
           () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
           () -> assertThat(response.createdAt()).isEqualTo(createdAt),
-          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE),
-          () -> assertThat(response.accessCount()).isZero(),
-          () -> assertThat(response.lastAccessedAt()).isNull()
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE)
       );
     }
 
@@ -251,11 +249,9 @@ class UrlWebMapperTest {
       // 1. Arrange
       var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
       var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
-      var firstLastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var secondLastAccessedAt = Instant.parse("2026-05-11T11:00:00Z");
       var result = new PageUrlResult(List.of(
-          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE, 42, firstLastAccessedAt),
-          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED, 10, secondLastAccessedAt)
+          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
+          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)
       ), "next-page-cursor");
       var baseUrl = "https://sho.rt";
 
@@ -271,15 +267,11 @@ class UrlWebMapperTest {
           () -> assertThat(response.urls().get(0).shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
           () -> assertThat(response.urls().get(0).createdAt()).isEqualTo(firstCreatedAt),
           () -> assertThat(response.urls().get(0).status()).isEqualTo(UrlStatus.ACTIVE),
-          () -> assertThat(response.urls().get(0).accessCount()).isEqualTo(42),
-          () -> assertThat(response.urls().get(0).lastAccessedAt()).isEqualTo(firstLastAccessedAt),
           () -> assertThat(response.urls().get(1).originalUrl()).isEqualTo("https://spring.io"),
           () -> assertThat(response.urls().get(1).shortCode()).isEqualTo("fG4hI"),
           () -> assertThat(response.urls().get(1).shortUrl()).isEqualTo("https://sho.rt/r/fG4hI"),
           () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt),
-          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED),
-          () -> assertThat(response.urls().get(1).accessCount()).isEqualTo(10),
-          () -> assertThat(response.urls().get(1).lastAccessedAt()).isEqualTo(secondLastAccessedAt)
+          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED)
       );
     }
   }

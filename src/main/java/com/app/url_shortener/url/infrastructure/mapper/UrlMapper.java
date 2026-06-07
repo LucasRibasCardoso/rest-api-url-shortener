@@ -45,9 +45,7 @@ public interface UrlMapper {
         url.getOriginalUrl(),
         url.getShortCode(),
         url.getCreatedAt(),
-        url.getStatus(),
-        url.getAccessCount(),
-        url.getLastAccessedAt());
+        url.getStatus());
   }
 
   default String toCreatedAtShortCodeGsi(Url url) {

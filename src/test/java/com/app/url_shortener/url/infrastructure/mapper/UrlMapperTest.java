@@ -191,8 +191,6 @@ class UrlMapperTest {
       assertThat(result.shortCode()).isEqualTo("aB3dE");
       assertThat(result.createdAt()).isEqualTo(createdAt);
       assertThat(result.status()).isEqualTo(UrlStatus.ACTIVE);
-      assertThat(result.accessCount()).isEqualTo(42);
-      assertThat(result.lastAccessedAt()).isEqualTo(lastAccessedAt);
     }
 
     @Test

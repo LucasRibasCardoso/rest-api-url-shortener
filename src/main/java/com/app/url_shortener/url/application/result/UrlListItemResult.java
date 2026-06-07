@@ -8,6 +8,4 @@ public record UrlListItemResult(
     String originalUrl,
     String shortCode,
     Instant createdAt,
-    UrlStatus status,
-    long accessCount,
-    Instant lastAccessedAt) {}
+    UrlStatus status) {}
