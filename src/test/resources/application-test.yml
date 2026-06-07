@@ -14,6 +14,18 @@ spring:
     redis:
       host: localhost
       port: 6379
+  cloud:
+    aws:
+      credentials:
+        access-key: test
+        secret-key: test
+      region:
+        static: us-east-1
+      sqs:
+        endpoint: http://localhost:4566
+        queue-not-found-strategy: fail
+        listener:
+          auto-startup: false
 
 aws:
   dynamodb:
@@ -47,6 +59,10 @@ app:
         active: 15m
         deleted: 1h
         not-found: 5m
+  aws:
+    sqs:
+      url-redirect-events-queue: url-redirect-events-queue
+      url-redirect-events-dlq: url-redirect-events-dlq
   rate-limit:
     enabled: true
     key-prefix: "rate-limit"
