@@ -47,7 +47,19 @@ class FindUrlDetailsUseCaseImplTest {
       var shortCode = "aB3dE";
       var originalUrl = "https://google.com";
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var url = activeUrl(userId, shortCode, originalUrl, createdAt);
+      var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var url =
+          Url.restore(
+              userId,
+              shortCode,
+              originalUrl,
+              createdAt,
+              UrlStatus.ACTIVE,
+              null,
+              null,
+              createdAt,
+              42,
+              lastAccessedAt);
       var command = new UrlDetailsCommand(userId, shortCode, false);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -63,6 +75,8 @@ class FindUrlDetailsUseCaseImplTest {
       assertThat(result.updatedAt()).isEqualTo(createdAt);
       assertThat(result.deletedAt()).isNull();
       assertThat(result.deletedBy()).isNull();
+      assertThat(result.accessCount()).isEqualTo(42);
+      assertThat(result.lastAccessedAt()).isEqualTo(lastAccessedAt);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort);
     }
@@ -106,7 +120,18 @@ class FindUrlDetailsUseCaseImplTest {
       var originalUrl = "https://google.com";
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var url = Url.restore(userId, shortCode, originalUrl, createdAt, UrlStatus.DELETED, deletedAt, deletedBy, deletedAt);
+      var url =
+          Url.restore(
+              userId,
+              shortCode,
+              originalUrl,
+              createdAt,
+              UrlStatus.DELETED,
+              deletedAt,
+              deletedBy,
+              deletedAt,
+              0,
+              null);
       var command = new UrlDetailsCommand(userId, shortCode, false);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -137,7 +162,18 @@ class FindUrlDetailsUseCaseImplTest {
       var originalUrl = "https://google.com";
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var url = Url.restore(ownerId, shortCode, originalUrl, createdAt, UrlStatus.DELETED, deletedAt, deletedBy, deletedAt);
+      var url =
+          Url.restore(
+              ownerId,
+              shortCode,
+              originalUrl,
+              createdAt,
+              UrlStatus.DELETED,
+              deletedAt,
+              deletedBy,
+              deletedAt,
+              0,
+              null);
       var command = new UrlDetailsCommand(requesterId, shortCode, true);
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -193,6 +229,7 @@ class FindUrlDetailsUseCaseImplTest {
   }
 
   private static Url activeUrl(UUID userId, String shortCode, String originalUrl, Instant createdAt) {
-    return Url.restore(userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt);
+    return Url.restore(
+        userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt, 0, null);
   }
 }

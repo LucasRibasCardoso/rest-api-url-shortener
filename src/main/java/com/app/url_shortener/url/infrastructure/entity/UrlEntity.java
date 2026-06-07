@@ -24,6 +24,9 @@ public class UrlEntity {
   private final Instant deletedAt;
   private final UUID deletedBy;
 
+  private final long accessCount;
+  private final Instant lastAccessedAt;
+
   private final String createdAtShortCodeGsi;
   private final String statusCreatedAtShortCodeGsi;
 

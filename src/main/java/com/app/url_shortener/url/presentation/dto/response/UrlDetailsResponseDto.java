@@ -12,5 +12,6 @@ public record UrlDetailsResponseDto(
     Instant createdAt,
     Instant updatedAt,
     Instant deletedAt,
-    UUID deletedBy) {
-}
+    UUID deletedBy,
+    long accessCount,
+    Instant lastAccessedAt) {}

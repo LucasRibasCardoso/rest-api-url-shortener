@@ -1,7 +1,9 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
+import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
+import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.RedirectCacheStatus;
 import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +42,9 @@ class ResolveUrlUseCaseImplTest {
 
   @Mock
   private UrlRepositoryPort urlRepositoryPort;
+
+  @Mock
+  private UrlRedirectEventPublisherPort urlRedirectEventPublisherPort;
 
   @InjectMocks
   private ResolveUrlUseCaseImpl resolveUrlUseCase;
@@ -63,6 +69,7 @@ class ResolveUrlUseCaseImplTest {
       // 3. Assert
       assertThat(result.originalUrl()).isEqualTo(originalUrl);
       verify(redirectCachePort).findByShortCode(shortCode);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort);
       verifyNoInteractions(urlRepositoryPort);
     }
@@ -88,6 +95,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, originalUrl);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
@@ -107,6 +115,7 @@ class ResolveUrlUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveNotFoundIfAbsent(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
+      verifyNoInteractions(urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -123,7 +132,7 @@ class ResolveUrlUseCaseImplTest {
           .isInstanceOf(UrlNotFoundException.class);
       verify(redirectCachePort).findByShortCode(shortCode);
       verifyNoMoreInteractions(redirectCachePort);
-      verifyNoInteractions(urlRepositoryPort);
+      verifyNoInteractions(urlRepositoryPort, urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -140,7 +149,7 @@ class ResolveUrlUseCaseImplTest {
           .isInstanceOf(UrlNotFoundException.class);
       verify(redirectCachePort).findByShortCode(shortCode);
       verifyNoMoreInteractions(redirectCachePort);
-      verifyNoInteractions(urlRepositoryPort);
+      verifyNoInteractions(urlRepositoryPort, urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -162,7 +171,9 @@ class ResolveUrlUseCaseImplTest {
               UrlStatus.DELETED,
               now,
               deletedBy,
-              now);
+              now,
+              0,
+              null);
       when(redirectCachePort.findByShortCode(shortCode)).thenReturn(Optional.empty());
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
 
@@ -173,6 +184,7 @@ class ResolveUrlUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveDeleted(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
+      verifyNoInteractions(urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -224,6 +236,7 @@ class ResolveUrlUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, url.getOriginalUrl());
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
+      verifyNoInteractions(urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -346,6 +359,7 @@ class ResolveUrlUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveNotFoundIfAbsent(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
+      verifyNoInteractions(urlRedirectEventPublisherPort);
     }
 
     @Test
@@ -367,7 +381,9 @@ class ResolveUrlUseCaseImplTest {
               UrlStatus.DELETED,
               now,
               deletedBy,
-              now);
+              now,
+              0,
+              null);
       when(redirectCachePort.findByShortCode(shortCode)).thenReturn(Optional.empty());
       when(urlRepositoryPort.findByShortCode(shortCode)).thenReturn(Optional.of(url));
       doThrow(new RedirectCacheException(new RuntimeException("Redis unavailable")))
@@ -381,6 +397,16 @@ class ResolveUrlUseCaseImplTest {
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveDeleted(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
+      verifyNoInteractions(urlRedirectEventPublisherPort);
     }
+  }
+
+  private void assertPublishedEventFor(String shortCode) {
+    var eventCaptor = ArgumentCaptor.forClass(UrlRedirectedEvent.class);
+    verify(urlRedirectEventPublisherPort).publishAsync(eventCaptor.capture());
+
+    assertThat(eventCaptor.getValue().eventId()).isNotNull();
+    assertThat(eventCaptor.getValue().shortCode()).isEqualTo(shortCode);
+    assertThat(eventCaptor.getValue().lastAccessedAt()).isNotNull();
   }
 }

@@ -154,7 +154,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
-      var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE);
+      var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 0, null);
       given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
       given(shortenUrlUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
@@ -172,7 +172,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.shortCode").value(response.shortCode()))
           .andExpect(jsonPath("$.shortUrl").value(response.shortUrl()))
           .andExpect(jsonPath("$.createdAt").value("2026-05-10T14:30:00Z"))
-          .andExpect(jsonPath("$.status").value(response.status().name()));
+          .andExpect(jsonPath("$.status").value(response.status().name()))
+          .andExpect(jsonPath("$.accessCount").value(0))
+          .andExpect(jsonPath("$.lastAccessedAt").doesNotExist());
 
       verify(urlWebMapper).toCommand(request, USER_ID, planType);
       verify(shortenUrlUseCase).execute(command);
@@ -255,8 +257,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
       given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result)).willReturn(response);
@@ -276,7 +279,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.createdAt").value(response.createdAt().toString()))
           .andExpect(jsonPath("$.updatedAt").value(response.updatedAt().toString()))
           .andExpect(jsonPath("$.deletedAt").doesNotExist())
-          .andExpect(jsonPath("$.deletedBy").doesNotExist());
+          .andExpect(jsonPath("$.deletedBy").doesNotExist())
+          .andExpect(jsonPath("$.accessCount").value(42))
+          .andExpect(jsonPath("$.lastAccessedAt").value(lastAccessedAt.toString()));
 
       verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
       verify(findUrlDetailsUseCase).execute(command);
@@ -291,8 +296,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, true);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result)).willReturn(response);
@@ -323,8 +328,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac003");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result)).willReturn(response);
@@ -359,8 +364,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "a".repeat(64);
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null);
+      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
+      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
       given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toResponse(result)).willReturn(response);
@@ -664,9 +669,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
+      var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)), "next");
       var response = new PageUrlResponseDto(List.of(
-          new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
+          new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
       ), "next");
       given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
@@ -684,6 +690,8 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].shortCode").value("aB3dE"))
           .andExpect(jsonPath("$.urls[0].shortUrl").value(BASE_URL + "/r/aB3dE"))
           .andExpect(jsonPath("$.urls[0].status").value(UrlStatus.ACTIVE.name()))
+          .andExpect(jsonPath("$.urls[0].accessCount").value(42))
+          .andExpect(jsonPath("$.urls[0].lastAccessedAt").value(lastAccessedAt.toString()))
           .andExpect(jsonPath("$.nextCursor").value("next"));
 
       verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);

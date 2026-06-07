@@ -36,7 +36,19 @@ class UrlMapperTest {
     void shouldMapDomainToEntityWithNativeTypes() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:30Z");
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt, UrlStatus.ACTIVE, null, null, createdAt);
+      var lastAccessedAt = Instant.parse("2026-05-08T11:30:00Z");
+      var url =
+          Url.restore(
+              USER_ID,
+              "aB3dE",
+              "https://google.com",
+              createdAt,
+              UrlStatus.ACTIVE,
+              null,
+              null,
+              createdAt,
+              42,
+              lastAccessedAt);
 
       // 2. Act
       var result = mapper.toEntity(url);
@@ -50,6 +62,8 @@ class UrlMapperTest {
       assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.getDeletedAt()).isNull();
       assertThat(result.getDeletedBy()).isNull();
+      assertThat(result.getAccessCount()).isEqualTo(42);
+      assertThat(result.getLastAccessedAt()).isEqualTo(lastAccessedAt);
       assertThat(result.getCreatedAtShortCodeGsi()).isEqualTo("2026-05-07T10:15:30Z#aB3dE");
       assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("ACTIVE#2026-05-07T10:15:30Z#aB3dE");
     }
@@ -90,6 +104,8 @@ class UrlMapperTest {
       assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
       assertThat(result.getDeletedAt()).isNull();
       assertThat(result.getDeletedBy()).isNull();
+      assertThat(result.getAccessCount()).isEqualTo(42);
+      assertThat(result.getLastAccessedAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
     }
 
     @Test
@@ -126,6 +142,8 @@ class UrlMapperTest {
       assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
       assertThat(result.getUpdatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
       assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
+      assertThat(result.getAccessCount()).isEqualTo(42);
+      assertThat(result.getLastAccessedAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
     }
 
     @Test
@@ -151,7 +169,19 @@ class UrlMapperTest {
     void shouldMapDomainToListItemResult() {
       // 1. Arrange
       var createdAt = Instant.parse("2026-05-07T10:15:30Z");
-      var url = Url.restore(USER_ID, "aB3dE", "https://google.com", createdAt, UrlStatus.ACTIVE, null, null, createdAt);
+      var lastAccessedAt = Instant.parse("2026-05-08T11:30:00Z");
+      var url =
+          Url.restore(
+              USER_ID,
+              "aB3dE",
+              "https://google.com",
+              createdAt,
+              UrlStatus.ACTIVE,
+              null,
+              null,
+              createdAt,
+              42,
+              lastAccessedAt);
 
       // 2. Act
       var result = mapper.toListItemResult(url);
@@ -160,6 +190,9 @@ class UrlMapperTest {
       assertThat(result.originalUrl()).isEqualTo("https://google.com");
       assertThat(result.shortCode()).isEqualTo("aB3dE");
       assertThat(result.createdAt()).isEqualTo(createdAt);
+      assertThat(result.status()).isEqualTo(UrlStatus.ACTIVE);
+      assertThat(result.accessCount()).isEqualTo(42);
+      assertThat(result.lastAccessedAt()).isEqualTo(lastAccessedAt);
     }
 
     @Test
@@ -184,6 +217,8 @@ class UrlMapperTest {
         .updatedAt(Instant.parse("2026-05-07T10:15:30Z"))
         .status(UrlStatus.ACTIVE)
         .userId(USER_ID)
+        .accessCount(42)
+        .lastAccessedAt(Instant.parse("2026-05-08T11:30:00Z"))
         .createdAtShortCodeGsi("2026-05-07T10:15:30Z#aB3dE")
         .statusCreatedAtShortCodeGsi("ACTIVE#2026-05-07T10:15:30Z#aB3dE")
         .build();

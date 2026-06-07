@@ -4,11 +4,9 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 @Getter
-@EqualsAndHashCode
 public class Url implements Serializable {
   private final UUID userId;
   private final String shortCode;
@@ -18,6 +16,8 @@ public class Url implements Serializable {
   private final Instant deletedAt;
   private final UUID deletedBy;
   private final Instant updatedAt;
+  private final long accessCount;
+  private final Instant lastAccessedAt;
 
   private Url(
       UUID userId,
@@ -27,22 +27,27 @@ public class Url implements Serializable {
       UrlStatus urlStatus,
       Instant deletedAt,
       UUID deletedBy,
-      Instant updatedAt) {
+      Instant updatedAt,
+      long accessCount,
+      Instant lastAccessedAt) {
     this.userId = Objects.requireNonNull(userId, "userId is required.");
-    this.shortCode = Objects.requireNonNull(shortCode, "shortCode is required.").trim();
-    this.originalUrl = Objects.requireNonNull(originalUrl, "originalUrl is required.").trim();
-    this.createdAt = Objects.requireNonNull(createdAt, "createdAt is  required");
+    this.shortCode = validateNotBlank(shortCode, "shortCode");
+    this.originalUrl = validateNotBlank(originalUrl, "originalUrl");
+    this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required.");
     this.status = Objects.requireNonNull(urlStatus, "urlStatus is required.");
     this.deletedAt = deletedAt;
     this.deletedBy = deletedBy;
     this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required.");
+    this.accessCount = accessCount;
+    this.lastAccessedAt = lastAccessedAt;
 
     validateStatusConsistency();
+    validateAccessCount(accessCount);
   }
 
   public static Url create(UUID userId, String shortCode, String originalUrl) {
     Instant now = Instant.now();
-    return new Url(userId, shortCode, originalUrl, now, UrlStatus.ACTIVE, null, null, now);
+    return new Url(userId, shortCode, originalUrl, now, UrlStatus.ACTIVE, null, null, now, 0, null);
   }
 
   public static Url restore(
@@ -53,9 +58,34 @@ public class Url implements Serializable {
       UrlStatus urlStatus,
       Instant deletedAt,
       UUID deletedBy,
-      Instant updatedAt) {
+      Instant updatedAt,
+      long accessCount,
+      Instant lastAccessedAt) {
     return new Url(
-        userId, shortCode, originalUrl, createdAt, urlStatus, deletedAt, deletedBy, updatedAt);
+        userId,
+        shortCode,
+        originalUrl,
+        createdAt,
+        urlStatus,
+        deletedAt,
+        deletedBy,
+        updatedAt,
+        accessCount,
+        lastAccessedAt);
+  }
+
+  private static void validateAccessCount(long accessCount) {
+    if (accessCount < 0) {
+      throw new IllegalArgumentException("accessCount must not be negative.");
+    }
+  }
+
+  private static String validateNotBlank(String value, String field) {
+    if (value == null || value.isBlank()) {
+      throw new IllegalArgumentException(field + " is required.");
+    }
+
+    return value.trim();
   }
 
   public boolean isDeleted() {
@@ -102,5 +132,16 @@ public class Url implements Serializable {
         + ", createdAt="
         + createdAt
         + '}';
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    if (!(object instanceof Url url)) return false;
+    return Objects.equals(shortCode, url.shortCode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(shortCode);
   }
 }

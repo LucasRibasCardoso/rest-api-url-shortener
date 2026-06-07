@@ -27,7 +27,9 @@ public interface UrlMapper {
         entity.getStatus(),
         entity.getDeletedAt(),
         entity.getDeletedBy(),
-        entity.getUpdatedAt());
+        entity.getUpdatedAt(),
+        entity.getAccessCount(),
+        entity.getLastAccessedAt());
   }
 
   default Url createUrl(UrlEntity entity) {
@@ -39,7 +41,13 @@ public interface UrlMapper {
       return null;
     }
 
-    return new UrlListItemResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt(), url.getStatus());
+    return new UrlListItemResult(
+        url.getOriginalUrl(),
+        url.getShortCode(),
+        url.getCreatedAt(),
+        url.getStatus(),
+        url.getAccessCount(),
+        url.getLastAccessedAt());
   }
 
   default String toCreatedAtShortCodeGsi(Url url) {

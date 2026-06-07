@@ -31,6 +31,8 @@ public interface UrlWebMapper {
 
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
   @Mapping(target = "status", constant = "ACTIVE")
+  @Mapping(target = "accessCount", constant = "0L")
+  @Mapping(target = "lastAccessedAt", ignore = true)
   UrlResponseDto toResponse(ShortenUrlResult result, @Context String baseUrl);
 
   UrlDetailsResponseDto toResponse(UrlDetailsResult result);

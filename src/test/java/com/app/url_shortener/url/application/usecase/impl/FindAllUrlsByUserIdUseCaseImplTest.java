@@ -53,12 +53,16 @@ class FindAllUrlsByUserIdUseCaseImplTest {
               "https://google.com",
               "aB3dE",
               Instant.parse("2026-05-10T14:30:00Z"),
-              UrlStatus.ACTIVE),
+              UrlStatus.ACTIVE,
+              42,
+              Instant.parse("2026-05-11T10:00:00Z")),
           new UrlListItemResult(
               "https://spring.io",
               "fG4hI",
               Instant.parse("2026-05-10T15:45:00Z"),
-              UrlStatus.DELETED)
+              UrlStatus.DELETED,
+              10,
+              Instant.parse("2026-05-11T11:00:00Z"))
       ), "following-page-cursor");
       when(urlRepositoryPort.findAllByUserId(userId, limit, cursor, status)).thenReturn(pageUrlResult);
 

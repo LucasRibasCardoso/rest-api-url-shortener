@@ -1,7 +1,9 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
+import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
+import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.ResolvedUrlResult;
 import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
@@ -23,10 +25,17 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
 
   private final RedirectCachePort redirectCachePort;
   private final UrlRepositoryPort urlRepositoryPort;
+  private final UrlRedirectEventPublisherPort urlRedirectEventPublisherPort;
 
   @Override
   public ResolvedUrlResult execute(ResolveUrlCommand command) {
     String shortCode = command.shortCode();
+    ResolvedUrlResult result = resolve(shortCode);
+    urlRedirectEventPublisherPort.publishAsync(UrlRedirectedEvent.create(shortCode));
+    return result;
+  }
+
+  private ResolvedUrlResult resolve(String shortCode) {
     Optional<UrlRedirectCacheEntry> urlCacheEntry;
 
     try {

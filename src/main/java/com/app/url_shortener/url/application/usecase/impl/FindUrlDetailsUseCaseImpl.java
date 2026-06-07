@@ -21,10 +21,6 @@ public class FindUrlDetailsUseCaseImpl implements FindUrlDetailsUseCase {
             .filter(candidate -> command.canReadAny() || candidate.getUserId().equals(command.requesterId()))
             .orElseThrow(UrlNotFoundException::new);
 
-    return toResult(url);
-  }
-
-  private UrlDetailsResult toResult(Url url) {
     return new UrlDetailsResult(
         url.getShortCode(),
         url.getOriginalUrl(),
@@ -33,6 +29,8 @@ public class FindUrlDetailsUseCaseImpl implements FindUrlDetailsUseCase {
         url.getCreatedAt(),
         url.getUpdatedAt(),
         url.getDeletedAt(),
-        url.getDeletedBy());
+        url.getDeletedBy(),
+        url.getAccessCount(),
+        url.getLastAccessedAt());
   }
 }

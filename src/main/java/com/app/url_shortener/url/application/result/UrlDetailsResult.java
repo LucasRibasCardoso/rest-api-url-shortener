@@ -12,5 +12,6 @@ public record UrlDetailsResult(
     Instant createdAt,
     Instant updatedAt,
     Instant deletedAt,
-    UUID deletedBy) {
-}
+    UUID deletedBy,
+    long accessCount,
+    Instant lastAccessedAt) {}
