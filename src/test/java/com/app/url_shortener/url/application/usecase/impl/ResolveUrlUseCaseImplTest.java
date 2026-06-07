@@ -211,6 +211,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort, org.mockito.Mockito.times(2)).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, dynamoUrl.getOriginalUrl());
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
@@ -262,6 +263,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort, org.mockito.Mockito.times(2)).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, originalUrl);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
@@ -288,6 +290,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort, org.mockito.Mockito.times(2)).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, originalUrl);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
@@ -313,6 +316,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, originalUrl);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
@@ -338,6 +342,7 @@ class ResolveUrlUseCaseImplTest {
       verify(redirectCachePort).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, originalUrl);
+      assertPublishedEventFor(shortCode);
       verifyNoMoreInteractions(redirectCachePort, urlRepositoryPort);
     }
 
