@@ -19,19 +19,25 @@ import com.app.url_shortener.shared.presentation.error.ProblemType;
 import com.app.url_shortener.url.application.command.DeleteUrlCommand;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.ShortenUrlCommand;
+import com.app.url_shortener.url.application.command.UrlRankingCommand;
 import com.app.url_shortener.url.application.command.UrlDetailsCommand;
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingResult;
 import com.app.url_shortener.url.application.usecase.DeleteUrlUseCase;
 import com.app.url_shortener.url.application.usecase.FindAllUrlsByUserIdUseCase;
+import com.app.url_shortener.url.application.usecase.FindTopAccessedUrlsByUserIdUseCase;
 import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
 import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlRankingItemResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlRankingResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import com.app.url_shortener.url.domain.model.UrlStatus;
@@ -40,6 +46,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.convert.converter.Converter;
@@ -111,6 +119,9 @@ class UrlControllerTest extends BaseWebSliceTest {
 
   @MockitoBean
   private FindAllUrlsByUserIdUseCase findAllUrlsByUserIdUseCase;
+
+  @MockitoBean
+  private FindTopAccessedUrlsByUserIdUseCase findTopAccessedUrlsByUserIdUseCase;
 
   @MockitoBean
   private IdempotencyPort idempotencyStore;
@@ -641,6 +652,114 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isBadRequest())
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
       verifyNoInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
+    }
+  }
+
+  @Nested
+  @DisplayName("Ranking do usuário autenticado")
+  class FindMyRankingTests {
+
+    @Test
+    @DisplayName("Deve retornar 403 quando autoridade url:ranking:own estiver ausente")
+    void shouldReturnForbiddenWhenRankingOwnAuthorityIsMissing() throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
+          .with(authenticatedUser("url:list:own")));
+
+      // 3. Assert
+      resultActions.andExpect(status().isForbidden());
+      verifyNoInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar ranking com rankingSize padrão igual a 3")
+    void shouldReturnRankingWithDefaultRankingSize() throws Exception {
+      // 1. Arrange
+      var rankingSize = 3;
+      var command = new UrlRankingCommand(USER_ID, rankingSize);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var result = new UrlRankingResult(List.of(
+          new UrlRankingItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
+      ));
+      var response = new UrlRankingResponseDto(List.of(
+          new UrlRankingItemResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
+      ));
+      given(urlWebMapper.toCommandRanking(USER_ID, rankingSize)).willReturn(command);
+      given(findTopAccessedUrlsByUserIdUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toRankingResponse(result, BASE_URL)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
+          .with(authenticatedUser("url:ranking:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.urls[0].originalUrl").value("https://google.com"))
+          .andExpect(jsonPath("$.urls[0].shortUrl").value(BASE_URL + "/r/aB3dE"))
+          .andExpect(jsonPath("$.urls[0].createdAt").value(createdAt.toString()))
+          .andExpect(jsonPath("$.urls[0].status").value(UrlStatus.ACTIVE.name()))
+          .andExpect(jsonPath("$.urls[0].accessCount").value(42))
+          .andExpect(jsonPath("$.urls[0].lastAccessedAt").value(lastAccessedAt.toString()));
+
+      verify(urlWebMapper).toCommandRanking(USER_ID, rankingSize);
+      verify(findTopAccessedUrlsByUserIdUseCase).execute(command);
+      verify(urlWebMapper).toRankingResponse(result, BASE_URL);
+      verifyNoMoreInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar ranking quando rankingSize for 10")
+    void shouldReturnRankingWhenRankingSizeIsTen() throws Exception {
+      // 1. Arrange
+      var rankingSize = 10;
+      var command = new UrlRankingCommand(USER_ID, rankingSize);
+      var result = new UrlRankingResult(List.of());
+      var response = new UrlRankingResponseDto(List.of());
+      given(urlWebMapper.toCommandRanking(USER_ID, rankingSize)).willReturn(command);
+      given(findTopAccessedUrlsByUserIdUseCase.execute(command)).willReturn(result);
+      given(urlWebMapper.toRankingResponse(result, BASE_URL)).willReturn(response);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
+          .queryParam("rankingSize", String.valueOf(rankingSize))
+          .with(authenticatedUser("url:ranking:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.urls").isArray());
+
+      verify(urlWebMapper).toCommandRanking(USER_ID, rankingSize);
+      verify(findTopAccessedUrlsByUserIdUseCase).execute(command);
+      verify(urlWebMapper).toRankingResponse(result, BASE_URL);
+      verifyNoMoreInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 5, 11})
+    @DisplayName("Deve retornar 400 quando rankingSize for inválido")
+    void shouldReturnBadRequestWhenRankingSizeIsInvalid(int rankingSize) throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
+          .queryParam("rankingSize", String.valueOf(rankingSize))
+          .with(authenticatedUser("url:ranking:own")));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+          .andExpect(jsonPath("$.errors[0].field").value("rankingSize"))
+          .andExpect(jsonPath("$.errors[0].message").value("O tamanho do ranking deve ser 3 ou 10"));
+      verifyNoInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
     }
   }
 

@@ -4,6 +4,8 @@ import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.application.result.PageUrlResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
@@ -40,6 +42,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   private static final String DELETED_BY_ATTRIBUTE = "deletedBy";
   private static final String UPDATED_AT_ATTRIBUTE = "updatedAt";
   private static final String STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE = "statusCreatedAtShortCodeGsi";
+  private static final String ACTIVE_RANKING_USER_ID_GSI_ATTRIBUTE = "activeRankingUserIdGsi";
   private static final String ACCESS_COUNT_ATTRIBUTE = "accessCount";
   private static final String LAST_ACCESSED_AT_ATTRIBUTE = "lastAccessedAt";
   private static final DateTimeFormatter SORTABLE_INSTANT_FORMATTER = new DateTimeFormatterBuilder().appendInstant(9).toFormatter();
@@ -94,6 +97,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
                   #deletedBy = :deletedBy,
                   #updatedAt = :updatedAt,
                   #statusGsi = :statusGsi
+                REMOVE #activeRankingUserIdGsi
                 """)
             .conditionExpression("attribute_exists(#pk) AND #status = :active")
             .expressionAttributeNames(
@@ -103,7 +107,8 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
                     "#deletedAt", DELETED_AT_ATTRIBUTE,
                     "#deletedBy", DELETED_BY_ATTRIBUTE,
                     "#updatedAt", UPDATED_AT_ATTRIBUTE,
-                    "#statusGsi", STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE))
+                    "#statusGsi", STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE,
+                    "#activeRankingUserIdGsi", ACTIVE_RANKING_USER_ID_GSI_ATTRIBUTE))
             .expressionAttributeValues(
                 Map.of(
                     ":active", toAttributeValue(UrlStatus.ACTIVE.name()),
@@ -140,11 +145,33 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   }
 
   @Override
-  public PageUrlResult findAllByUserId(
-      UUID userId,
-      int limit,
-      String cursor,
-      UrlStatusFilter statusFilter) {
+  public UrlRankingResult findTopAccessedActiveByUserId(UUID userId, int rankingSize) {
+    DynamoDbIndex<UrlEntity> index = urlTable.index("user-active-ranking-index");
+
+    var request = QueryEnhancedRequest.builder()
+            .queryConditional(QueryConditional.keyEqualTo(key -> key.partitionValue(userId.toString())))
+            .scanIndexForward(false)
+            .limit(rankingSize)
+            .build();
+
+    var pages = index.query(request);
+    var iterator = pages.iterator();
+
+    if (!iterator.hasNext()) {
+      return new UrlRankingResult(List.of());
+    }
+
+    Page<UrlEntity> page = iterator.next();
+    List<UrlRankingItemResult> urls = page.items().stream()
+            .map(urlMapper::toDomain)
+            .map(urlMapper::toRankingItemResult)
+            .toList();
+
+    return new UrlRankingResult(urls);
+  }
+
+  @Override
+  public PageUrlResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
 
     String indexName = statusFilter.isAll() ? "user-index" : "user-status-index";
     DynamoDbIndex<UrlEntity> index = urlTable.index(indexName);
@@ -174,11 +201,12 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     }
 
     Page<UrlEntity> page = iterator.next();
-    List<UrlListItemResult> urls =
-        page.items().stream().map(urlMapper::toDomain).map(urlMapper::toListItemResult).toList();
+    List<UrlListItemResult> urls = page.items().stream()
+            .map(urlMapper::toDomain)
+            .map(urlMapper::toListItemResult)
+            .toList();
 
-    String nextCursor =
-        page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
+    String nextCursor = page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
 
     return new PageUrlResult(urls, nextCursor);
   }

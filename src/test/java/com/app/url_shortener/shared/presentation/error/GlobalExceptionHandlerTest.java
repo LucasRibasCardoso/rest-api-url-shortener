@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
@@ -30,7 +31,10 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.MethodValidationResult;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.lang.reflect.Method;
@@ -383,6 +387,42 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("Deve mapear HandlerMethodValidationException para 400 com erros de parâmetros")
+    void shouldMapHandlerMethodValidationExceptionToValidationProblem() throws Exception {
+      // 1. Arrange
+      var exception = handlerMethodValidationException();
+      var problemDetail = problemDetail(HttpStatus.BAD_REQUEST);
+      var expectedErrors = List.of(
+              Map.of("field", "rankingSize", "message", "O tamanho do ranking deve ser 3 ou 10")
+      );
+
+      given(problemDetailFactory.createValidationProblem(
+              HttpStatus.BAD_REQUEST,
+              "Validação",
+              CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
+              ProblemType.VALIDATION,
+              CommonErrorCode.REQUEST_VALIDATION_FAILED,
+              expectedErrors
+      )).willReturn(problemDetail);
+
+      // 2. Act
+      var result = handler.handleHandlerMethodValidation(exception);
+
+      // 3. Assert
+      assertThat(result).isSameAs(problemDetail);
+
+      verify(problemDetailFactory).createValidationProblem(
+              HttpStatus.BAD_REQUEST,
+              "Validação",
+              CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
+              ProblemType.VALIDATION,
+              CommonErrorCode.REQUEST_VALIDATION_FAILED,
+              expectedErrors
+      );
+      verifyNoMoreInteractions(problemDetailFactory);
+    }
+
+    @Test
     @DisplayName("Deve mapear falha técnica de dependência para 503 e ProblemType de infraestrutura")
     void shouldMapTechnicalDependencyFailureToServiceUnavailable() {
       // 1. Arrange
@@ -595,6 +635,32 @@ class GlobalExceptionHandlerTest {
     return new MethodParameter(method, 0);
   }
 
+  private static HandlerMethodValidationException handlerMethodValidationException() throws Exception {
+    Method method = ValidationController.class.getDeclaredMethod("ranking", int.class);
+    var methodParameter = new MethodParameter(method, 0);
+    var error = new DefaultMessageSourceResolvable(
+            new String[]{"ValidRankingSize"},
+            null,
+            "O tamanho do ranking deve ser 3 ou 10"
+    );
+    var parameterResult = new ParameterValidationResult(
+            methodParameter,
+            2,
+            List.of(error),
+            null,
+            null,
+            null,
+            (resolvable, targetType) -> null
+    );
+    MethodValidationResult result = MethodValidationResult.create(
+            new ValidationController(),
+            method,
+            List.of(parameterResult)
+    );
+
+    return new HandlerMethodValidationException(result);
+  }
+
   private enum TestErrorCode implements ErrorCode {
     RATE_LIMITED("Limite de requisições excedido."),
     BUSINESS_RULE("Regra de negócio violada."),
@@ -649,6 +715,10 @@ class GlobalExceptionHandlerTest {
 
     @SuppressWarnings("unused")
     void create(ValidationTarget target) {
+    }
+
+    @SuppressWarnings("unused")
+    void ranking(int rankingSize) {
     }
   }
 }

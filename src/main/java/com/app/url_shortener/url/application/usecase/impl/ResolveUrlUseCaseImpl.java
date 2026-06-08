@@ -13,15 +13,13 @@ import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import com.app.url_shortener.url.domain.model.Url;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
-
-  private static final Logger log = LoggerFactory.getLogger(ResolveUrlUseCaseImpl.class);
 
   private final RedirectCachePort redirectCachePort;
   private final UrlRepositoryPort urlRepositoryPort;
@@ -114,7 +112,9 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     try {
       redirectCachePort.saveDeleted(shortCode);
     } catch (RedirectCacheException exception) {
-      log.warn("Falha ao gravar DELETED no cache; respondendo com not found: {}", exception.getMessage());
+      log.warn(
+          "Falha ao gravar DELETED no cache; respondendo com not found: {}",
+          exception.getMessage());
     }
   }
 
@@ -122,7 +122,9 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     try {
       redirectCachePort.saveNotFoundIfAbsent(shortCode);
     } catch (RedirectCacheException exception) {
-      log.warn("Falha ao gravar NOT_FOUND no cache; respondendo com not found: {}", exception.getMessage());
+      log.warn(
+          "Falha ao gravar NOT_FOUND no cache; respondendo com not found: {}",
+          exception.getMessage());
     }
   }
 
@@ -130,7 +132,9 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     try {
       return redirectCachePort.saveActiveIfAbsent(shortCode, url.getOriginalUrl());
     } catch (RedirectCacheException exception) {
-      log.warn("Falha ao gravar ACTIVE no cache; retornando resultado do repositório: {}", exception.getMessage());
+      log.warn(
+          "Falha ao gravar ACTIVE no cache; retornando resultado do repositório: {}",
+          exception.getMessage());
       return true;
     }
   }

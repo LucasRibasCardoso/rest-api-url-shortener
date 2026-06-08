@@ -42,6 +42,8 @@ create_url_table() {
             AttributeName=userId,AttributeType=S \
             AttributeName=createdAtShortCodeGsi,AttributeType=S \
             AttributeName=statusCreatedAtShortCodeGsi,AttributeType=S \
+            AttributeName=activeRankingUserIdGsi,AttributeType=S \
+            AttributeName=accessCount,AttributeType=N \
         --key-schema AttributeName=shortCode,KeyType=HASH \
         --global-secondary-indexes '[
             {
@@ -59,6 +61,24 @@ create_url_table() {
                     {"AttributeName": "statusCreatedAtShortCodeGsi", "KeyType": "RANGE"}
                 ],
                 "Projection": {"ProjectionType": "ALL"}
+            },
+            {
+                "IndexName": "user-active-ranking-index",
+                "KeySchema": [
+                    {"AttributeName": "activeRankingUserIdGsi", "KeyType": "HASH"},
+                    {"AttributeName": "accessCount", "KeyType": "RANGE"}
+                ],
+                "Projection": {
+                    "ProjectionType": "INCLUDE",
+                    "NonKeyAttributes": [
+                        "userId",
+                        "originalUrl",
+                        "createdAt",
+                        "updatedAt",
+                        "status",
+                        "lastAccessedAt"
+                    ]
+                }
             }
         ]' \
         --billing-mode PAY_PER_REQUEST \

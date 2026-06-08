@@ -28,6 +28,7 @@ public class UrlEntity {
   private final Instant lastAccessedAt;
 
   private final String createdAtShortCodeGsi;
+  private final String activeRankingUserIdGsi;
   private final String statusCreatedAtShortCodeGsi;
 
   @DynamoDbPartitionKey
@@ -48,5 +49,15 @@ public class UrlEntity {
   @DynamoDbSecondarySortKey(indexNames = "user-status-index")
   public String getStatusCreatedAtShortCodeGsi() {
     return statusCreatedAtShortCodeGsi;
+  }
+
+  @DynamoDbSecondaryPartitionKey(indexNames = "user-active-ranking-index")
+  public String getActiveRankingUserIdGsi() {
+    return activeRankingUserIdGsi;
+  }
+
+  @DynamoDbSecondarySortKey(indexNames = "user-active-ranking-index")
+  public long getAccessCount() {
+    return accessCount;
   }
 }

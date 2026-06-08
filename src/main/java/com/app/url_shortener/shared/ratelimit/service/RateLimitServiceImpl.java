@@ -3,25 +3,23 @@ package com.app.url_shortener.shared.ratelimit.service;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitPolicyProperties;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
-import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
-import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitDecision;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
 import com.app.url_shortener.shared.ratelimit.core.RateLimiterPort;
+import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKey;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKeyResolver;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RateLimitServiceImpl implements RateLimitService {
-
-  private static final Logger logger = LoggerFactory.getLogger(RateLimitServiceImpl.class);
 
   private final RateLimiterPort rateLimiterPort;
   private final RateLimitProperties properties;
@@ -63,15 +61,15 @@ public class RateLimitServiceImpl implements RateLimitService {
   }
 
   /**
-   * Verifica a política de rate limit informada e tenta consumir um token.
-   * Se o consumo não for permitido, lança {@link TooManyRequestsException}.
-   * Se ocorrer falha de infraestrutura e {@code failOpen} estiver habilitado,
-   * a falha é ignorada.
+   * Verifica a política de rate limit informada e tenta consumir um token. Se o consumo não for
+   * permitido, lança {@link TooManyRequestsException}. Se ocorrer falha de infraestrutura e {@code
+   * failOpen} estiver habilitado, a falha é ignorada.
    *
    * @param policy política de rate limit a ser verificada
    * @param key chave de rate limit a ser consumida
    * @throws TooManyRequestsException quando o consumo não é permitido
-   * @throws RateLimitInfrastructureException quando ocorre falha de infraestrutura e failOpen está desabilitado
+   * @throws RateLimitInfrastructureException quando ocorre falha de infraestrutura e failOpen está
+   *     desabilitado
    */
   private void check(RateLimitPolicy policy, RateLimitKey key) {
     Objects.requireNonNull(policy, "policy must not be null");
@@ -90,7 +88,7 @@ public class RateLimitServiceImpl implements RateLimitService {
 
     } catch (RateLimitInfrastructureException e) {
       if (policyProperties.failOpen()) {
-        logger.warn(
+        log.warn(
             "Rate limit infrastructure failure ignored because failOpen is enabled. policy={}, cause={}, message={}",
             policy,
             e.getClass().getSimpleName(),

@@ -66,6 +66,35 @@ class UrlMapperTest {
       assertThat(result.getLastAccessedAt()).isEqualTo(lastAccessedAt);
       assertThat(result.getCreatedAtShortCodeGsi()).isEqualTo("2026-05-07T10:15:30Z#aB3dE");
       assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("ACTIVE#2026-05-07T10:15:30Z#aB3dE");
+      assertThat(result.getActiveRankingUserIdGsi()).isEqualTo(USER_ID.toString());
+    }
+
+    @Test
+    @DisplayName("Deve deixar índice de ranking sem usuário quando URL estiver deletada")
+    void shouldLeaveRankingIndexUserEmptyWhenUrlIsDeleted() {
+      // 1. Arrange
+      var createdAt = Instant.parse("2026-05-07T10:15:30Z");
+      var deletedAt = Instant.parse("2026-05-08T11:30:00Z");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var url =
+          Url.restore(
+              USER_ID,
+              "aB3dE",
+              "https://google.com",
+              createdAt,
+              UrlStatus.DELETED,
+              deletedAt,
+              deletedBy,
+              deletedAt,
+              42,
+              deletedAt);
+
+      // 2. Act
+      var result = mapper.toEntity(url);
+
+      // 3. Assert
+      assertThat(result.getActiveRankingUserIdGsi()).isNull();
+      assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("DELETED#2026-05-07T10:15:30Z#aB3dE");
     }
 
     @Test
@@ -218,6 +247,7 @@ class UrlMapperTest {
         .accessCount(42)
         .lastAccessedAt(Instant.parse("2026-05-08T11:30:00Z"))
         .createdAtShortCodeGsi("2026-05-07T10:15:30Z#aB3dE")
+        .activeRankingUserIdGsi(USER_ID.toString())
         .statusCreatedAtShortCodeGsi("ACTIVE#2026-05-07T10:15:30Z#aB3dE")
         .build();
   }

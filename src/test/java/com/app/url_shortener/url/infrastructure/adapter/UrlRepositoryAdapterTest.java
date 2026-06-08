@@ -2,6 +2,7 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingItemResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
@@ -198,7 +199,8 @@ class UrlRepositoryAdapterTest {
               "#deletedAt = :deletedAt",
               "#deletedBy = :deletedBy",
               "#updatedAt = :updatedAt",
-              "#statusGsi = :statusGsi")
+              "#statusGsi = :statusGsi",
+              "REMOVE #activeRankingUserIdGsi")
           .doesNotContain("accessCount", "lastAccessedAt");
       assertThat(request.conditionExpression())
           .isEqualTo("attribute_exists(#pk) AND #status = :active");
@@ -209,6 +211,7 @@ class UrlRepositoryAdapterTest {
           .containsEntry("#deletedBy", "deletedBy")
           .containsEntry("#updatedAt", "updatedAt")
           .containsEntry("#statusGsi", "statusCreatedAtShortCodeGsi")
+          .containsEntry("#activeRankingUserIdGsi", "activeRankingUserIdGsi")
           .doesNotContainValue("accessCount")
           .doesNotContainValue("lastAccessedAt");
       assertThat(request.expressionAttributeValues())
@@ -584,6 +587,116 @@ class UrlRepositoryAdapterTest {
       verify(urlTable).index("user-index");
       verify(userIndex).query(any(QueryEnhancedRequest.class));
       verify(cursorCodec).encode(lastEvaluatedKey);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
+    }
+  }
+
+  @Nested
+  @DisplayName("Ranking por usuário")
+  class FindTopAccessedActiveByUserIdTests {
+
+    @Test
+    @DisplayName("Deve buscar ranking de URLs ativas no índice por usuário e acessos")
+    void shouldFindTopAccessedActiveUrlsUsingUserActiveRankingIndex() {
+      // 1. Arrange
+      var rankingSize = 10;
+      var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
+      var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
+      var firstUrl =
+          Url.restore(
+              USER_ID,
+              "aB3dE",
+              "https://google.com",
+              Instant.parse("2026-05-07T10:00:00Z"),
+              UrlStatus.ACTIVE,
+              null,
+              null,
+              Instant.parse("2026-05-07T10:00:00Z"),
+              42,
+              Instant.parse("2026-06-08T10:00:00Z"));
+      var secondUrl =
+          Url.restore(
+              USER_ID,
+              "fG4hI",
+              "https://spring.io",
+              Instant.parse("2026-05-08T11:30:00Z"),
+              UrlStatus.ACTIVE,
+              null,
+              null,
+              Instant.parse("2026-05-08T11:30:00Z"),
+              30,
+              Instant.parse("2026-06-08T09:00:00Z"));
+      var firstRankingItem =
+          new UrlRankingItemResult(
+              "https://google.com",
+              "aB3dE",
+              Instant.parse("2026-05-07T10:00:00Z"),
+              UrlStatus.ACTIVE,
+              42,
+              Instant.parse("2026-06-08T10:00:00Z"));
+      var secondRankingItem =
+          new UrlRankingItemResult(
+              "https://spring.io",
+              "fG4hI",
+              Instant.parse("2026-05-08T11:30:00Z"),
+              UrlStatus.ACTIVE,
+              30,
+              Instant.parse("2026-06-08T09:00:00Z"));
+
+      when(urlTable.index("user-active-ranking-index")).thenReturn(userIndex);
+      when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
+      when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
+      when(page.items()).thenReturn(List.of(firstEntity, secondEntity));
+      when(urlMapper.toDomain(firstEntity)).thenReturn(firstUrl);
+      when(urlMapper.toDomain(secondEntity)).thenReturn(secondUrl);
+      when(urlMapper.toRankingItemResult(firstUrl)).thenReturn(firstRankingItem);
+      when(urlMapper.toRankingItemResult(secondUrl)).thenReturn(secondRankingItem);
+
+      // 2. Act
+      var result = adapter.findTopAccessedActiveByUserId(USER_ID, rankingSize);
+
+      // 3. Assert
+      assertThat(result.urls()).containsExactly(firstRankingItem, secondRankingItem);
+
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-active-ranking-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(rankingSize);
+      assertThat(requestCaptor.getValue().scanIndexForward()).isFalse();
+      assertThat(requestCaptor.getValue().filterExpression()).isNull();
+      assertThat(requestCaptor.getValue().exclusiveStartKey()).isNull();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.keyEqualTo(key -> key.partitionValue(USER_ID.toString())));
+      verify(urlMapper).toDomain(firstEntity);
+      verify(urlMapper).toDomain(secondEntity);
+      verify(urlMapper).toRankingItemResult(firstUrl);
+      verify(urlMapper).toRankingItemResult(secondUrl);
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
+    }
+
+    @Test
+    @DisplayName("Deve retornar ranking vazio quando índice não retornar páginas")
+    void shouldReturnEmptyRankingWhenIndexDoesNotReturnPages() {
+      // 1. Arrange
+      var rankingSize = 3;
+      when(urlTable.index("user-active-ranking-index")).thenReturn(userIndex);
+      when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
+      when(pageIterable.iterator()).thenReturn(List.<Page<UrlEntity>>of().iterator());
+
+      // 2. Act
+      var result = adapter.findTopAccessedActiveByUserId(USER_ID, rankingSize);
+
+      // 3. Assert
+      assertThat(result.urls()).isEmpty();
+
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-active-ranking-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(rankingSize);
+      assertThat(requestCaptor.getValue().scanIndexForward()).isFalse();
+      assertThat(requestCaptor.getValue().filterExpression()).isNull();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.keyEqualTo(key -> key.partitionValue(USER_ID.toString())));
       verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
   }
