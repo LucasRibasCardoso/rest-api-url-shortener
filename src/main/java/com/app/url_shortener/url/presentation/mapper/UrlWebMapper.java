@@ -4,11 +4,9 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.*;
 import com.app.url_shortener.url.application.result.*;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
-import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlRankingItemResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlRankingResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.*;
+import com.app.url_shortener.url.presentation.dto.response.UrlPageResponseDto;
+
 import java.util.UUID;
 import org.mapstruct.*;
 
@@ -44,7 +42,7 @@ public interface UrlWebMapper {
   @Mapping(target = "urls", source = "urls")
   UrlRankingResponseDto toUrlRankingResponse(UrlRankingResult result, @Context String baseUrl);
 
-  PageUrlResponseDto toPageUrlResponse(PageUrlResult result, @Context String baseUrl);
+  UrlPageResponseDto toUrlPagelResponse(PageUrlResult result, @Context String baseUrl);
 
   @Named("toFullShortUrl")
   default String toFullShortUrl(String shortCode, @Context String baseUrl) {

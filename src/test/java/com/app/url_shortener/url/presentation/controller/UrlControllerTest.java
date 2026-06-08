@@ -34,7 +34,7 @@ import com.app.url_shortener.url.application.usecase.FindTopAccessedUrlsByUserId
 import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
 import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
-import com.app.url_shortener.url.presentation.dto.response.PageUrlResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlPageResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlRankingItemResponseDto;
 import com.app.url_shortener.url.presentation.dto.response.UrlRankingResponseDto;
@@ -566,10 +566,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       var cursor = "next-page-cursor";
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       var result = new PageUrlResult(List.of(), null);
-      var response = new PageUrlResponseDto(List.of(), null);
+      var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
@@ -586,7 +586,7 @@ class UrlControllerTest extends BaseWebSliceTest {
 
       verify(urlWebMapper).toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlPagelResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -598,10 +598,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       var status = UrlStatusFilter.DELETED;
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
       var result = new PageUrlResult(List.of(), null);
-      var response = new PageUrlResponseDto(List.of(), null);
+      var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
@@ -616,7 +616,7 @@ class UrlControllerTest extends BaseWebSliceTest {
 
       verify(urlWebMapper).toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlPagelResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -789,12 +789,12 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
-      var response = new PageUrlResponseDto(List.of(
+      var response = new UrlPageResponseDto(List.of(
           new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
       ), "next");
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
-      given(urlWebMapper.toPageUrlResponse(pageResult, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlPagelResponse(pageResult, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
@@ -814,7 +814,7 @@ class UrlControllerTest extends BaseWebSliceTest {
 
       verify(urlWebMapper).toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toPageUrlResponse(pageResult, BASE_URL);
+      verify(urlWebMapper).toUrlPagelResponse(pageResult, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -826,10 +826,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       var status = UrlStatusFilter.ALL;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
       var result = new PageUrlResult(List.of(), null);
-      var response = new PageUrlResponseDto(List.of(), null);
+      var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
@@ -844,7 +844,7 @@ class UrlControllerTest extends BaseWebSliceTest {
 
       verify(urlWebMapper).toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlPagelResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 

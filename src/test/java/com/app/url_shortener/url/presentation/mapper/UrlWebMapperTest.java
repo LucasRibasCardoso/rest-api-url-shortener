@@ -256,7 +256,7 @@ class UrlWebMapperTest {
       var baseUrl = "https://sho.rt";
 
       // 2. Act
-      var response = mapper.toPageUrlResponse(result, baseUrl);
+      var response = mapper.toUrlPagelResponse(result, baseUrl);
 
       // 3. Assert
       assertAll(

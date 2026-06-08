@@ -85,7 +85,7 @@ public class UrlController {
 
   @GetMapping("/users/{userId}")
   @PreAuthorize("hasAuthority('url:list:any')")
-  public ResponseEntity<PageUrlResponseDto> findAllUrlsByUserId(
+  public ResponseEntity<UrlPageResponseDto> findAllUrlsByUserId(
       @PathVariable UUID userId,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
       @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
@@ -93,13 +93,13 @@ public class UrlController {
     FindAllUrlsByUserIdCommand command =
         urlWebMapper.toFindAllUrlsByUserIdCommand(userId, limit, cursor, status);
     PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
-    PageUrlResponseDto response = urlWebMapper.toPageUrlResponse(result, baseUrl);
+    UrlPageResponseDto response = urlWebMapper.toUrlPagelResponse(result, baseUrl);
     return ResponseEntity.ok(response);
   }
 
   @GetMapping("/me")
   @PreAuthorize("hasAuthority('url:list:own')")
-  public ResponseEntity<PageUrlResponseDto> findAllMyUrls(
+  public ResponseEntity<UrlPageResponseDto> findAllMyUrls(
       @AuthenticationPrincipal UserPrincipal user,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
       @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
@@ -107,7 +107,7 @@ public class UrlController {
     FindAllUrlsByUserIdCommand command =
         urlWebMapper.toFindAllUrlsByUserIdCommand(user.getId(), limit, cursor, status);
     PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
-    PageUrlResponseDto response = urlWebMapper.toPageUrlResponse(result, baseUrl);
+    UrlPageResponseDto response = urlWebMapper.toUrlPagelResponse(result, baseUrl);
     return ResponseEntity.ok(response);
   }
 
