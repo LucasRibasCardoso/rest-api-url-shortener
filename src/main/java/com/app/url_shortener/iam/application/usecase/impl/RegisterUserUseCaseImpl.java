@@ -6,7 +6,7 @@ import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenP
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.result.RegisterUserResult;
 import com.app.url_shortener.iam.application.usecase.RegisterUserUseCase;
-import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
@@ -46,7 +46,7 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
             Instant.now().plus(VERIFICATION_CODE_TTL));
 
     emailVerificationTokenStore.store(token, VERIFICATION_CODE_TTL);
-    eventPublisher.publishEvent(new EmailVerificationEvent(savedUser.getId(), savedUser.getEmail(), code));
+    eventPublisher.publishEvent(EmailVerificationRequestedEvent.create(savedUser.getId(), savedUser.getEmail(), code));
 
     return new RegisterUserResult(SUCCESS_MESSAGE);
   }

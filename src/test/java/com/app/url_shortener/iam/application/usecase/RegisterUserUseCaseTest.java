@@ -7,7 +7,7 @@ import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPo
 import com.app.url_shortener.iam.application.usecase.impl.RegisterUserUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.application.event.EmailVerificationEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import org.junit.jupiter.api.DisplayName;
@@ -62,7 +62,7 @@ class RegisterUserUseCaseTest {
   private ArgumentCaptor<EmailVerificationToken> emailVerificationTokenCaptor;
 
   @Captor
-  private ArgumentCaptor<EmailVerificationEvent> emailVerificationEventCaptor;
+  private ArgumentCaptor<EmailVerificationRequestedEvent> emailVerificationEventCaptor;
 
   @InjectMocks
   private RegisterUserUseCaseImpl registerUserUseCase;
@@ -122,7 +122,7 @@ class RegisterUserUseCaseTest {
       assertAll(
               () -> assertThat(publishedEvent.userId()).isEqualTo(savedUser.getId()),
               () -> assertThat(publishedEvent.email()).isEqualTo(savedUser.getEmail()),
-              () -> assertThat(publishedEvent.code()).isEqualTo(storedToken.code())
+              () -> assertThat(publishedEvent.verificationCode()).isEqualTo(storedToken.code())
       );
 
       verify(passwordEncoder).encode(command.password());
