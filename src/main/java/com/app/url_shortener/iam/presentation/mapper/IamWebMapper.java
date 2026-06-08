@@ -16,34 +16,34 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface IamWebMapper {
 
-  RegisterUserCommand toCommand(RegisterRequestDto request);
+  RegisterUserCommand toRegisterUserCommand(RegisterRequestDto request);
 
-  GenericMessageResponse toResponse(RegisterUserResult result);
+  GenericMessageResponse toGenericMessageResponse(RegisterUserResult result);
 
-  VerifyEmailCommand toCommand(VerifyEmailRequestDto request);
+  VerifyEmailCommand toVerifyEmailCommand(VerifyEmailRequestDto request);
 
-  GenericMessageResponse toResponse(VerifyEmailResult result);
+  GenericMessageResponse toGenericMessageResponse(VerifyEmailResult result);
 
-  LoginCommand toCommand(LoginRequestDto request, String clientIp);
+  LoginCommand toLoginCommand(LoginRequestDto request, String clientIp);
 
-  LoginResponseDto toResponse(LoginResult result);
+  LoginResponseDto toLoginResponse(LoginResult result);
 
   LogoutCommand toLogoutCommand(String refreshToken);
 
-  ResendVerificationCommand toCommand(ResendVerificationRequest request);
+  ResendVerificationCommand toResendVerificationCommand(ResendVerificationRequest request);
 
-  GenericMessageResponse toResponse(ResendVerificationResult result);
+  GenericMessageResponse toGenericMessageResponse(ResendVerificationResult result);
 
   RefreshTokenCommand toRefreshTokenCommand(String refreshToken);
 
-  RefreshTokenResponseDto toResponse(RefreshTokenResult result);
+  RefreshTokenResponseDto toRefreshTokenResponse(RefreshTokenResult result);
 
-  default VerificationCode mapToVerificationCode(String value) {
+  default VerificationCode toVerificationCode(String value) {
     if (value == null) return null;
     return VerificationCode.of(value);
   }
 
-  default String mapToString(VerificationCode verificationCode) {
+  default String toVerificationCodeValue(VerificationCode verificationCode) {
     if (verificationCode == null) return null;
     return verificationCode.value();
   }

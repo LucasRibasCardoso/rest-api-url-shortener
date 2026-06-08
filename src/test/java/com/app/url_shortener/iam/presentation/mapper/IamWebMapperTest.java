@@ -44,7 +44,7 @@ class IamWebMapperTest {
       );
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toRegisterUserCommand(request);
 
       // 3. Assert
       assertAll(
@@ -61,7 +61,7 @@ class IamWebMapperTest {
       var request = new VerifyEmailRequestDto("  USER@EMAIL.COM  ", "123456");
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toVerifyEmailCommand(request);
 
       // 3. Assert
       assertAll(
@@ -78,7 +78,7 @@ class IamWebMapperTest {
       var clientIp = "203.0.113.10";
 
       // 2. Act
-      var command = mapper.toCommand(request, clientIp);
+      var command = mapper.toLoginCommand(request, clientIp);
 
       // 3. Assert
       assertAll(
@@ -95,7 +95,7 @@ class IamWebMapperTest {
       var request = new ResendVerificationRequest("  USER@EMAIL.COM  ");
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toResendVerificationCommand(request);
 
       // 3. Assert
       assertThat(command.email()).isEqualTo("user@email.com");
@@ -113,7 +113,7 @@ class IamWebMapperTest {
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -126,7 +126,7 @@ class IamWebMapperTest {
       var result = new VerifyEmailResult("Email verificado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -139,7 +139,7 @@ class IamWebMapperTest {
       var result = new ResendVerificationResult("Código reenviado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -167,7 +167,7 @@ class IamWebMapperTest {
       );
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toLoginResponse(result);
 
       // 3. Assert
       assertAll(
@@ -189,7 +189,7 @@ class IamWebMapperTest {
       var result = new RefreshTokenResult("new-refresh-token", "new-access-token");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toRefreshTokenResponse(result);
 
       // 3. Assert
       assertThat(response.newAccessToken()).isEqualTo(result.newAccessToken());
@@ -207,7 +207,7 @@ class IamWebMapperTest {
       var code = "123456";
 
       // 2. Act
-      var result = mapper.mapToVerificationCode(code);
+      var result = mapper.toVerificationCode(code);
 
       // 3. Assert
       assertThat(result).isEqualTo(VerificationCode.of(code));
@@ -220,7 +220,7 @@ class IamWebMapperTest {
       var verificationCode = VerificationCode.of("123456");
 
       // 2. Act
-      var result = mapper.mapToString(verificationCode);
+      var result = mapper.toVerificationCodeValue(verificationCode);
 
       // 3. Assert
       assertThat(result).isEqualTo("123456");
@@ -233,7 +233,7 @@ class IamWebMapperTest {
       VerificationCode verificationCode = null;
 
       // 2. Act
-      var result = mapper.mapToString(verificationCode);
+      var result = mapper.toVerificationCodeValue(verificationCode);
 
       // 3. Assert
       assertThat(result).isNull();
@@ -246,7 +246,7 @@ class IamWebMapperTest {
       String code = null;
 
       // 2. Act
-      var result = mapper.mapToVerificationCode(code);
+      var result = mapper.toVerificationCode(code);
 
       // 3. Assert
       assertThat(result).isNull();

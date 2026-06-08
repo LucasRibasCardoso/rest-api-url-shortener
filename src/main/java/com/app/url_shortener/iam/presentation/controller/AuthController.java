@@ -42,19 +42,17 @@ public class AuthController {
 
   @PostMapping("/register")
   public ResponseEntity<GenericMessageResponse> register(@Valid @RequestBody RegisterRequestDto request) {
-    RegisterUserCommand command = iamWebMapper.toCommand(request);
+    RegisterUserCommand command = iamWebMapper.toRegisterUserCommand(request);
     RegisterUserResult result = registerUserUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toResponse(result);
-
+    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @PostMapping("/verify-email")
   public ResponseEntity<GenericMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequestDto request) {
-    VerifyEmailCommand command = iamWebMapper.toCommand(request);
+    VerifyEmailCommand command = iamWebMapper.toVerifyEmailCommand(request);
     VerifyEmailResult result = verifyEmailUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toResponse(result);
-
+    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
@@ -62,10 +60,9 @@ public class AuthController {
   public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpServletRequest request) {
     String clientIp = clientIpResolver.resolve(request);
 
-    LoginCommand command = iamWebMapper.toCommand(requestDto, clientIp);
+    LoginCommand command = iamWebMapper.toLoginCommand(requestDto, clientIp);
     LoginResult result = loginUseCase.execute(command);
-    LoginResponseDto response = iamWebMapper.toResponse(result);
-
+    LoginResponseDto response = iamWebMapper.toLoginResponse(result);
     ResponseCookie cookie = buildRefreshTokenCookie(result.refreshToken());
     return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(response);
   }
@@ -76,8 +73,7 @@ public class AuthController {
 
     RefreshTokenCommand command = iamWebMapper.toRefreshTokenCommand(refreshToken);
     RefreshTokenResult result = refreshTokenUseCase.execute(command);
-    RefreshTokenResponseDto response = iamWebMapper.toResponse(result);
-
+    RefreshTokenResponseDto response = iamWebMapper.toRefreshTokenResponse(result);
     ResponseCookie cookie = buildRefreshTokenCookie(result.newRefreshToken());
     return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(response);
   }
@@ -86,16 +82,15 @@ public class AuthController {
   public ResponseEntity<Void> logout(@CookieValue(required = false) String refreshToken) {
     LogoutCommand command = iamWebMapper.toLogoutCommand(refreshToken);
     logoutUseCase.execute(command);
-
     ResponseCookie expiredCookie = buildExpireRefreshTokenCookie();
     return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, expiredCookie.toString()).build();
   }
 
   @PostMapping("/resend-verification")
   public ResponseEntity<GenericMessageResponse> resend(@Valid @RequestBody ResendVerificationRequest request) {
-    ResendVerificationCommand command = iamWebMapper.toCommand(request);
+    ResendVerificationCommand command = iamWebMapper.toResendVerificationCommand(request);
     ResendVerificationResult result = resendVerificationUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toResponse(result);
+    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
 
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }

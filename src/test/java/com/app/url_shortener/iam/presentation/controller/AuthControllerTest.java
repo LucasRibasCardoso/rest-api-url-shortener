@@ -124,9 +124,9 @@ class AuthControllerTest extends BaseWebSliceTest {
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
       var response = new GenericMessageResponse(result.message());
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(iamWebMapper.toRegisterUserCommand(request)).willReturn(command);
       given(registerUserUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/register", request));
@@ -137,9 +137,9 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
               .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(iamWebMapper).toRegisterUserCommand(request);
       verify(registerUserUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, registerUserUseCase);
     }
   }
@@ -157,9 +157,9 @@ class AuthControllerTest extends BaseWebSliceTest {
       var result = new VerifyEmailResult("Email verificado com sucesso.");
       var response = new GenericMessageResponse(result.message());
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(iamWebMapper.toVerifyEmailCommand(request)).willReturn(command);
       given(verifyEmailUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/verify-email", request));
@@ -170,9 +170,9 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
               .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(iamWebMapper).toVerifyEmailCommand(request);
       verify(verifyEmailUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, verifyEmailUseCase);
     }
   }
@@ -192,9 +192,9 @@ class AuthControllerTest extends BaseWebSliceTest {
       var response = loginResponseDto();
 
       given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
-      given(iamWebMapper.toCommand(request, clientIp)).willReturn(command);
+      given(iamWebMapper.toLoginCommand(request, clientIp)).willReturn(command);
       given(loginUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toLoginResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/login", request));
@@ -212,9 +212,9 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(refreshTokenCookie("raw-refresh-token", "604800"));
 
       verify(clientIpResolver).resolve(any(HttpServletRequest.class));
-      verify(iamWebMapper).toCommand(request, clientIp);
+      verify(iamWebMapper).toLoginCommand(request, clientIp);
       verify(loginUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toLoginResponse(result);
       verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
 
@@ -272,7 +272,7 @@ class AuthControllerTest extends BaseWebSliceTest {
       var command = new LoginCommand(request.email(), request.password(), clientIp);
 
       given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
-      given(iamWebMapper.toCommand(request, clientIp)).willReturn(command);
+      given(iamWebMapper.toLoginCommand(request, clientIp)).willReturn(command);
       doThrow(new TooManyRequestsException(Duration.ofSeconds(30)))
               .when(loginUseCase).execute(command);
 
@@ -291,7 +291,7 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
 
       verify(clientIpResolver).resolve(any(HttpServletRequest.class));
-      verify(iamWebMapper).toCommand(request, clientIp);
+      verify(iamWebMapper).toLoginCommand(request, clientIp);
       verify(loginUseCase).execute(command);
       verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
@@ -312,7 +312,7 @@ class AuthControllerTest extends BaseWebSliceTest {
 
       given(iamWebMapper.toRefreshTokenCommand(refreshToken)).willReturn(command);
       given(refreshTokenUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toRefreshTokenResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(post(AUTH_BASE_PATH + "/refresh")
@@ -327,7 +327,7 @@ class AuthControllerTest extends BaseWebSliceTest {
 
       verify(iamWebMapper).toRefreshTokenCommand(refreshToken);
       verify(refreshTokenUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toRefreshTokenResponse(result);
       verifyNoMoreInteractions(refreshTokenUseCase, iamWebMapper);
     }
 
@@ -438,9 +438,9 @@ class AuthControllerTest extends BaseWebSliceTest {
       var result = new ResendVerificationResult("Código reenviado com sucesso.");
       var response = new GenericMessageResponse(result.message());
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(iamWebMapper.toResendVerificationCommand(request)).willReturn(command);
       given(resendVerificationUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request).with(jwt()));
@@ -451,9 +451,9 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
               .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(iamWebMapper).toResendVerificationCommand(request);
       verify(resendVerificationUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, resendVerificationUseCase);
     }
   }
