@@ -20,10 +20,9 @@ public class DeleteUrlUseCaseImpl implements DeleteUrlUseCase {
 
   @Override
   public void execute(DeleteUrlCommand command) {
-
-    var shortCode = command.shortCode();
-    var requesterId = command.requesterId();
-    var canDeleteAny = command.canDeleteAny();
+    String shortCode = command.shortCode();
+    UUID requesterId = command.requesterId();
+    boolean canDeleteAny = command.canDeleteAny();
 
     Url url = fetchUrlByShortCode(shortCode);
     validateCanDelete(url, requesterId, canDeleteAny);
@@ -40,9 +39,9 @@ public class DeleteUrlUseCaseImpl implements DeleteUrlUseCase {
   }
 
   private void validateCanDelete(Url url, UUID requesterId, boolean canDeleteAny) {
-    boolean isUrlOwnership = url.getUserId().equals(requesterId);
+    boolean requesterOwnsUrl = url.getUserId().equals(requesterId);
 
-    if (!canDeleteAny && !isUrlOwnership) {
+    if (!canDeleteAny && !requesterOwnsUrl) {
       throw new UrlDeleteForbiddenException();
     }
   }

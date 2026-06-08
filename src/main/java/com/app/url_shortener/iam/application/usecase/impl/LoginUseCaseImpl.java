@@ -1,7 +1,12 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.LoginCommand;
-import com.app.url_shortener.iam.application.port.output.*;
+import com.app.url_shortener.iam.application.port.output.AccessTokenIssuerPort;
+import com.app.url_shortener.iam.application.port.output.AuthenticateCredentialsPort;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
+import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
+import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
+import com.app.url_shortener.iam.application.port.output.model.IssuedAccessToken;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.result.LoginResult;
 import com.app.url_shortener.iam.application.usecase.LoginUseCase;
@@ -17,11 +22,11 @@ public class LoginUseCaseImpl implements LoginUseCase {
 
   private static final String TOKEN_TYPE = "Bearer";
 
-  private final SecureTokenGeneratorPort tokenGenerator;
-  private final IssueAccessTokenPort issueAccessTokenPort;
-  private final RefreshTokenRepositoryPort tokenRepository;
   private final CheckAuthRateLimitPort checkAuthRateLimitPort;
   private final AuthenticateCredentialsPort authenticateCredentialsPort;
+  private final AccessTokenIssuerPort accessTokenIssuerPort;
+  private final SecureTokenGeneratorPort secureTokenGeneratorPort;
+  private final RefreshTokenRepositoryPort refreshTokenRepositoryPort;
 
   @Override
   @Transactional
@@ -31,19 +36,22 @@ public class LoginUseCaseImpl implements LoginUseCase {
       throw new InvalidCredentialsException();
     }
 
-    checkAuthRateLimitPort.checkLogin(command.clientIp(), command.email());
+    checkAuthRateLimitPort.checkLogin(command.clientIp(), email);
 
     AuthenticatedUserResult authenticatedUser = authenticateCredentialsPort.authenticate(email, command.password());
 
-    String accessToken = issueAccessTokenPort.getToken(authenticatedUser);
+    IssuedAccessToken issuedAccessToken = accessTokenIssuerPort.issue(authenticatedUser);
 
-    String rawRefreshToken = tokenGenerator.generateRandomToken();
-    String tokenHash = tokenGenerator.hashToken(rawRefreshToken);
-    RefreshToken refreshToken = RefreshToken.create(authenticatedUser.id(), tokenHash);
-    tokenRepository.save(refreshToken);
+    String rawRefreshToken = secureTokenGeneratorPort.generateRandomToken();
+    String refreshTokenHash = secureTokenGeneratorPort.hashToken(rawRefreshToken);
+    RefreshToken refreshToken = RefreshToken.create(authenticatedUser.id(), refreshTokenHash);
+    refreshTokenRepositoryPort.save(refreshToken);
 
-    long expiresAt = issueAccessTokenPort.getExpiresInSeconds();
-
-    return new LoginResult(rawRefreshToken, accessToken, TOKEN_TYPE, expiresAt, authenticatedUser);
+    return new LoginResult(
+        rawRefreshToken,
+        issuedAccessToken.value(),
+        TOKEN_TYPE,
+        issuedAccessToken.expiresInSeconds(),
+        authenticatedUser);
   }
 }

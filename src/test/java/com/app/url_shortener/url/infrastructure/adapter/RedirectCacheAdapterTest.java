@@ -26,8 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("redis-slice")
 @Import({
-    RedisRedirectCacheAdapter.class,
-    RedisRedirectCacheAdapterObjectMapperTestConfig.class
+    RedirectCacheAdapter.class,
+    RedirectCacheAdapterObjectMapperTestConfig.class
 })
 @TestPropertySource(properties = {
     "app.url.redirect-cache.ttl.active=15m",
@@ -35,13 +35,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
     "app.url.redirect-cache.ttl.not-found=5m"
 })
 @DisplayName("Slice Redis - Cache de Redirect de URL")
-class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
+class RedirectCacheAdapterTest extends BaseRedisSliceTest {
 
   private static final String KEY_PREFIX = "url:redirect:";
   private static final String KEY_PATTERN = KEY_PREFIX + "*";
 
   @Autowired
-  private RedisRedirectCacheAdapter adapter;
+  private RedirectCacheAdapter adapter;
 
   @Autowired
   private StringRedisTemplate redisTemplate;
@@ -114,15 +114,15 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
     void shouldSaveActiveIfKeyDoesNotExist() {
       // 1. Arrange
       var shortCode = "activeNew";
-      var longUrl = "https://example.com";
+      var originalUrl = "https://example.com";
 
       // 2. Act
-      var result = adapter.saveActiveIfAbsent(shortCode, longUrl);
+      var result = adapter.saveActiveIfAbsent(shortCode, originalUrl);
 
       // 3. Assert
       assertThat(result).isTrue();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofMinutes(15));
     }
 
@@ -147,15 +147,15 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
     void shouldOverwriteNotFoundWithActiveWhenSavingActive() {
       // 1. Arrange
       var shortCode = "activeOverwrite";
-      var longUrl = "https://example.com";
+      var originalUrl = "https://example.com";
       adapter.saveNotFoundIfAbsent(shortCode);
 
       // 2. Act
-      adapter.saveActive(shortCode, longUrl);
+      adapter.saveActive(shortCode, originalUrl);
 
       // 3. Assert
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofMinutes(15));
     }
   }
@@ -185,8 +185,8 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
     void shouldPreserveActiveWhenSaveNotFoundIfAbsentFindsExistingKey() {
       // 1. Arrange
       var shortCode = "notFoundExistingActive";
-      var longUrl = "https://example.com";
-      adapter.saveActive(shortCode, longUrl);
+      var originalUrl = "https://example.com";
+      adapter.saveActive(shortCode, originalUrl);
 
       // 2. Act
       var result = adapter.saveNotFoundIfAbsent(shortCode);
@@ -194,7 +194,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isFalse();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl));
     }
   }
 
@@ -278,7 +278,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
 }
 
 @TestConfiguration
-class RedisRedirectCacheAdapterObjectMapperTestConfig {
+class RedirectCacheAdapterObjectMapperTestConfig {
 
   @Bean
   ObjectMapper objectMapper() {

@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Adaptador Redis de Cache de Redirect")
-class RedisRedirectCacheAdapterUnitTest {
+class RedirectCacheAdapterUnitTest {
 
   private static final Duration TTL_ACTIVE = Duration.ofMinutes(15);
   private static final Duration TTL_DELETED = Duration.ofHours(1);
@@ -154,8 +154,8 @@ class RedisRedirectCacheAdapterUnitTest {
     }
   }
 
-  private RedisRedirectCacheAdapter adapter() {
-    return new RedisRedirectCacheAdapter(
+  private RedirectCacheAdapter adapter() {
+    return new RedirectCacheAdapter(
         TTL_ACTIVE,
         TTL_DELETED,
         TTL_NOT_FOUND,

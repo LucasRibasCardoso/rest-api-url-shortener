@@ -22,7 +22,7 @@ public class UrlRedirectEventPublisherAdapter implements UrlRedirectEventPublish
   }
 
   @Override
-  public void publishAsync(UrlRedirectedEvent event) {
+  public void publish(UrlRedirectedEvent event) {
     try {
       sqsAsyncOperations
           .sendAsync(urlRedirectEventsQueue, event)

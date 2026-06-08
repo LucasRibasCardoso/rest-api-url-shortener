@@ -1,12 +1,13 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RefreshTokenCommand;
-import com.app.url_shortener.iam.application.port.output.IssueAccessTokenPort;
+import com.app.url_shortener.iam.application.port.output.AccessTokenIssuerPort;
 import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
+import com.app.url_shortener.iam.application.port.output.model.IssuedAccessToken;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
-import com.app.url_shortener.iam.application.service.RefreshTokenSecurityService;
+import com.app.url_shortener.iam.application.service.CompromisedRefreshTokenRevocationService;
 import com.app.url_shortener.iam.application.usecase.impl.RefreshTokenUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
@@ -46,19 +47,19 @@ import static org.mockito.Mockito.*;
 class RefreshTokenUseCaseTest {
 
   @Mock
-  private RefreshTokenRepositoryPort tokenRepository;
+  private RefreshTokenRepositoryPort refreshTokenRepositoryPort;
 
   @Mock
-  private SecureTokenGeneratorPort tokenGenerator;
+  private SecureTokenGeneratorPort secureTokenGeneratorPort;
 
   @Mock
-  private IssueAccessTokenPort accessTokenPort;
+  private AccessTokenIssuerPort accessTokenIssuerPort;
 
   @Mock
-  private UserAccountRepositoryPort userRepository;
+  private UserAccountRepositoryPort userAccountRepositoryPort;
 
   @Mock
-  private RefreshTokenSecurityService refreshTokenSecurityService;
+  private CompromisedRefreshTokenRevocationService refreshTokenSecurityService;
 
   @Captor
   private ArgumentCaptor<RefreshToken> refreshTokenCaptor;
@@ -82,21 +83,21 @@ class RefreshTokenUseCaseTest {
       var incomingHash = "incoming-refresh-token-hash";
       var newRawToken = "new-raw-refresh-token";
       var newTokenHash = "new-refresh-token-hash";
-      var newAccessToken = "new-jwt-access-token";
-      var oldToken = RefreshToken.create(userId, incomingHash);
+      var issuedAccessToken = new IssuedAccessToken("new-jwt-access-token", 60);
+      var currentRefreshToken = RefreshToken.create(userId, incomingHash);
       var userAccount = activeUserAccountWithRoles(userId);
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
-      given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(oldToken));
-      given(tokenGenerator.generateRandomToken()).willReturn(newRawToken);
-      given(tokenGenerator.hashToken(newRawToken)).willReturn(newTokenHash);
-      given(tokenRepository.markTokenAsRotatedIfActive(
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willReturn(incomingHash);
+      given(refreshTokenRepositoryPort.findByTokenHash(incomingHash)).willReturn(Optional.of(currentRefreshToken));
+      given(secureTokenGeneratorPort.generateRandomToken()).willReturn(newRawToken);
+      given(secureTokenGeneratorPort.hashToken(newRawToken)).willReturn(newTokenHash);
+      given(refreshTokenRepositoryPort.markTokenAsRotatedIfActive(
               eq(incomingHash),
               any(Instant.class),
               any(UUID.class)
       )).willReturn(1);
-      given(userRepository.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.of(userAccount));
-      given(accessTokenPort.getToken(any(AuthenticatedUserResult.class))).willReturn(newAccessToken);
+      given(userAccountRepositoryPort.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.of(userAccount));
+      given(accessTokenIssuerPort.issue(any(AuthenticatedUserResult.class))).willReturn(issuedAccessToken);
 
       // 2. Act
       var result = refreshTokenUseCase.execute(command);
@@ -104,10 +105,10 @@ class RefreshTokenUseCaseTest {
       // 3. Assert
       assertAll(
               () -> assertThat(result.newRefreshToken()).isEqualTo(newRawToken),
-              () -> assertThat(result.newAccessToken()).isEqualTo(newAccessToken)
+              () -> assertThat(result.newAccessToken()).isEqualTo(issuedAccessToken.value())
       );
 
-      verify(tokenRepository).save(refreshTokenCaptor.capture());
+      verify(refreshTokenRepositoryPort).save(refreshTokenCaptor.capture());
       var savedNewToken = refreshTokenCaptor.getValue();
 
       assertAll(
@@ -116,12 +117,12 @@ class RefreshTokenUseCaseTest {
               () -> assertThat(savedNewToken.isRevoked()).isFalse()
       );
 
-      verify(tokenRepository).markTokenAsRotatedIfActive(
+      verify(refreshTokenRepositoryPort).markTokenAsRotatedIfActive(
               eq(incomingHash),
               any(Instant.class),
               eq(savedNewToken.getId())
       );
-      verify(accessTokenPort).getToken(authenticatedUserCaptor.capture());
+      verify(accessTokenIssuerPort).issue(authenticatedUserCaptor.capture());
       var authenticatedUser = authenticatedUserCaptor.getValue();
 
       assertAll(
@@ -134,17 +135,17 @@ class RefreshTokenUseCaseTest {
                       .containsExactlyInAnyOrder("url:create", "url:read", "user:manage")
       );
 
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verify(tokenRepository).findByTokenHash(incomingHash);
-      verify(tokenGenerator).generateRandomToken();
-      verify(tokenGenerator).hashToken(newRawToken);
-      verify(userRepository).findByIdWithRolesAndPermissions(userId);
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verify(refreshTokenRepositoryPort).findByTokenHash(incomingHash);
+      verify(secureTokenGeneratorPort).generateRandomToken();
+      verify(secureTokenGeneratorPort).hashToken(newRawToken);
+      verify(userAccountRepositoryPort).findByIdWithRolesAndPermissions(userId);
       verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
       verifyNoMoreInteractions(
-              tokenRepository,
-              tokenGenerator,
-              accessTokenPort,
-              userRepository,
+              refreshTokenRepositoryPort,
+              secureTokenGeneratorPort,
+              accessTokenIssuerPort,
+              userAccountRepositoryPort,
               refreshTokenSecurityService
       );
     }
@@ -156,8 +157,8 @@ class RefreshTokenUseCaseTest {
       var command = new RefreshTokenCommand("unknown-refresh-token");
       var incomingHash = "unknown-refresh-token-hash";
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
-      given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.empty());
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willReturn(incomingHash);
+      given(refreshTokenRepositoryPort.findByTokenHash(incomingHash)).willReturn(Optional.empty());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -167,10 +168,10 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(RefreshTokenExpiredException.class)
               .hasMessage("Refresh token expirado.");
 
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verify(tokenRepository).findByTokenHash(incomingHash);
-      verifyNoInteractions(accessTokenPort, userRepository, refreshTokenSecurityService);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator);
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verify(refreshTokenRepositoryPort).findByTokenHash(incomingHash);
+      verifyNoInteractions(accessTokenIssuerPort, userAccountRepositoryPort, refreshTokenSecurityService);
+      verifyNoMoreInteractions(refreshTokenRepositoryPort, secureTokenGeneratorPort);
     }
 
     @Test
@@ -180,7 +181,7 @@ class RefreshTokenUseCaseTest {
       var command = new RefreshTokenCommand("invalid-refresh-token");
       var exception = new IllegalArgumentException("Refresh token inválido.");
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willThrow(exception);
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willThrow(exception);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -190,9 +191,9 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(IllegalArgumentException.class)
               .hasMessage("Refresh token inválido.");
 
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verifyNoInteractions(tokenRepository, accessTokenPort, userRepository);
-      verifyNoMoreInteractions(tokenGenerator);
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verifyNoInteractions(refreshTokenRepositoryPort, accessTokenIssuerPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(secureTokenGeneratorPort);
     }
 
     @Test
@@ -204,8 +205,8 @@ class RefreshTokenUseCaseTest {
       var incomingHash = "revoked-refresh-token-hash";
       var revokedToken = revokedRefreshToken(userId, incomingHash);
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
-      given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(revokedToken));
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willReturn(incomingHash);
+      given(refreshTokenRepositoryPort.findByTokenHash(incomingHash)).willReturn(Optional.of(revokedToken));
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -215,14 +216,14 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(TokenCompromisedException.class)
               .hasMessage("Refresh token comprometido.");
 
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verify(tokenRepository).findByTokenHash(incomingHash);
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verify(refreshTokenRepositoryPort).findByTokenHash(incomingHash);
       verify(refreshTokenSecurityService).revokeAllTokensDueToCompromise(userId);
-      verify(tokenRepository, never()).save(any(RefreshToken.class));
-      verify(tokenRepository, never()).markTokenAsRotatedIfActive(any(), any(), any());
-      verify(accessTokenPort, never()).getToken(any());
-      verifyNoInteractions(accessTokenPort, userRepository);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator, refreshTokenSecurityService);
+      verify(refreshTokenRepositoryPort, never()).save(any(RefreshToken.class));
+      verify(refreshTokenRepositoryPort, never()).markTokenAsRotatedIfActive(any(), any(), any());
+      verify(accessTokenIssuerPort, never()).issue(any());
+      verifyNoInteractions(accessTokenIssuerPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(refreshTokenRepositoryPort, secureTokenGeneratorPort, refreshTokenSecurityService);
     }
 
     @Test
@@ -234,8 +235,8 @@ class RefreshTokenUseCaseTest {
       var incomingHash = "expired-refresh-token-hash";
       var expiredToken = expiredRefreshToken(userId, incomingHash);
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
-      given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(expiredToken));
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willReturn(incomingHash);
+      given(refreshTokenRepositoryPort.findByTokenHash(incomingHash)).willReturn(Optional.of(expiredToken));
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -245,14 +246,14 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(RefreshTokenExpiredException.class)
               .hasMessage("Refresh token expirado.");
 
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verify(tokenRepository).findByTokenHash(incomingHash);
-      verify(tokenGenerator, never()).generateRandomToken();
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verify(refreshTokenRepositoryPort).findByTokenHash(incomingHash);
+      verify(secureTokenGeneratorPort, never()).generateRandomToken();
       verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
-      verify(tokenRepository, never()).save(any(RefreshToken.class));
-      verify(tokenRepository, never()).markTokenAsRotatedIfActive(any(), any(), any());
-      verifyNoInteractions(accessTokenPort, userRepository);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator, refreshTokenSecurityService);
+      verify(refreshTokenRepositoryPort, never()).save(any(RefreshToken.class));
+      verify(refreshTokenRepositoryPort, never()).markTokenAsRotatedIfActive(any(), any(), any());
+      verifyNoInteractions(accessTokenIssuerPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(refreshTokenRepositoryPort, secureTokenGeneratorPort, refreshTokenSecurityService);
     }
 
     @Test
@@ -264,18 +265,18 @@ class RefreshTokenUseCaseTest {
       var incomingHash = "incoming-refresh-token-hash";
       var newRawToken = "new-raw-refresh-token";
       var newTokenHash = "new-refresh-token-hash";
-      var oldToken = RefreshToken.create(userId, incomingHash);
+      var currentRefreshToken = RefreshToken.create(userId, incomingHash);
 
-      given(tokenGenerator.hashToken(command.refreshToken())).willReturn(incomingHash);
-      given(tokenRepository.findByTokenHash(incomingHash)).willReturn(Optional.of(oldToken));
-      given(tokenGenerator.generateRandomToken()).willReturn(newRawToken);
-      given(tokenGenerator.hashToken(newRawToken)).willReturn(newTokenHash);
-      given(tokenRepository.markTokenAsRotatedIfActive(
+      given(secureTokenGeneratorPort.hashToken(command.refreshToken())).willReturn(incomingHash);
+      given(refreshTokenRepositoryPort.findByTokenHash(incomingHash)).willReturn(Optional.of(currentRefreshToken));
+      given(secureTokenGeneratorPort.generateRandomToken()).willReturn(newRawToken);
+      given(secureTokenGeneratorPort.hashToken(newRawToken)).willReturn(newTokenHash);
+      given(refreshTokenRepositoryPort.markTokenAsRotatedIfActive(
               eq(incomingHash),
               any(Instant.class),
               any(UUID.class)
       )).willReturn(1);
-      given(userRepository.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.empty());
+      given(userAccountRepositoryPort.findByIdWithRolesAndPermissions(userId)).willReturn(Optional.empty());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> refreshTokenUseCase.execute(command));
@@ -285,20 +286,24 @@ class RefreshTokenUseCaseTest {
               .isInstanceOf(UserNotFoundException.class)
               .hasMessage("Usuário não encontrado.");
 
-      verify(tokenRepository).save(refreshTokenCaptor.capture());
-      verify(tokenRepository).markTokenAsRotatedIfActive(
+      verify(refreshTokenRepositoryPort).save(refreshTokenCaptor.capture());
+      verify(refreshTokenRepositoryPort).markTokenAsRotatedIfActive(
               eq(incomingHash),
               any(Instant.class),
               eq(refreshTokenCaptor.getValue().getId())
       );
-      verify(tokenGenerator).hashToken(command.refreshToken());
-      verify(tokenRepository).findByTokenHash(incomingHash);
-      verify(tokenGenerator).generateRandomToken();
-      verify(tokenGenerator).hashToken(newRawToken);
-      verify(userRepository).findByIdWithRolesAndPermissions(userId);
+      verify(secureTokenGeneratorPort).hashToken(command.refreshToken());
+      verify(refreshTokenRepositoryPort).findByTokenHash(incomingHash);
+      verify(secureTokenGeneratorPort).generateRandomToken();
+      verify(secureTokenGeneratorPort).hashToken(newRawToken);
+      verify(userAccountRepositoryPort).findByIdWithRolesAndPermissions(userId);
       verify(refreshTokenSecurityService, never()).revokeAllTokensDueToCompromise(any());
-      verifyNoInteractions(accessTokenPort);
-      verifyNoMoreInteractions(tokenRepository, tokenGenerator, userRepository, refreshTokenSecurityService);
+      verifyNoInteractions(accessTokenIssuerPort);
+      verifyNoMoreInteractions(
+              refreshTokenRepositoryPort,
+              secureTokenGeneratorPort,
+              userAccountRepositoryPort,
+              refreshTokenSecurityService);
     }
   }
 

@@ -2,7 +2,7 @@ package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.VerifyEmailCommand;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.RoleRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.VerifyEmailResult;
@@ -20,49 +20,50 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
 
-  private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String SUCCESS_MESSAGE =
+      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
 
-  private final RoleRepositoryPort roleRepositoryPort;
   private final CheckAuthRateLimitPort checkAuthRateLimitPort;
+  private final EmailVerificationTokenStorePort emailVerificationTokenStorePort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
-  private final EmailVerificationTokenPort emailVerificationTokenPort;
+  private final RoleRepositoryPort roleRepositoryPort;
 
   @Override
   @Transactional
   public VerifyEmailResult execute(VerifyEmailCommand command) {
-
-    checkAuthRateLimitPort.checkVerifyEmail(command.email());
-    EmailVerificationToken token = consumeAndValidateToken(command.code(), command.email());
-    verifyAccountEmail(command.email(), token);
+    String email = command.email();
+    checkAuthRateLimitPort.checkVerifyEmail(email);
+    EmailVerificationToken emailVerificationToken = consumeAndValidateToken(email, command.code());
+    verifyAccountEmail(email, emailVerificationToken);
 
     return new VerifyEmailResult(SUCCESS_MESSAGE);
   }
 
-  private EmailVerificationToken consumeAndValidateToken(VerificationCode code, String email) {
-    EmailVerificationToken token =
-        emailVerificationTokenPort
-            .consumeByEmailAndCode(email, code)
+  private EmailVerificationToken consumeAndValidateToken(String email, VerificationCode verificationCode) {
+    EmailVerificationToken emailVerificationToken =
+        emailVerificationTokenStorePort
+            .consumeByEmailAndCode(email, verificationCode)
             .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
 
-    if (token.isExpired()) {
+    if (emailVerificationToken.isExpired()) {
       throw new InvalidOrExpiredEmailVerificationCodeException();
     }
 
-    return token;
+    return emailVerificationToken;
   }
 
-  private void verifyAccountEmail(String email, EmailVerificationToken token) {
-    UserAccount user =
+  private void verifyAccountEmail(String email, EmailVerificationToken emailVerificationToken) {
+    UserAccount userAccount =
         userAccountRepositoryPort
             .findByEmailWithRoles(email)
             .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
 
-    if (!token.userId().equals(user.getId())) {
+    if (!emailVerificationToken.userId().equals(userAccount.getId())) {
       throw new InvalidOrExpiredEmailVerificationCodeException();
     }
 
     Role defaultRole = roleRepositoryPort.findDefaultRole();
-    user.verifyEmail(defaultRole);
-    userAccountRepositoryPort.save(user);
+    userAccount.verifyEmail(defaultRole);
+    userAccountRepositoryPort.save(userAccount);
   }
 }

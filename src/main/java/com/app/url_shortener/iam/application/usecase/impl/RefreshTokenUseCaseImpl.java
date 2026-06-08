@@ -1,13 +1,13 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.RefreshTokenCommand;
-import com.app.url_shortener.iam.application.port.output.IssueAccessTokenPort;
+import com.app.url_shortener.iam.application.port.output.AccessTokenIssuerPort;
 import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.result.RefreshTokenResult;
-import com.app.url_shortener.iam.application.service.RefreshTokenSecurityService;
+import com.app.url_shortener.iam.application.service.CompromisedRefreshTokenRevocationService;
 import com.app.url_shortener.iam.application.usecase.RefreshTokenUseCase;
 import com.app.url_shortener.iam.domain.exception.auth.RefreshTokenExpiredException;
 import com.app.url_shortener.iam.domain.exception.auth.TokenCompromisedException;
@@ -27,83 +27,91 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
 
-  private final IssueAccessTokenPort accessTokenPort;
-  private final SecureTokenGeneratorPort tokenGenerator;
-  private final UserAccountRepositoryPort userRepository;
-  private final RefreshTokenRepositoryPort tokenRepository;
-  private final RefreshTokenSecurityService refreshTokenSecurityService;
+  private final SecureTokenGeneratorPort secureTokenGeneratorPort;
+  private final RefreshTokenRepositoryPort refreshTokenRepositoryPort;
+  private final UserAccountRepositoryPort userAccountRepositoryPort;
+  private final AccessTokenIssuerPort accessTokenIssuerPort;
+  private final CompromisedRefreshTokenRevocationService compromisedRefreshTokenRevocationService;
 
   @Override
   @Transactional
   public RefreshTokenResult execute(RefreshTokenCommand command) {
-    String oldTokenHash = tokenGenerator.hashToken(command.refreshToken());
-    RefreshToken oldToken = tokenRepository.findByTokenHash(oldTokenHash)
+    String currentRefreshTokenHash = secureTokenGeneratorPort.hashToken(command.refreshToken());
+    RefreshToken currentRefreshToken =
+        refreshTokenRepositoryPort
+            .findByTokenHash(currentRefreshTokenHash)
             .orElseThrow(RefreshTokenExpiredException::new);
 
     Instant now = Instant.now();
-    ensureTokenWasNotReused(oldToken);
-    ensureTokenIsNotExpired(oldToken, now);
+    ensureRefreshTokenWasNotReused(currentRefreshToken);
+    ensureRefreshTokenIsNotExpired(currentRefreshToken, now);
 
-    String newRawRefreshToken = tokenGenerator.generateRandomToken();
-    String newRefreshTokenHash = tokenGenerator.hashToken(newRawRefreshToken);
+    String replacementRawRefreshToken = secureTokenGeneratorPort.generateRandomToken();
+    String replacementRefreshTokenHash = secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
 
-    RefreshToken newRefreshToken = RefreshToken.create(oldToken.getUserId(), newRefreshTokenHash);
-    tokenRepository.save(newRefreshToken);
+    RefreshToken replacementRefreshToken =
+            RefreshToken.create(currentRefreshToken.getUserId(), replacementRefreshTokenHash);
+    refreshTokenRepositoryPort.save(replacementRefreshToken);
 
-    rotateOldTokenOrReject(oldTokenHash, oldToken, now, newRefreshToken.getId());
+    rotateCurrentRefreshTokenOrReject(
+        currentRefreshTokenHash, currentRefreshToken, now, replacementRefreshToken.getId());
 
-    AuthenticatedUserResult authenticatedUser = buildAuthenticatedUser(oldToken.getUserId());
-    String newAccessToken = accessTokenPort.getToken(authenticatedUser);
-    return new RefreshTokenResult(newRawRefreshToken, newAccessToken);
+    AuthenticatedUserResult authenticatedUser = loadAuthenticatedUserResult(currentRefreshToken.getUserId());
+    String replacementAccessToken = accessTokenIssuerPort.issue(authenticatedUser).value();
+    return new RefreshTokenResult(replacementRawRefreshToken, replacementAccessToken);
   }
 
-  private void ensureTokenWasNotReused(RefreshToken token) {
-    if (token.isRevoked()) {
-      revokeAllTokensDueToCompromise(token.getUserId());
+  private void ensureRefreshTokenWasNotReused(RefreshToken refreshToken) {
+    if (refreshToken.isRevoked()) {
+      revokeAllTokensDueToCompromise(refreshToken.getUserId());
     }
   }
 
-  private void ensureTokenIsNotExpired(RefreshToken token, Instant now) {
-    if (token.isExpired(now)) {
+  private void ensureRefreshTokenIsNotExpired(RefreshToken refreshToken, Instant now) {
+    if (refreshToken.isExpired(now)) {
       throw new RefreshTokenExpiredException();
     }
   }
 
-  private void rotateOldTokenOrReject(
-          String oldTokenHash,
-          RefreshToken oldToken,
-          Instant now,
-          UUID newRefreshTokenId) {
-    int updatedRows = tokenRepository.markTokenAsRotatedIfActive(oldTokenHash, now, newRefreshTokenId);
+  private void rotateCurrentRefreshTokenOrReject(
+      String currentRefreshTokenHash,
+      RefreshToken currentRefreshToken,
+      Instant now,
+      UUID replacementRefreshTokenId) {
+    int updatedRows =
+        refreshTokenRepositoryPort.markTokenAsRotatedIfActive(
+            currentRefreshTokenHash, now, replacementRefreshTokenId);
     if (updatedRows != 1) {
-      revokeAllTokensDueToCompromise(oldToken.getUserId());
+      revokeAllTokensDueToCompromise(currentRefreshToken.getUserId());
     }
   }
 
   private void revokeAllTokensDueToCompromise(UUID userId) {
-    refreshTokenSecurityService.revokeAllTokensDueToCompromise(userId);
+    compromisedRefreshTokenRevocationService.revokeAllTokensDueToCompromise(userId);
     throw new TokenCompromisedException();
   }
 
-  private AuthenticatedUserResult buildAuthenticatedUser(UUID userId) {
-    UserAccount user = userRepository.findByIdWithRolesAndPermissions(userId).orElseThrow(UserNotFoundException::new);
+  private AuthenticatedUserResult loadAuthenticatedUserResult(UUID userId) {
+    UserAccount userAccount =
+        userAccountRepositoryPort
+            .findByIdWithRolesAndPermissions(userId)
+            .orElseThrow(UserNotFoundException::new);
 
-    List<String> roles = user.getRoles().stream().map(Role::getName).toList();
+    List<String> roles = userAccount.getRoles().stream().map(Role::getName).toList();
 
     List<String> authorities =
-            user.getRoles().stream()
-                    .flatMap(role -> role.getPermissions().stream())
-                    .map(Permission::getName)
-                    .distinct()
-                    .toList();
+        userAccount.getRoles().stream()
+            .flatMap(role -> role.getPermissions().stream())
+            .map(Permission::getName)
+            .distinct()
+            .toList();
 
     return new AuthenticatedUserResult(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            roles,
-            authorities,
-            user.getPlan().name()
-    );
+        userAccount.getId(),
+        userAccount.getName(),
+        userAccount.getEmail(),
+        roles,
+        authorities,
+        userAccount.getPlan().name());
   }
 }

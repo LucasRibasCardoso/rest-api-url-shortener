@@ -20,34 +20,34 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ShortenUrlUseCaseImpl implements ShortenUrlUseCase {
 
+  private final UrlSafetyValidator urlSafetyValidator;
+  private final CheckUrlRateLimitPort checkUrlRateLimitPort;
+  private final IdGeneratorPort idGeneratorPort;
   private final UrlEncoderPort urlEncoderPort;
-  private final IdGeneratorPort idGeneratorService;
   private final UrlRepositoryPort urlRepositoryPort;
   private final RedirectCachePort redirectCachePort;
-  private final CheckUrlRateLimitPort checkUrlRateLimitPort;
-  private final UrlSafetyValidator urlSafetyValidator;
 
   @Override
   public ShortenUrlResult execute(ShortenUrlCommand command) {
-    urlSafetyValidator.validate(command.originalUrl());
+    String originalUrl = command.originalUrl();
+    urlSafetyValidator.validate(originalUrl);
     checkUrlRateLimitPort.checkShorten(command.userId(), command.planType());
 
-    long uniqueId = idGeneratorService.generateId();
-    String shortCode = urlEncoderPort.encode(uniqueId);
+    long generatedId = idGeneratorPort.generateId();
+    String shortCode = urlEncoderPort.encode(generatedId);
 
-    Url url = Url.create(command.userId(), shortCode, command.originalUrl());
+    Url url = Url.create(command.userId(), shortCode, originalUrl);
     urlRepositoryPort.save(url);
-    saveStatusActiveInRedirectCache(url);
+    saveActiveInRedirectCache(url);
 
     return new ShortenUrlResult(url.getOriginalUrl(), url.getShortCode(), url.getCreatedAt());
   }
 
-  private void saveStatusActiveInRedirectCache(Url url) {
+  private void saveActiveInRedirectCache(Url url) {
     try {
       redirectCachePort.saveActive(url.getShortCode(), url.getOriginalUrl());
     } catch (RedirectCacheException exception) {
       log.warn("Falha ao tentar salvar nova URL no cache de redirecionamento: {}", exception.getMessage());
     }
   }
-
 }

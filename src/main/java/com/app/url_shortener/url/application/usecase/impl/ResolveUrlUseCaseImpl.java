@@ -5,8 +5,8 @@ import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.ResolveUrlResult;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
+import com.app.url_shortener.url.application.result.ResolveUrlResult;
 import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
@@ -28,50 +28,50 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
   @Override
   public ResolveUrlResult execute(ResolveUrlCommand command) {
     String shortCode = command.shortCode();
-    ResolveUrlResult result = resolve(shortCode);
-    urlRedirectEventPublisherPort.publishAsync(UrlRedirectedEvent.create(shortCode));
-    return result;
+    ResolveUrlResult resolveUrlResult = resolve(shortCode);
+    urlRedirectEventPublisherPort.publish(UrlRedirectedEvent.create(shortCode));
+    return resolveUrlResult;
   }
 
   private ResolveUrlResult resolve(String shortCode) {
-    Optional<RedirectCacheEntry> urlCacheEntry;
+    Optional<RedirectCacheEntry> redirectCacheEntryOptional;
 
     try {
-      urlCacheEntry = fetchInCache(shortCode);
-    } catch (RedirectCacheException e) {
-      return fetchInRepository(shortCode);
+      redirectCacheEntryOptional = findInRedirectCache(shortCode);
+    } catch (RedirectCacheException exception) {
+      return resolveFromRepository(shortCode);
     }
 
-    if (urlCacheEntry.isPresent()) {
-      return resolveCachedUrl(urlCacheEntry.get());
+    if (redirectCacheEntryOptional.isPresent()) {
+      return resolveCachedUrl(redirectCacheEntryOptional.get());
     }
 
-    return fetchInRepository(shortCode);
+    return resolveFromRepository(shortCode);
   }
 
-  private Optional<RedirectCacheEntry> fetchInCache(String shortCode) {
+  private Optional<RedirectCacheEntry> findInRedirectCache(String shortCode) {
     try {
       return redirectCachePort.findByShortCode(shortCode);
-    } catch (RedirectCacheException e) {
-      log.warn("Falha na leitura do cache de redirecionamento: {}", e.getMessage());
-      throw e;
+    } catch (RedirectCacheException exception) {
+      log.warn("Falha na leitura do cache de redirecionamento: {}", exception.getMessage());
+      throw exception;
     }
   }
 
-  private ResolveUrlResult fetchInRepository(String shortCode) {
-    Optional<Url> urlOpt = urlRepositoryPort.findByShortCode(shortCode);
+  private ResolveUrlResult resolveFromRepository(String shortCode) {
+    Optional<Url> urlOptional = urlRepositoryPort.findByShortCode(shortCode);
 
-    if (urlOpt.isPresent()) {
-      return resolvePersistedUrl(shortCode, urlOpt.get());
+    if (urlOptional.isPresent()) {
+      return resolvePersistedUrl(shortCode, urlOptional.get());
     }
 
-    saveStatusNotFoundInRedirectCache(shortCode);
+    saveNotFoundInRedirectCache(shortCode);
     throw new UrlNotFoundException();
   }
 
-  private ResolveUrlResult resolveCachedUrl(RedirectCacheEntry entry) {
-    if (entry.isRedirectable()) {
-      return new ResolveUrlResult(entry.longUrl());
+  private ResolveUrlResult resolveCachedUrl(RedirectCacheEntry redirectCacheEntry) {
+    if (redirectCacheEntry.isRedirectable()) {
+      return new ResolveUrlResult(redirectCacheEntry.originalUrl());
     }
 
     throw new UrlNotFoundException();
@@ -79,13 +79,13 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
 
   private ResolveUrlResult resolvePersistedUrl(String shortCode, Url url) {
     if (!url.isRedirectable()) {
-      saveStatusDeleteInRedirectCache(shortCode);
+      saveDeletedInRedirectCache(shortCode);
       throw new UrlNotFoundException();
     }
 
-    boolean cached = saveStatusActiveInRedirectCache(shortCode, url);
+    boolean activeCacheEntryCreated = saveActiveIfAbsentInRedirectCache(shortCode, url);
 
-    if (cached) {
+    if (activeCacheEntryCreated) {
       return new ResolveUrlResult(url.getOriginalUrl());
     }
 
@@ -93,22 +93,22 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
   }
 
   private ResolveUrlResult resolveWithCacheRecheck(String shortCode, Url url) {
-    Optional<RedirectCacheEntry> urlCacheEntry;
+    Optional<RedirectCacheEntry> redirectCacheEntryOptional;
 
     try {
-      urlCacheEntry = fetchInCache(shortCode);
+      redirectCacheEntryOptional = findInRedirectCache(shortCode);
     } catch (RedirectCacheException exception) {
       return new ResolveUrlResult(url.getOriginalUrl());
     }
 
-    if (urlCacheEntry.isPresent()) {
-      return resolveCachedUrl(urlCacheEntry.get());
+    if (redirectCacheEntryOptional.isPresent()) {
+      return resolveCachedUrl(redirectCacheEntryOptional.get());
     }
 
     return new ResolveUrlResult(url.getOriginalUrl());
   }
 
-  private void saveStatusDeleteInRedirectCache(String shortCode) {
+  private void saveDeletedInRedirectCache(String shortCode) {
     try {
       redirectCachePort.saveDeleted(shortCode);
     } catch (RedirectCacheException exception) {
@@ -118,7 +118,7 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     }
   }
 
-  private void saveStatusNotFoundInRedirectCache(String shortCode) {
+  private void saveNotFoundInRedirectCache(String shortCode) {
     try {
       redirectCachePort.saveNotFoundIfAbsent(shortCode);
     } catch (RedirectCacheException exception) {
@@ -128,7 +128,7 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     }
   }
 
-  private boolean saveStatusActiveInRedirectCache(String shortCode, Url url) {
+  private boolean saveActiveIfAbsentInRedirectCache(String shortCode, Url url) {
     try {
       return redirectCachePort.saveActiveIfAbsent(shortCode, url.getOriginalUrl());
     } catch (RedirectCacheException exception) {

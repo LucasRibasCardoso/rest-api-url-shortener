@@ -1,7 +1,8 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPublisherPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.RegisterUserUseCaseImpl;
@@ -20,7 +21,6 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -44,16 +44,16 @@ class RegisterUserUseCaseTest {
   private static final String SUCCESS_MESSAGE = "Conta criada com sucesso. Enviamos um código de verificação para o seu e-mail.";
 
   @Mock
-  private PasswordEncoderPort passwordEncoder;
+  private PasswordEncoderPort passwordEncoderPort;
 
   @Mock
-  private ApplicationEventPublisher eventPublisher;
+  private EmailVerificationEventPublisherPort emailVerificationEventPublisherPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;
 
   @Mock
-  private EmailVerificationTokenPort emailVerificationTokenStore;
+  private EmailVerificationTokenStorePort emailVerificationTokenStorePort;
 
   @Captor
   private ArgumentCaptor<UserAccount> userAccountCaptor;
@@ -80,8 +80,8 @@ class RegisterUserUseCaseTest {
       var savedUser = savedPendingUser();
       var beforeExecution = Instant.now();
 
-      given(passwordEncoder.encode(command.password())).willReturn(passwordHash);
-      given(userAccountRepositoryPort.saveNewUserAccount(any(UserAccount.class))).willReturn(savedUser);
+      given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
+      given(userAccountRepositoryPort.create(any(UserAccount.class))).willReturn(savedUser);
 
       // 2. Act
       var result = registerUserUseCase.execute(command);
@@ -89,7 +89,7 @@ class RegisterUserUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(SUCCESS_MESSAGE);
 
-      verify(userAccountRepositoryPort).saveNewUserAccount(userAccountCaptor.capture());
+      verify(userAccountRepositoryPort).create(userAccountCaptor.capture());
       var userToPersist = userAccountCaptor.getValue();
 
       assertAll(
@@ -103,7 +103,7 @@ class RegisterUserUseCaseTest {
               () -> assertThat(userToPersist.getRoles()).isEmpty()
       );
 
-      verify(emailVerificationTokenStore)
+      verify(emailVerificationTokenStorePort)
               .store(emailVerificationTokenCaptor.capture(), eq(VERIFICATION_CODE_TTL));
       var storedToken = emailVerificationTokenCaptor.getValue();
       var expectedExpiration = beforeExecution.plus(VERIFICATION_CODE_TTL);
@@ -116,7 +116,7 @@ class RegisterUserUseCaseTest {
               () -> assertThat(storedToken.expiresAt()).isCloseTo(expectedExpiration, within(2, ChronoUnit.SECONDS))
       );
 
-      verify(eventPublisher).publishEvent(emailVerificationEventCaptor.capture());
+      verify(emailVerificationEventPublisherPort).publish(emailVerificationEventCaptor.capture());
       var publishedEvent = emailVerificationEventCaptor.getValue();
 
       assertAll(
@@ -125,12 +125,12 @@ class RegisterUserUseCaseTest {
               () -> assertThat(publishedEvent.verificationCode()).isEqualTo(storedToken.code())
       );
 
-      verify(passwordEncoder).encode(command.password());
+      verify(passwordEncoderPort).encode(command.password());
       verifyNoMoreInteractions(
-              passwordEncoder,
-              eventPublisher,
+              passwordEncoderPort,
+              emailVerificationEventPublisherPort,
               userAccountRepositoryPort,
-              emailVerificationTokenStore
+              emailVerificationTokenStorePort
       );
     }
 
@@ -141,7 +141,7 @@ class RegisterUserUseCaseTest {
       var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
       var exception = new IllegalStateException("Falha ao criptografar senha.");
 
-      given(passwordEncoder.encode(command.password())).willThrow(exception);
+      given(passwordEncoderPort.encode(command.password())).willThrow(exception);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
@@ -151,9 +151,12 @@ class RegisterUserUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao criptografar senha.");
 
-      verify(passwordEncoder).encode(command.password());
-      verifyNoInteractions(userAccountRepositoryPort, emailVerificationTokenStore, eventPublisher);
-      verifyNoMoreInteractions(passwordEncoder);
+      verify(passwordEncoderPort).encode(command.password());
+      verifyNoInteractions(
+              userAccountRepositoryPort,
+              emailVerificationTokenStorePort,
+              emailVerificationEventPublisherPort);
+      verifyNoMoreInteractions(passwordEncoderPort);
     }
 
     @Test
@@ -164,8 +167,8 @@ class RegisterUserUseCaseTest {
       var passwordHash = "encoded-password";
       var exception = new IllegalStateException("Falha ao salvar usuário.");
 
-      given(passwordEncoder.encode(command.password())).willReturn(passwordHash);
-      given(userAccountRepositoryPort.saveNewUserAccount(any(UserAccount.class))).willThrow(exception);
+      given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
+      given(userAccountRepositoryPort.create(any(UserAccount.class))).willThrow(exception);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
@@ -175,10 +178,10 @@ class RegisterUserUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao salvar usuário.");
 
-      verify(passwordEncoder).encode(command.password());
-      verify(userAccountRepositoryPort).saveNewUserAccount(any(UserAccount.class));
-      verifyNoInteractions(emailVerificationTokenStore, eventPublisher);
-      verifyNoMoreInteractions(passwordEncoder, userAccountRepositoryPort);
+      verify(passwordEncoderPort).encode(command.password());
+      verify(userAccountRepositoryPort).create(any(UserAccount.class));
+      verifyNoInteractions(emailVerificationTokenStorePort, emailVerificationEventPublisherPort);
+      verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort);
     }
 
     @Test
@@ -190,9 +193,9 @@ class RegisterUserUseCaseTest {
       var savedUser = savedPendingUser();
       var exception = new IllegalStateException("Falha ao armazenar token de verificação.");
 
-      given(passwordEncoder.encode(command.password())).willReturn(passwordHash);
-      given(userAccountRepositoryPort.saveNewUserAccount(any(UserAccount.class))).willReturn(savedUser);
-      doThrow(exception).when(emailVerificationTokenStore)
+      given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
+      given(userAccountRepositoryPort.create(any(UserAccount.class))).willReturn(savedUser);
+      doThrow(exception).when(emailVerificationTokenStorePort)
               .store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
 
       // 2. Act
@@ -203,11 +206,11 @@ class RegisterUserUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao armazenar token de verificação.");
 
-      verify(passwordEncoder).encode(command.password());
-      verify(userAccountRepositoryPort).saveNewUserAccount(any(UserAccount.class));
-      verify(emailVerificationTokenStore).store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
-      verifyNoInteractions(eventPublisher);
-      verifyNoMoreInteractions(passwordEncoder, userAccountRepositoryPort, emailVerificationTokenStore);
+      verify(passwordEncoderPort).encode(command.password());
+      verify(userAccountRepositoryPort).create(any(UserAccount.class));
+      verify(emailVerificationTokenStorePort).store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
+      verifyNoInteractions(emailVerificationEventPublisherPort);
+      verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
     }
   }
 

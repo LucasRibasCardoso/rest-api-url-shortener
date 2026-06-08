@@ -1,6 +1,6 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
-import com.app.url_shortener.url.application.port.output.CounterIdRepository;
+import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -8,21 +8,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class IdGeneratorAdapter implements IdGeneratorPort {
 
-  private final CounterIdRepository counterIdRepository;
+  private final IdBlockAllocatorPort idBlockAllocatorPort;
   private final long blockSize;
 
   // Representa o bloco de IDs atualmente reservado para esta instância da aplicação.
   private IdBlock currentIdBlock;
 
   public IdGeneratorAdapter(
-      CounterIdRepository counterIdRepository,
+      IdBlockAllocatorPort idBlockAllocatorPort,
       @Value("${app.id-generator.block-size}") long blockSize) {
 
     if (blockSize <= 0) {
       throw new IllegalArgumentException("block size must be greater than 0");
     }
 
-    this.counterIdRepository = counterIdRepository;
+    this.idBlockAllocatorPort = idBlockAllocatorPort;
     this.blockSize = blockSize;
 
     // Inicia um bloco esgotado para forçar a alocação de um bloco real no primeiro uso
@@ -54,7 +54,7 @@ public class IdGeneratorAdapter implements IdGeneratorPort {
 
   // Reserva uma faixa exclusiva de IDs no contador global.
   private IdBlock allocateNewBlock() {
-    long baseId = counterIdRepository.allocateBlock(blockSize);
+    long baseId = idBlockAllocatorPort.allocateBlock(blockSize);
 
     if (baseId <= 0) {
       throw new IllegalStateException("Allocated ID block must start with a positive value");

@@ -1,4 +1,4 @@
-package com.app.url_shortener.iam.infrastructure.notification.event.listener;
+package com.app.url_shortener.iam.infrastructure.notification.event;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;

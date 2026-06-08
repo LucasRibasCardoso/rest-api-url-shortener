@@ -2,6 +2,7 @@ package com.app.url_shortener.iam.application.result;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.app.url_shortener.iam.application.port.output.model.IssuedAccessToken;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,22 @@ class IamResultToStringTest {
       // 3. Assert
       assertThat(text)
           .doesNotContain(refreshToken)
+          .doesNotContain(accessToken)
+          .contains("[REDACTED]");
+    }
+
+    @Test
+    @DisplayName("Não deve expor token no IssuedAccessToken")
+    void shouldNotExposeTokenInIssuedAccessToken() {
+      // 1. Arrange
+      var accessToken = "jwt-access-token";
+      var issuedAccessToken = new IssuedAccessToken(accessToken, 900L);
+
+      // 2. Act
+      var text = issuedAccessToken.toString();
+
+      // 3. Assert
+      assertThat(text)
           .doesNotContain(accessToken)
           .contains("[REDACTED]");
     }

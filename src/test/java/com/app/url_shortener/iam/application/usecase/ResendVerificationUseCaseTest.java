@@ -2,7 +2,8 @@ package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.ResendVerificationCommand;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPublisherPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.ResendVerificationUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
@@ -21,8 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,13 +45,13 @@ class ResendVerificationUseCaseTest {
   private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
 
   @Mock
-  private ApplicationEventPublisher eventPublisher;
+  private EmailVerificationEventPublisherPort emailVerificationEventPublisherPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;
 
   @Mock
-  private EmailVerificationTokenPort emailVerificationTokenStore;
+  private EmailVerificationTokenStorePort emailVerificationTokenStorePort;
 
   @Mock
   private CheckAuthRateLimitPort checkAuthRateLimitPort;
@@ -86,8 +85,7 @@ class ResendVerificationUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(RESPONSE_MESSAGE);
 
-      verify(emailVerificationTokenStore)
-              .store(emailVerificationTokenCaptor.capture(), eq(VERIFICATION_CODE_TTL));
+      verify(emailVerificationTokenStorePort).store(emailVerificationTokenCaptor.capture(), eq(VERIFICATION_CODE_TTL));
       var storedToken = emailVerificationTokenCaptor.getValue();
       var expectedExpiration = beforeExecution.plus(VERIFICATION_CODE_TTL);
 
@@ -99,7 +97,7 @@ class ResendVerificationUseCaseTest {
               () -> assertThat(storedToken.expiresAt()).isCloseTo(expectedExpiration, within(2, ChronoUnit.SECONDS))
       );
 
-      verify(eventPublisher).publishEvent(emailVerificationEventCaptor.capture());
+      verify(emailVerificationEventPublisherPort).publish(emailVerificationEventCaptor.capture());
       var publishedEvent = emailVerificationEventCaptor.getValue();
 
       assertAll(
@@ -112,7 +110,11 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification("user@email.com");
       inOrder.verify(userAccountRepositoryPort).findByEmail("user@email.com");
 
-      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStore, eventPublisher);
+      verifyNoMoreInteractions(
+              checkAuthRateLimitPort,
+              userAccountRepositoryPort,
+              emailVerificationTokenStorePort,
+              emailVerificationEventPublisherPort);
     }
 
     @Test
@@ -133,7 +135,7 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
 
-      verifyNoInteractions(emailVerificationTokenStore, eventPublisher);
+      verifyNoInteractions(emailVerificationTokenStorePort, emailVerificationEventPublisherPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
@@ -156,7 +158,7 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
 
-      verifyNoInteractions(emailVerificationTokenStore, eventPublisher);
+      verifyNoInteractions(emailVerificationTokenStorePort, emailVerificationEventPublisherPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
@@ -169,7 +171,7 @@ class ResendVerificationUseCaseTest {
       var exception = new IllegalStateException("Falha ao armazenar token de verificação.");
 
       given(userAccountRepositoryPort.findByEmail(command.email())).willReturn(Optional.of(pendingUser));
-      doThrow(exception).when(emailVerificationTokenStore)
+      doThrow(exception).when(emailVerificationTokenStorePort)
               .store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
 
       // 2. Act
@@ -184,9 +186,9 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
 
-      verify(emailVerificationTokenStore).store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
-      verifyNoInteractions(eventPublisher);
-      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStore);
+      verify(emailVerificationTokenStorePort).store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
+      verifyNoInteractions(emailVerificationEventPublisherPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
     }
   }
 

@@ -31,7 +31,7 @@ class FindTopAccessedUrlsByUserIdUseCaseImplTest {
   private UrlRepositoryPort urlRepositoryPort;
 
   @InjectMocks
-  private FindTopAccessedUrlsByUserIdUseCaseImpl useCase;
+  private FindTopAccessedUrlsByUserIdUseCaseImpl findTopAccessedUrlsByUserIdUseCase;
 
   @Nested
   @DisplayName("Execução")
@@ -58,7 +58,7 @@ class FindTopAccessedUrlsByUserIdUseCaseImplTest {
       when(urlRepositoryPort.findTopAccessedActiveByUserId(userId, rankingSize)).thenReturn(rankingResult);
 
       // 2. Act
-      var result = useCase.execute(command);
+      var result = findTopAccessedUrlsByUserIdUseCase.execute(command);
 
       // 3. Assert
       assertThat(result).isSameAs(rankingResult);

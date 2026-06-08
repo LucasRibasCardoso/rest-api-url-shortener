@@ -90,7 +90,7 @@ class UserAccountRepositoryAdapterUnitTest {
           .willReturn(translatedException);
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.saveNewUserAccount(domain));
+      var throwableAssert = assertThatThrownBy(() -> adapter.create(domain));
 
       // 3. Assert
       throwableAssert.isSameAs(translatedException);

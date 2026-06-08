@@ -1,6 +1,6 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
-import com.app.url_shortener.url.application.port.output.CounterIdRepository;
+import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -35,7 +35,7 @@ class IdGeneratorAdapterTest {
   private static final long BLOCK_SIZE = 10L;
 
   @Mock
-  private CounterIdRepository counterIdRepository;
+  private IdBlockAllocatorPort idBlockAllocatorPort;
 
   @Nested
   @DisplayName("Inicialização")
@@ -48,11 +48,11 @@ class IdGeneratorAdapterTest {
       // 1. Arrange
 
       // 2. Act / 3. Assert
-      assertThatThrownBy(() -> new IdGeneratorAdapter(counterIdRepository, invalidBlockSize))
+      assertThatThrownBy(() -> new IdGeneratorAdapter(idBlockAllocatorPort, invalidBlockSize))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("block size must be greater than 0");
 
-      verifyNoInteractions(counterIdRepository);
+      verifyNoInteractions(idBlockAllocatorPort);
     }
   }
 
@@ -64,24 +64,24 @@ class IdGeneratorAdapterTest {
     @DisplayName("Deve alocar o primeiro bloco no primeiro generateId")
     void shouldAllocateFirstBlockOnFirstGenerateId() {
       // 1. Arrange
-      when(counterIdRepository.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
-      var adapter = new IdGeneratorAdapter(counterIdRepository, BLOCK_SIZE);
+      when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
 
       // 2. Act
       var id = adapter.generateId();
 
       // 3. Assert
       assertThat(id).isEqualTo(1L);
-      verify(counterIdRepository).allocateBlock(BLOCK_SIZE);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort).allocateBlock(BLOCK_SIZE);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
 
     @Test
     @DisplayName("Deve gerar IDs sequenciais dentro do mesmo bloco")
     void shouldGenerateSequentialIdsInsideSameBlock() {
       // 1. Arrange
-      when(counterIdRepository.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
-      var adapter = new IdGeneratorAdapter(counterIdRepository, BLOCK_SIZE);
+      when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
 
       // 2. Act
       var firstId = adapter.generateId();
@@ -91,16 +91,16 @@ class IdGeneratorAdapterTest {
       // 3. Assert
       assertThat(List.of(firstId, secondId, thirdId))
           .containsExactly(1L, 2L, 3L);
-      verify(counterIdRepository).allocateBlock(BLOCK_SIZE);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort).allocateBlock(BLOCK_SIZE);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
 
     @Test
     @DisplayName("Deve alocar novo bloco somente quando o bloco atual esgotar")
     void shouldAllocateNewBlockOnlyWhenCurrentBlockIsExhausted() {
       // 1. Arrange
-      when(counterIdRepository.allocateBlock(BLOCK_SIZE)).thenReturn(1L, 11L);
-      var adapter = new IdGeneratorAdapter(counterIdRepository, BLOCK_SIZE);
+      when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L, 11L);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
 
       // 2. Act
       var generatedIds = LongStream.rangeClosed(1, 11)
@@ -111,8 +111,8 @@ class IdGeneratorAdapterTest {
       // 3. Assert
       assertThat(generatedIds)
           .containsExactlyElementsOf(expectedRange(1L, 11L));
-      verify(counterIdRepository, times(2)).allocateBlock(BLOCK_SIZE);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort, times(2)).allocateBlock(BLOCK_SIZE);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
   }
 
@@ -129,9 +129,9 @@ class IdGeneratorAdapterTest {
       var threadPoolSize = 20;
       var expectedBlocks = expectedBlocks(totalIds, blockSize);
       var nextBaseId = new AtomicLong(1L);
-      when(counterIdRepository.allocateBlock(blockSize))
+      when(idBlockAllocatorPort.allocateBlock(blockSize))
           .thenAnswer(invocation -> nextBaseId.getAndAdd(blockSize));
-      var adapter = new IdGeneratorAdapter(counterIdRepository, blockSize);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, blockSize);
 
       // 2. Act
       var generatedIds = generateConcurrently(adapter, totalIds, threadPoolSize);
@@ -141,8 +141,8 @@ class IdGeneratorAdapterTest {
       assertThat(generatedIds.stream().distinct().count()).isEqualTo(totalIds);
       assertThat(generatedIds)
           .containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
-      verify(counterIdRepository, times(expectedBlocks)).allocateBlock(blockSize);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort, times(expectedBlocks)).allocateBlock(blockSize);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
 
     @Test
@@ -154,9 +154,9 @@ class IdGeneratorAdapterTest {
       var threadPoolSize = 20;
       var expectedBlocks = expectedBlocks(totalIds, blockSize);
       var nextBaseId = new AtomicLong(1L);
-      when(counterIdRepository.allocateBlock(blockSize))
+      when(idBlockAllocatorPort.allocateBlock(blockSize))
           .thenAnswer(invocation -> nextBaseId.getAndAdd(blockSize));
-      var adapter = new IdGeneratorAdapter(counterIdRepository, blockSize);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, blockSize);
 
       // 2. Act
       var generatedIds = generateConcurrently(adapter, totalIds, threadPoolSize);
@@ -167,8 +167,8 @@ class IdGeneratorAdapterTest {
       assertThat(generatedIds)
           .containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
       assertThat(generatedIds).allSatisfy(id -> assertThat(id).isBetween(1L, (long) totalIds));
-      verify(counterIdRepository, times(expectedBlocks)).allocateBlock(blockSize);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort, times(expectedBlocks)).allocateBlock(blockSize);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
   }
 
@@ -181,16 +181,16 @@ class IdGeneratorAdapterTest {
     @DisplayName("Deve falhar se contador retornar baseId inválido")
     void shouldFailWhenCounterReturnsInvalidBaseId(long invalidBaseId) {
       // 1. Arrange
-      when(counterIdRepository.allocateBlock(BLOCK_SIZE)).thenReturn(invalidBaseId);
-      var adapter = new IdGeneratorAdapter(counterIdRepository, BLOCK_SIZE);
+      when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(invalidBaseId);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
 
       // 2. Act / 3. Assert
       assertThatThrownBy(adapter::generateId)
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("Allocated ID block must start with a positive value");
 
-      verify(counterIdRepository).allocateBlock(BLOCK_SIZE);
-      verifyNoMoreInteractions(counterIdRepository);
+      verify(idBlockAllocatorPort).allocateBlock(BLOCK_SIZE);
+      verifyNoMoreInteractions(idBlockAllocatorPort);
     }
   }
 

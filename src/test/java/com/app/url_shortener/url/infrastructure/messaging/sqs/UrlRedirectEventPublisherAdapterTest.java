@@ -52,7 +52,7 @@ class UrlRedirectEventPublisherAdapterTest {
       when(sqsAsyncOperations.sendAsync(URL_REDIRECT_EVENTS_QUEUE, event)).thenReturn(resultFuture);
 
       // 2. Act
-      adapter.publishAsync(event);
+      adapter.publish(event);
 
       // 3. Assert
       verify(sqsAsyncOperations).sendAsync(URL_REDIRECT_EVENTS_QUEUE, event);
@@ -68,7 +68,7 @@ class UrlRedirectEventPublisherAdapterTest {
       when(sqsAsyncOperations.sendAsync(URL_REDIRECT_EVENTS_QUEUE, event)).thenThrow(exception);
 
       // 2. Act & 3. Assert
-      assertThatCode(() -> adapter.publishAsync(event)).doesNotThrowAnyException();
+      assertThatCode(() -> adapter.publish(event)).doesNotThrowAnyException();
       verify(sqsAsyncOperations).sendAsync(URL_REDIRECT_EVENTS_QUEUE, event);
       verifyNoMoreInteractions(sqsAsyncOperations);
     }
@@ -83,7 +83,7 @@ class UrlRedirectEventPublisherAdapterTest {
       when(sqsAsyncOperations.sendAsync(URL_REDIRECT_EVENTS_QUEUE, event)).thenReturn(resultFuture);
 
       // 2. Act
-      adapter.publishAsync(event);
+      adapter.publish(event);
 
       // 3. Assert
       assertThatCode(() -> resultFuture.completeExceptionally(exception)).doesNotThrowAnyException();
@@ -106,7 +106,7 @@ class UrlRedirectEventPublisherAdapterTest {
       when(sqsAsyncOperations.sendAsync(URL_REDIRECT_EVENTS_QUEUE, event)).thenReturn(resultFuture);
 
       // 2. Act
-      adapter.publishAsync(event);
+      adapter.publish(event);
 
       // 3. Assert
       assertThatCode(() -> resultFuture.complete(sendResult)).doesNotThrowAnyException();

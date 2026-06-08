@@ -1,6 +1,6 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
-import com.app.url_shortener.url.application.port.output.CounterIdRepository;
+import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import com.app.url_shortener.url.domain.exception.CounterIdAllocationException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
 import java.util.Map;
@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
 @Repository
-public class DynamoDbCounterIdAdapter implements CounterIdRepository {
+public class IdBlockAllocatorAdapter implements IdBlockAllocatorPort {
 
   private static final String COUNTER_NAME_ATTRIBUTE = "counterName";
   private static final String CURRENT_VALUE_ATTRIBUTE = "currentValue";
@@ -21,7 +21,7 @@ public class DynamoDbCounterIdAdapter implements CounterIdRepository {
   private final String counterTableName;
   private final String counterName;
 
-  public DynamoDbCounterIdAdapter(
+  public IdBlockAllocatorAdapter(
       DynamoDbClient dynamoDbClient,
       @Value("${aws.dynamodb.tables.url-counter}") String counterTableName,
       @Value("${app.id-generator.counter-name}") String counterName) {
@@ -31,7 +31,7 @@ public class DynamoDbCounterIdAdapter implements CounterIdRepository {
   }
 
   @Override
-  public Long allocateBlock(long blockSize) {
+  public long allocateBlock(long blockSize) {
     if (blockSize <= 0) {
       throw new IllegalArgumentException("Block size must be greater than 0.");
     }

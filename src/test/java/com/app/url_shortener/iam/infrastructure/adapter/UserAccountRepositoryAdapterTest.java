@@ -60,7 +60,7 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     @DisplayName("Deve traduzir violação de email duplicado para exceção de domínio")
     void shouldTranslateDuplicateEmailViolationToDomainException() {
       // 1. Arrange
-      adapter.saveNewUserAccount(userAccount(
+      adapter.create(userAccount(
           UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac101"),
           "duplicate@email.com",
           UserStatus.PENDING_EMAIL_VERIFICATION,
@@ -75,7 +75,7 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
       );
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.saveNewUserAccount(duplicateUser));
+      var throwableAssert = assertThatThrownBy(() -> adapter.create(duplicateUser));
 
       // 3. Assert
       throwableAssert
@@ -87,7 +87,7 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     @DisplayName("Deve aplicar unicidade case-insensitive do CITEXT criado pelo Flyway")
     void shouldApplyCaseInsensitiveUniqueEmailFromCitextColumn() {
       // 1. Arrange
-      adapter.saveNewUserAccount(userAccount(
+      adapter.create(userAccount(
           UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac201"),
           "CaseSensitive@email.com",
           UserStatus.PENDING_EMAIL_VERIFICATION,
@@ -102,7 +102,7 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
       );
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.saveNewUserAccount(duplicateUser));
+      var throwableAssert = assertThatThrownBy(() -> adapter.create(duplicateUser));
 
       // 3. Assert
       throwableAssert.isInstanceOf(EmailAlreadyRegisteredException.class);
@@ -224,7 +224,7 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     @DisplayName("Deve remover vínculos user_roles por ON DELETE CASCADE ao excluir usuário")
     void shouldCascadeDeleteUserRolesWhenUserIsDeleted() {
       // 1. Arrange
-      var user = adapter.saveNewUserAccount(userAccount(
+      var user = adapter.create(userAccount(
           UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac502"),
           "cascade@email.com",
           UserStatus.PENDING_EMAIL_VERIFICATION,

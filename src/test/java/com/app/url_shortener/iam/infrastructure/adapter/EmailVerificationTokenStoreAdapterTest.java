@@ -26,15 +26,15 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("redis-slice")
-@Import(EmailVerificationTokenAdapter.class)
+@Import(EmailVerificationTokenStoreAdapter.class)
 @DisplayName("Slice Redis - Adaptador de Token de Verificação de Email")
-class EmailVerificationTokenAdapterTest extends BaseRedisSliceTest {
+class EmailVerificationTokenStoreAdapterTest extends BaseRedisSliceTest {
 
   private static final String KEY_PREFIX = "auth:email-verification:";
   private static final String KEY_PATTERN = KEY_PREFIX + "*";
 
   @Autowired
-  private EmailVerificationTokenAdapter adapter;
+  private EmailVerificationTokenStoreAdapter adapter;
 
   @Autowired
   private StringRedisTemplate redisTemplate;

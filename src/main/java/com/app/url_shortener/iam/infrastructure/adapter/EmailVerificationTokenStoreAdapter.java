@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import java.time.Duration;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EmailVerificationTokenAdapter implements EmailVerificationTokenPort {
+public class EmailVerificationTokenStoreAdapter implements EmailVerificationTokenStorePort {
 
   private static final String KEY_PREFIX = "auth:email-verification:";
   private static final String VALUE_SEPARATOR = "|";

@@ -207,7 +207,7 @@ class ResolveUrlUseCaseImplTest {
       var result = resolveUrlUseCase.execute(command);
 
       // 3. Assert
-      assertThat(result.originalUrl()).isEqualTo(cachedEntry.longUrl());
+      assertThat(result.originalUrl()).isEqualTo(cachedEntry.originalUrl());
       verify(redirectCachePort, org.mockito.Mockito.times(2)).findByShortCode(shortCode);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verify(redirectCachePort).saveActiveIfAbsent(shortCode, dynamoUrl.getOriginalUrl());
@@ -408,7 +408,7 @@ class ResolveUrlUseCaseImplTest {
 
   private void assertPublishedEventFor(String shortCode) {
     var eventCaptor = ArgumentCaptor.forClass(UrlRedirectedEvent.class);
-    verify(urlRedirectEventPublisherPort).publishAsync(eventCaptor.capture());
+    verify(urlRedirectEventPublisherPort).publish(eventCaptor.capture());
 
     assertThat(eventCaptor.getValue().eventId()).isNotNull();
     assertThat(eventCaptor.getValue().shortCode()).isEqualTo(shortCode);

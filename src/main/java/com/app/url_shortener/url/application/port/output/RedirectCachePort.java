@@ -7,9 +7,9 @@ public interface RedirectCachePort {
 
   Optional<RedirectCacheEntry> findByShortCode(String shortCode);
 
-  boolean saveActiveIfAbsent(String shortCode, String longUrl);
+  boolean saveActiveIfAbsent(String shortCode, String originalUrl);
 
-  void saveActive(String shortCode, String longUrl);
+  void saveActive(String shortCode, String originalUrl);
 
   void saveDeleted(String shortCode);
 

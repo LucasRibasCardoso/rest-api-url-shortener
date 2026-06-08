@@ -1,11 +1,12 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.LoginCommand;
+import com.app.url_shortener.iam.application.port.output.AccessTokenIssuerPort;
 import com.app.url_shortener.iam.application.port.output.AuthenticateCredentialsPort;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.application.port.output.IssueAccessTokenPort;
 import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
+import com.app.url_shortener.iam.application.port.output.model.IssuedAccessToken;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.usecase.impl.LoginUseCaseImpl;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsException;
@@ -42,16 +43,16 @@ import static org.mockito.Mockito.*;
 class LoginUseCaseTest {
 
   @Mock
-  private IssueAccessTokenPort issueAccessTokenPort;
+  private AccessTokenIssuerPort accessTokenIssuerPort;
 
   @Mock
   private AuthenticateCredentialsPort authenticateCredentialsPort;
 
   @Mock
-  private SecureTokenGeneratorPort tokenGenerator;
+  private SecureTokenGeneratorPort secureTokenGeneratorPort;
 
   @Mock
-  private RefreshTokenRepositoryPort tokenRepository;
+  private RefreshTokenRepositoryPort refreshTokenRepositoryPort;
 
   @Mock
   private CheckAuthRateLimitPort checkAuthRateLimitPort;
@@ -74,16 +75,15 @@ class LoginUseCaseTest {
       var authenticatedUser = authenticatedUser();
       var rawRefreshToken = "raw-refresh-token";
       var refreshTokenHash = "hashed-refresh-token";
-      var accessToken = "jwt-access-token";
+      var issuedAccessToken = new IssuedAccessToken("jwt-access-token", 3600L);
       var expiresInSeconds = 3_600L;
       var normalizedEmail = "user@email.com";
       var clientIp = "203.0.113.10";
 
       given(authenticateCredentialsPort.authenticate(normalizedEmail, command.password())).willReturn(authenticatedUser);
-      given(issueAccessTokenPort.getToken(authenticatedUser)).willReturn(accessToken);
-      given(tokenGenerator.generateRandomToken()).willReturn(rawRefreshToken);
-      given(tokenGenerator.hashToken(rawRefreshToken)).willReturn(refreshTokenHash);
-      given(issueAccessTokenPort.getExpiresInSeconds()).willReturn(expiresInSeconds);
+      given(accessTokenIssuerPort.issue(authenticatedUser)).willReturn(issuedAccessToken);
+      given(secureTokenGeneratorPort.generateRandomToken()).willReturn(rawRefreshToken);
+      given(secureTokenGeneratorPort.hashToken(rawRefreshToken)).willReturn(refreshTokenHash);
 
       // 2. Act
       var result = loginUseCase.execute(command);
@@ -91,13 +91,13 @@ class LoginUseCaseTest {
       // 3. Assert
       assertAll(
               () -> assertThat(result.refreshToken()).isEqualTo(rawRefreshToken),
-              () -> assertThat(result.accessToken()).isEqualTo(accessToken),
+              () -> assertThat(result.accessToken()).isEqualTo(issuedAccessToken.value()),
               () -> assertThat(result.tokenType()).isEqualTo("Bearer"),
               () -> assertThat(result.expiresInSeconds()).isEqualTo(expiresInSeconds),
               () -> assertThat(result.user()).isEqualTo(authenticatedUser)
       );
 
-      verify(tokenRepository).save(refreshTokenCaptor.capture());
+      verify(refreshTokenRepositoryPort).save(refreshTokenCaptor.capture());
       var savedRefreshToken = refreshTokenCaptor.getValue();
 
       assertAll(
@@ -113,16 +113,15 @@ class LoginUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkLogin(clientIp, normalizedEmail);
       inOrder.verify(authenticateCredentialsPort).authenticate(normalizedEmail, command.password());
 
-      verify(issueAccessTokenPort).getToken(authenticatedUser);
-      verify(tokenGenerator).generateRandomToken();
-      verify(tokenGenerator).hashToken(rawRefreshToken);
-      verify(issueAccessTokenPort).getExpiresInSeconds();
+      verify(accessTokenIssuerPort).issue(authenticatedUser);
+      verify(secureTokenGeneratorPort).generateRandomToken();
+      verify(secureTokenGeneratorPort).hashToken(rawRefreshToken);
       verifyNoMoreInteractions(
               checkAuthRateLimitPort,
-              issueAccessTokenPort,
+              accessTokenIssuerPort,
               authenticateCredentialsPort,
-              tokenGenerator,
-              tokenRepository
+              secureTokenGeneratorPort,
+              refreshTokenRepositoryPort
       );
     }
 
@@ -144,10 +143,10 @@ class LoginUseCaseTest {
 
       verifyNoInteractions(
               checkAuthRateLimitPort,
-              issueAccessTokenPort,
+              accessTokenIssuerPort,
               authenticateCredentialsPort,
-              tokenGenerator,
-              tokenRepository
+              secureTokenGeneratorPort,
+              refreshTokenRepositoryPort
       );
     }
 
@@ -171,7 +170,7 @@ class LoginUseCaseTest {
 
       verify(checkAuthRateLimitPort).checkLogin(command.clientIp(), command.email());
       verify(authenticateCredentialsPort).authenticate(command.email(), command.password());
-      verifyNoInteractions(issueAccessTokenPort, tokenGenerator, tokenRepository);
+      verifyNoInteractions(accessTokenIssuerPort, secureTokenGeneratorPort, refreshTokenRepositoryPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, authenticateCredentialsPort);
     }
 
@@ -194,10 +193,10 @@ class LoginUseCaseTest {
 
       verify(checkAuthRateLimitPort).checkLogin(command.clientIp(), command.email());
       verifyNoInteractions(
-              issueAccessTokenPort,
+              accessTokenIssuerPort,
               authenticateCredentialsPort,
-              tokenGenerator,
-              tokenRepository
+              secureTokenGeneratorPort,
+              refreshTokenRepositoryPort
       );
       verifyNoMoreInteractions(checkAuthRateLimitPort);
     }

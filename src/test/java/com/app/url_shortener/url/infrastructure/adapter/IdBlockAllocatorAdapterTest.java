@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Adaptador DynamoDB de Contador de IDs")
-class DynamoDbCounterIdAdapterTest {
+class IdBlockAllocatorAdapterTest {
 
   private static final String COUNTER_TABLE_NAME = "url-counters";
   private static final String COUNTER_NAME = "url-id";
@@ -42,11 +42,11 @@ class DynamoDbCounterIdAdapterTest {
   @Mock
   private DynamoDbClient dynamoDbClient;
 
-  private DynamoDbCounterIdAdapter adapter;
+  private IdBlockAllocatorAdapter adapter;
 
   @BeforeEach
   void setUp() {
-    adapter = new DynamoDbCounterIdAdapter(dynamoDbClient, COUNTER_TABLE_NAME, COUNTER_NAME);
+    adapter = new IdBlockAllocatorAdapter(dynamoDbClient, COUNTER_TABLE_NAME, COUNTER_NAME);
   }
 
   @Nested

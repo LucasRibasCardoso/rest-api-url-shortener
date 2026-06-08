@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 class ShortenUrlUseCaseImplTest {
 
   @Mock
-  private IdGeneratorPort idGeneratorService;
+  private IdGeneratorPort idGeneratorPort;
 
   @Mock
   private UrlEncoderPort urlEncoderPort;
@@ -67,7 +67,7 @@ class ShortenUrlUseCaseImplTest {
       var planType = PlanType.FREE;
       var command = new ShortenUrlCommand(userId, originalUrl, planType);
       var shortCode = "aB3dE";
-      when(idGeneratorService.generateId()).thenReturn(generatedId);
+      when(idGeneratorPort.generateId()).thenReturn(generatedId);
       when(urlEncoderPort.encode(generatedId)).thenReturn(shortCode);
 
       // 2. Act
@@ -79,7 +79,7 @@ class ShortenUrlUseCaseImplTest {
       assertThat(result.createdAt()).isNotNull();
 
       var urlCaptor = ArgumentCaptor.forClass(Url.class);
-      verify(idGeneratorService).generateId();
+      verify(idGeneratorPort).generateId();
       verify(urlEncoderPort).encode(generatedId);
       verify(urlRepositoryPort).save(urlCaptor.capture());
       verify(redirectCachePort).saveActive(shortCode, originalUrl);
@@ -94,14 +94,14 @@ class ShortenUrlUseCaseImplTest {
       InOrder inOrder = inOrder(
           urlSafetyValidator,
           checkUrlRateLimitPort,
-          idGeneratorService,
+          idGeneratorPort,
           urlEncoderPort,
           urlRepositoryPort,
           redirectCachePort
       );
       inOrder.verify(urlSafetyValidator).validate(originalUrl);
       inOrder.verify(checkUrlRateLimitPort).checkShorten(userId, planType);
-      inOrder.verify(idGeneratorService).generateId();
+      inOrder.verify(idGeneratorPort).generateId();
       inOrder.verify(urlEncoderPort).encode(generatedId);
       inOrder.verify(urlRepositoryPort).save(capturedUrl);
       inOrder.verify(redirectCachePort).saveActive(shortCode, originalUrl);
@@ -109,7 +109,7 @@ class ShortenUrlUseCaseImplTest {
       verifyNoMoreInteractions(
           urlSafetyValidator,
           checkUrlRateLimitPort,
-          idGeneratorService,
+          idGeneratorPort,
           urlEncoderPort,
           urlRepositoryPort,
           redirectCachePort
@@ -127,7 +127,7 @@ class ShortenUrlUseCaseImplTest {
       var command = new ShortenUrlCommand(userId, originalUrl, planType);
       var shortCode = "aB3dE";
       var exception = new RedirectCacheException(new RuntimeException("Redis unavailable"));
-      when(idGeneratorService.generateId()).thenReturn(generatedId);
+      when(idGeneratorPort.generateId()).thenReturn(generatedId);
       when(urlEncoderPort.encode(generatedId)).thenReturn(shortCode);
       doThrow(exception).when(redirectCachePort).saveActive(shortCode, originalUrl);
 
@@ -142,7 +142,7 @@ class ShortenUrlUseCaseImplTest {
       var urlCaptor = ArgumentCaptor.forClass(Url.class);
       verify(urlSafetyValidator).validate(originalUrl);
       verify(checkUrlRateLimitPort).checkShorten(userId, planType);
-      verify(idGeneratorService).generateId();
+      verify(idGeneratorPort).generateId();
       verify(urlEncoderPort).encode(generatedId);
       verify(urlRepositoryPort).save(urlCaptor.capture());
       verify(redirectCachePort).saveActive(shortCode, originalUrl);
@@ -155,7 +155,7 @@ class ShortenUrlUseCaseImplTest {
       verifyNoMoreInteractions(
           urlSafetyValidator,
           checkUrlRateLimitPort,
-          idGeneratorService,
+          idGeneratorPort,
           urlEncoderPort,
           urlRepositoryPort,
           redirectCachePort
@@ -182,7 +182,7 @@ class ShortenUrlUseCaseImplTest {
 
       verify(urlSafetyValidator).validate(originalUrl);
       verify(checkUrlRateLimitPort).checkShorten(userId, planType);
-      verifyNoInteractions(idGeneratorService, urlEncoderPort, urlRepositoryPort, redirectCachePort);
+      verifyNoInteractions(idGeneratorPort, urlEncoderPort, urlRepositoryPort, redirectCachePort);
       verifyNoMoreInteractions(urlSafetyValidator, checkUrlRateLimitPort);
     }
 
@@ -207,7 +207,7 @@ class ShortenUrlUseCaseImplTest {
       verify(urlSafetyValidator).validate(originalUrl);
       verifyNoInteractions(
           checkUrlRateLimitPort,
-          idGeneratorService,
+          idGeneratorPort,
           urlEncoderPort,
           urlRepositoryPort,
           redirectCachePort

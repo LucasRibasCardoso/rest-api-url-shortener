@@ -8,7 +8,7 @@ public interface UserAccountRepositoryPort {
 
   UserAccount save(UserAccount userAccount);
 
-  UserAccount saveNewUserAccount(UserAccount userAccount);
+  UserAccount create(UserAccount userAccount);
 
   Optional<UserAccount> findByEmail(String email);
 

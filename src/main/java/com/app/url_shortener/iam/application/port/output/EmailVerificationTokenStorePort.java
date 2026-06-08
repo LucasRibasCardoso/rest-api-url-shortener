@@ -5,7 +5,7 @@ import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import java.time.Duration;
 import java.util.Optional;
 
-public interface EmailVerificationTokenPort {
+public interface EmailVerificationTokenStorePort {
 
   void store(EmailVerificationToken token, Duration ttl);
 

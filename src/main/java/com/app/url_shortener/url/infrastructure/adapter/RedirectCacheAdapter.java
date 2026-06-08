@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-public class RedisRedirectCacheAdapter implements RedirectCachePort {
+public class RedirectCacheAdapter implements RedirectCachePort {
 
   private static final String KEY_STRING = "url:redirect:";
 
@@ -23,7 +23,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   private final ObjectMapper objectMapper;
   private final StringRedisTemplate redisTemplate;
 
-  public RedisRedirectCacheAdapter(
+  public RedirectCacheAdapter(
       @Value("${app.url.redirect-cache.ttl.active}") Duration ttlActive,
       @Value("${app.url.redirect-cache.ttl.deleted}") Duration ttlDeleted,
       @Value("${app.url.redirect-cache.ttl.not-found}") Duration ttlNotFound,
@@ -51,20 +51,20 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   }
 
   @Override
-  public boolean saveActiveIfAbsent(String shortCode, String longUrl) {
+  public boolean saveActiveIfAbsent(String shortCode, String originalUrl) {
     return executeCacheSupplier(
         () -> {
-          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl);
           return Boolean.TRUE.equals(
               redisTemplate.opsForValue().setIfAbsent(key(shortCode), serialize(entry), ttlActive));
         });
   }
 
   @Override
-  public void saveActive(String shortCode, String longUrl) {
+  public void saveActive(String shortCode, String originalUrl) {
     executeCacheOperation(
         () -> {
-          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl);
           redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlActive);
         });
   }
