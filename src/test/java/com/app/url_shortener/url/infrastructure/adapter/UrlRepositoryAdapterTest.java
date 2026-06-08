@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -20,8 +23,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.model.*;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,6 +50,9 @@ class UrlRepositoryAdapterTest {
 
   @Mock
   private DynamoDbTable<UrlEntity> urlTable;
+
+  @Mock
+  private DynamoDbClient dynamoDbClient;
 
   @Mock
   private UrlMapper urlMapper;
@@ -170,34 +179,50 @@ class UrlRepositoryAdapterTest {
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
       var createdAt = Instant.parse("2026-05-07T10:00:00Z");
       var url = activeUrl(shortCode, "https://google.com", createdAt);
+      when(urlTable.tableName()).thenReturn("url");
 
       // 2. Act
       adapter.softDeleteByShortCode(url, deletedBy);
 
       // 3. Assert
-      var requestCaptor = ArgumentCaptor.forClass(UpdateItemEnhancedRequest.class);
-      verify(urlTable).updateItem(requestCaptor.capture());
+      var requestCaptor = ArgumentCaptor.forClass(UpdateItemRequest.class);
+      verify(dynamoDbClient).updateItem(requestCaptor.capture());
 
-      var request = (UpdateItemEnhancedRequest<UrlEntity>) requestCaptor.getValue();
-      var item = request.item();
-      assertThat(item.getShortCode()).isEqualTo(shortCode);
-      assertThat(item.getStatus()).isEqualTo(UrlStatus.DELETED);
-      assertThat(item.getDeletedBy()).isEqualTo(deletedBy);
-      assertThat(item.getDeletedAt()).isNotNull();
-      assertThat(item.getUpdatedAt()).isEqualTo(item.getDeletedAt());
-      assertThat(item.getStatusCreatedAtShortCodeGsi()).isEqualTo("DELETED#2026-05-07T10:00:00Z#aB3dE");
-      assertThat(item.getUserId()).isNull();
-      assertThat(item.getOriginalUrl()).isNull();
-      assertThat(item.getCreatedAt()).isNull();
-      assertThat(request.ignoreNullsMode()).isEqualTo(IgnoreNullsMode.SCALAR_ONLY);
-      assertThat(request.conditionExpression().expression())
+      var request = requestCaptor.getValue();
+      assertThat(request.tableName()).isEqualTo("url");
+      assertThat(request.key())
+          .isEqualTo(Map.of("shortCode", AttributeValue.builder().s(shortCode).build()));
+      assertThat(request.updateExpression())
+          .contains(
+              "#status = :deleted",
+              "#deletedAt = :deletedAt",
+              "#deletedBy = :deletedBy",
+              "#updatedAt = :updatedAt",
+              "#statusGsi = :statusGsi")
+          .doesNotContain("accessCount", "lastAccessedAt");
+      assertThat(request.conditionExpression())
           .isEqualTo("attribute_exists(#pk) AND #status = :active");
-      assertThat(request.conditionExpression().expressionNames())
+      assertThat(request.expressionAttributeNames())
           .containsEntry("#pk", "shortCode")
-          .containsEntry("#status", "status");
-      assertThat(request.conditionExpression().expressionValues())
-          .containsEntry(":active", AttributeValue.builder().s(UrlStatus.ACTIVE.name()).build());
-      verifyNoMoreInteractions(urlTable, urlMapper);
+          .containsEntry("#status", "status")
+          .containsEntry("#deletedAt", "deletedAt")
+          .containsEntry("#deletedBy", "deletedBy")
+          .containsEntry("#updatedAt", "updatedAt")
+          .containsEntry("#statusGsi", "statusCreatedAtShortCodeGsi")
+          .doesNotContainValue("accessCount")
+          .doesNotContainValue("lastAccessedAt");
+      assertThat(request.expressionAttributeValues())
+          .containsEntry(":active", AttributeValue.builder().s(UrlStatus.ACTIVE.name()).build())
+          .containsEntry(":deleted", AttributeValue.builder().s(UrlStatus.DELETED.name()).build())
+          .containsEntry(":deletedBy", AttributeValue.builder().s(deletedBy.toString()).build())
+          .containsEntry(
+              ":statusGsi",
+              AttributeValue.builder().s("DELETED#2026-05-07T10:00:00Z#aB3dE").build());
+      assertThat(request.expressionAttributeValues().get(":deletedAt"))
+          .isEqualTo(request.expressionAttributeValues().get(":updatedAt"));
+      assertThat(request.expressionAttributeValues().get(":deletedAt").s()).isNotBlank();
+      verify(urlTable).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable, urlMapper);
     }
 
     @Test
@@ -208,14 +233,142 @@ class UrlRepositoryAdapterTest {
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
       var url = activeUrl(shortCode, "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
       var exception = ConditionalCheckFailedException.builder().message("already deleted").build();
-      doThrow(exception).when(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
+      when(urlTable.tableName()).thenReturn("url");
+      doThrow(exception).when(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
 
       // 2. Act
       adapter.softDeleteByShortCode(url, deletedBy);
 
       // 3. Assert
-      verify(urlTable).updateItem(any(UpdateItemEnhancedRequest.class));
-      verifyNoMoreInteractions(urlTable, urlMapper);
+      verify(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
+      verify(urlTable).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable, urlMapper);
+    }
+  }
+
+  @Nested
+  @DisplayName("Incremento da contagem de acessos")
+  class IncrementAccessCountTests {
+
+    @Test
+    @DisplayName("Deve incrementar contador atomicamente e atualizar timestamp mais recente")
+    void shouldAtomicallyIncrementCounterAndUpdateLatestTimestamp() {
+      // 1. Arrange
+      var shortCode = "aB3dE";
+      var delta = 3L;
+      var lastAccessedAt = Instant.parse("2026-06-06T12:30:45.123456Z");
+      when(urlTable.tableName()).thenReturn("url");
+
+      // 2. Act
+      adapter.incrementAccessCount(shortCode, delta, lastAccessedAt);
+
+      // 3. Assert
+      var requestCaptor = ArgumentCaptor.forClass(UpdateItemRequest.class);
+      verify(dynamoDbClient).updateItem(requestCaptor.capture());
+      assertThatCounterAndTimestampRequest(requestCaptor.getValue(), shortCode, delta, lastAccessedAt);
+      verify(urlTable).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable);
+    }
+
+    @Test
+    @DisplayName("Deve incrementar somente contador quando já existir timestamp mais recente")
+    void shouldIncrementOnlyCounterWhenStoredTimestampIsNewer() {
+      // 1. Arrange
+      var shortCode = "aB3dE";
+      var delta = 2L;
+      var lastAccessedAt = Instant.parse("2026-06-06T12:30:45Z");
+      var conditionalFailure = ConditionalCheckFailedException.builder().message("newer timestamp").build();
+      when(urlTable.tableName()).thenReturn("url");
+      when(dynamoDbClient.updateItem(any(UpdateItemRequest.class)))
+          .thenThrow(conditionalFailure)
+          .thenReturn(null);
+
+      // 2. Act
+      adapter.incrementAccessCount(shortCode, delta, lastAccessedAt);
+
+      // 3. Assert
+      var requestCaptor = ArgumentCaptor.forClass(UpdateItemRequest.class);
+      verify(dynamoDbClient, times(2)).updateItem(requestCaptor.capture());
+      assertThatCounterAndTimestampRequest(requestCaptor.getAllValues().get(0), shortCode, delta, lastAccessedAt);
+      assertThatCounterOnlyRequest(requestCaptor.getAllValues().get(1), shortCode, delta, lastAccessedAt);
+      verify(urlTable, times(2)).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable);
+    }
+
+    @Test
+    @DisplayName("Deve propagar falha condicional quando URL não existir")
+    void shouldPropagateConditionalFailureWhenUrlDoesNotExist() {
+      // 1. Arrange
+      var conditionalFailure = ConditionalCheckFailedException.builder().message("missing url").build();
+      when(urlTable.tableName()).thenReturn("url");
+      when(dynamoDbClient.updateItem(any(UpdateItemRequest.class))).thenThrow(conditionalFailure);
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(
+              () ->
+                  adapter.incrementAccessCount(
+                      "missing", 1L, Instant.parse("2026-06-06T12:30:45Z")))
+          .isSameAs(conditionalFailure);
+      verify(dynamoDbClient, times(2)).updateItem(any(UpdateItemRequest.class));
+      verify(urlTable, times(2)).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable);
+    }
+
+    @Test
+    @DisplayName("Deve propagar falha DynamoDB sem tentar atualização alternativa")
+    void shouldPropagateDynamoDbFailureWithoutFallbackUpdate() {
+      // 1. Arrange
+      var exception = DynamoDbException.builder().message("unavailable").build();
+      when(urlTable.tableName()).thenReturn("url");
+      when(dynamoDbClient.updateItem(any(UpdateItemRequest.class))).thenThrow(exception);
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(
+              () ->
+                  adapter.incrementAccessCount(
+                      "aB3dE", 1L, Instant.parse("2026-06-06T12:30:45Z")))
+          .isSameAs(exception);
+      verify(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
+      verify(urlTable).tableName();
+      verifyNoMoreInteractions(dynamoDbClient, urlTable);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
+    @DisplayName("Deve rejeitar código curto ausente ou em branco")
+    void shouldRejectMissingOrBlankShortCode(String shortCode) {
+      // 1. Arrange
+      var lastAccessedAt = Instant.parse("2026-06-06T12:30:45Z");
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> adapter.incrementAccessCount(shortCode, 1L, lastAccessedAt))
+          .isInstanceOf(IllegalArgumentException.class);
+      verifyNoInteractions(dynamoDbClient, urlTable);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, -1L})
+    @DisplayName("Deve rejeitar incremento menor ou igual a zero")
+    void shouldRejectNonPositiveDelta(long delta) {
+      // 1. Arrange
+      var lastAccessedAt = Instant.parse("2026-06-06T12:30:45Z");
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> adapter.incrementAccessCount("aB3dE", delta, lastAccessedAt))
+          .isInstanceOf(IllegalArgumentException.class);
+      verifyNoInteractions(dynamoDbClient, urlTable);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar timestamp ausente")
+    void shouldRejectMissingLastAccessedAt() {
+      // 1. Arrange
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> adapter.incrementAccessCount("aB3dE", 1L, null))
+          .isInstanceOf(NullPointerException.class);
+      verifyNoInteractions(dynamoDbClient, urlTable);
     }
   }
 
@@ -350,6 +503,32 @@ class UrlRepositoryAdapterTest {
     }
 
     @Test
+    @DisplayName("Deve retornar página vazia quando índice não retornar páginas")
+    void shouldReturnEmptyPageWhenIndexDoesNotReturnPages() {
+      // 1. Arrange
+      var limit = 10;
+      when(urlTable.index("user-index")).thenReturn(userIndex);
+      when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
+      when(pageIterable.iterator()).thenReturn(List.<Page<UrlEntity>>of().iterator());
+
+      // 2. Act
+      var result = adapter.findAllByUserId(USER_ID, limit, null, UrlStatusFilter.ALL);
+
+      // 3. Assert
+      assertThat(result.urls()).isEmpty();
+      assertThat(result.nextCursor()).isNull();
+
+      var requestCaptor = ArgumentCaptor.forClass(QueryEnhancedRequest.class);
+      verify(urlTable).index("user-index");
+      verify(userIndex).query(requestCaptor.capture());
+      assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
+      assertThat(requestCaptor.getValue().scanIndexForward()).isFalse();
+      assertThat(requestCaptor.getValue().queryConditional())
+          .isEqualTo(QueryConditional.keyEqualTo(key -> key.partitionValue(USER_ID.toString())));
+      verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
+    }
+
+    @Test
     @DisplayName("Deve buscar próxima página usando cursor inicial decodificado")
     void shouldFindNextPageUsingDecodedExclusiveStartKey() {
       // 1. Arrange
@@ -419,7 +598,8 @@ class UrlRepositoryAdapterTest {
   }
 
   private Url activeUrl(String shortCode, String originalUrl, Instant createdAt) {
-    return Url.restore(USER_ID, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt);
+    return Url.restore(
+        USER_ID, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt, 0, null);
   }
 
   private Consumer<GetItemEnhancedRequest.Builder> anyGetItemRequestConsumer() {
@@ -439,5 +619,51 @@ class UrlRepositoryAdapterTest {
 
     assertThat(request.key().partitionKeyValue().s()).isEqualTo(shortCode);
     assertThat(request.consistentRead()).isTrue();
+  }
+
+  private void assertThatCounterAndTimestampRequest(
+      UpdateItemRequest request, String shortCode, long delta, Instant lastAccessedAt) {
+    assertThat(request.tableName()).isEqualTo("url");
+    assertThat(request.key()).containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
+    assertThat(request.updateExpression())
+        .isEqualTo("SET #lastAccessedAt = :lastAccessedAt ADD #accessCount :delta");
+    assertThat(request.conditionExpression())
+        .isEqualTo(
+            "attribute_exists(#pk) AND (attribute_not_exists(#lastAccessedAt) OR #lastAccessedAt <= :lastAccessedAt)");
+    assertThatCounterExpressionAttributes(request, delta, lastAccessedAt);
+  }
+
+  private void assertThatCounterOnlyRequest(
+      UpdateItemRequest request, String shortCode, long delta, Instant lastAccessedAt) {
+    assertThat(request.tableName()).isEqualTo("url");
+    assertThat(request.key()).containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
+    assertThat(request.updateExpression()).isEqualTo("ADD #accessCount :delta");
+    assertThat(request.conditionExpression())
+        .isEqualTo("attribute_exists(#pk) AND #lastAccessedAt > :lastAccessedAt");
+    assertThatCounterExpressionAttributes(request, delta, lastAccessedAt);
+  }
+
+  private void assertThatCounterExpressionAttributes(
+      UpdateItemRequest request, long delta, Instant lastAccessedAt) {
+    assertThat(request.expressionAttributeNames())
+        .containsEntry("#pk", "shortCode")
+        .containsEntry("#accessCount", "accessCount")
+        .containsEntry("#lastAccessedAt", "lastAccessedAt");
+    assertThat(request.expressionAttributeValues())
+        .containsEntry(":delta", AttributeValue.builder().n(Long.toString(delta)).build())
+        .containsEntry(
+            ":lastAccessedAt",
+            AttributeValue.builder().s(formatSortableInstant(lastAccessedAt)).build());
+  }
+
+  private String formatSortableInstant(Instant instant) {
+    var value = instant.toString();
+    var separatorIndex = value.indexOf('.');
+    if (separatorIndex < 0) {
+      return value.replace("Z", ".000000000Z");
+    }
+
+    var fractionalDigits = value.length() - separatorIndex - 2;
+    return value.replace("Z", "0".repeat(9 - fractionalDigits) + "Z");
   }
 }

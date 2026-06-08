@@ -11,50 +11,58 @@ import com.app.url_shortener.url.infrastructure.cursor.DynamoDbCursorCodec;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
-import software.amazon.awssdk.enhanced.dynamodb.Expression;
-import software.amazon.awssdk.enhanced.dynamodb.Key;
-import software.amazon.awssdk.enhanced.dynamodb.model.IgnoreNullsMode;
+import software.amazon.awssdk.enhanced.dynamodb.*;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
-import software.amazon.awssdk.enhanced.dynamodb.model.UpdateItemEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 @Repository
 @RequiredArgsConstructor
 public class UrlRepositoryAdapter implements UrlRepositoryPort {
 
   private static final String SHORT_CODE_ATTRIBUTE = "shortCode";
-
+  private static final String STATUS_ATTRIBUTE = "status";
+  private static final String DELETED_AT_ATTRIBUTE = "deletedAt";
+  private static final String DELETED_BY_ATTRIBUTE = "deletedBy";
+  private static final String UPDATED_AT_ATTRIBUTE = "updatedAt";
+  private static final String STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE = "statusCreatedAtShortCodeGsi";
+  private static final String ACCESS_COUNT_ATTRIBUTE = "accessCount";
+  private static final String LAST_ACCESSED_AT_ATTRIBUTE = "lastAccessedAt";
+  private static final DateTimeFormatter SORTABLE_INSTANT_FORMATTER = new DateTimeFormatterBuilder().appendInstant(9).toFormatter();
 
   private final UrlMapper urlMapper;
-  private final DynamoDbCursorCodec  cursorCodec;
+  private final DynamoDbClient dynamoDbClient;
+  private final DynamoDbCursorCodec cursorCodec;
   private final DynamoDbTable<UrlEntity> urlTable;
 
   @Override
   public void save(Url url) {
     var expression =
-            Expression.builder()
-                    .expression("attribute_not_exists(#pk)")
-                    .putExpressionName("#pk", SHORT_CODE_ATTRIBUTE)
-                    .build();
+        Expression.builder()
+            .expression("attribute_not_exists(#pk)")
+            .putExpressionName("#pk", SHORT_CODE_ATTRIBUTE)
+            .build();
 
     var entity = urlMapper.toEntity(url);
     var request =
-            PutItemEnhancedRequest.builder(UrlEntity.class)
-                    .item(entity)
-                    .conditionExpression(expression)
-                    .build();
+        PutItemEnhancedRequest.builder(UrlEntity.class)
+            .item(entity)
+            .conditionExpression(expression)
+            .build();
 
     try {
       urlTable.putItem(request);
@@ -73,57 +81,86 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   @Override
   public void softDeleteByShortCode(Url url, UUID deletedBy) {
     Instant now = Instant.now();
-
-    String newStatusGsi = UrlStatus.DELETED.name() + "#" + url.getCreatedAt() + "#" + url.getShortCode();
-
-    var softDeleteEntity =
-            UrlEntity.builder()
-                    .shortCode(url.getShortCode())
-                    .status(UrlStatus.DELETED)
-                    .deletedAt(now)
-                    .deletedBy(deletedBy)
-                    .updatedAt(now)
-                    .statusCreatedAtShortCodeGsi(newStatusGsi)
-                    .build();
-
-    var expression =
-            Expression.builder()
-                    .expression("attribute_exists(#pk) AND #status = :active")
-                    .expressionNames(Map.of("#pk", SHORT_CODE_ATTRIBUTE, "#status", "status"))
-                    .expressionValues(Map.of(":active", toAttributeValue(UrlStatus.ACTIVE.name())))
-                    .build();
+    String statusGsi = UrlStatus.DELETED.name() + "#" + url.getCreatedAt() + "#" + url.getShortCode();
 
     var request =
-            UpdateItemEnhancedRequest.builder(UrlEntity.class)
-                    .item(softDeleteEntity)
-                    .ignoreNullsMode(IgnoreNullsMode.SCALAR_ONLY)
-                    .conditionExpression(expression)
-                    .build();
+        UpdateItemRequest.builder()
+            .tableName(urlTable.tableName())
+            .key(urlPrimaryKey(url.getShortCode()))
+            .updateExpression(
+                """
+                SET #status = :deleted,
+                  #deletedAt = :deletedAt,
+                  #deletedBy = :deletedBy,
+                  #updatedAt = :updatedAt,
+                  #statusGsi = :statusGsi
+                """)
+            .conditionExpression("attribute_exists(#pk) AND #status = :active")
+            .expressionAttributeNames(
+                Map.of(
+                    "#pk", SHORT_CODE_ATTRIBUTE,
+                    "#status", STATUS_ATTRIBUTE,
+                    "#deletedAt", DELETED_AT_ATTRIBUTE,
+                    "#deletedBy", DELETED_BY_ATTRIBUTE,
+                    "#updatedAt", UPDATED_AT_ATTRIBUTE,
+                    "#statusGsi", STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE))
+            .expressionAttributeValues(
+                Map.of(
+                    ":active", toAttributeValue(UrlStatus.ACTIVE.name()),
+                    ":deleted", toAttributeValue(UrlStatus.DELETED.name()),
+                    ":deletedAt", toAttributeValue(now.toString()),
+                    ":deletedBy", toAttributeValue(deletedBy.toString()),
+                    ":updatedAt", toAttributeValue(now.toString()),
+                    ":statusGsi", toAttributeValue(statusGsi)))
+            .build();
 
     try {
-      urlTable.updateItem(request);
+      dynamoDbClient.updateItem(request);
     } catch (ConditionalCheckFailedException exception) {
-      // A leitura consistente do use case já validou existência e permissão. Neste ponto, uma
-      // falha condicional significa que outra requisição deletou a URL primeiro.
+      // Url já está deletada ou não existe, então não é necessário fazer nada.
     }
   }
 
   @Override
-  public PageUrlResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
+  public void incrementAccessCount(String shortCode, long delta, Instant lastAccessedAt) {
+    if (shortCode == null || shortCode.isBlank()) {
+      throw new IllegalArgumentException("shortCode must not be blank");
+    }
+    if (delta <= 0) {
+      throw new IllegalArgumentException("delta must be greater than 0");
+    }
+    Objects.requireNonNull(lastAccessedAt, "lastAccessedAt must not be null");
+
+    try {
+      dynamoDbClient.updateItem(incrementCounterAndUpdateLastAccessedAt(shortCode, delta, lastAccessedAt));
+    } catch (ConditionalCheckFailedException exception) {
+      // Preserva um timestamp mais recente, mas ainda contabiliza o acesso recebido fora de ordem.
+      dynamoDbClient.updateItem(incrementCounterWhenLastAccessedAtIsNewer(shortCode, delta, lastAccessedAt));
+    }
+  }
+
+  @Override
+  public PageUrlResult findAllByUserId(
+      UUID userId,
+      int limit,
+      String cursor,
+      UrlStatusFilter statusFilter) {
+
     String indexName = statusFilter.isAll() ? "user-index" : "user-status-index";
     DynamoDbIndex<UrlEntity> index = urlTable.index(indexName);
 
     String userIdStr = userId.toString();
     String sortValueStr = statusFilter.name() + "#";
-    var conditional = statusFilter.isAll() ?
-            QueryConditional.keyEqualTo(key -> key.partitionValue(userIdStr)) :
-            QueryConditional.sortBeginsWith(key -> key.partitionValue(userIdStr).sortValue(sortValueStr));
+    var conditional =
+        statusFilter.isAll()
+            ? QueryConditional.keyEqualTo(key -> key.partitionValue(userIdStr))
+            : QueryConditional.sortBeginsWith(key -> key.partitionValue(userIdStr).sortValue(sortValueStr));
 
     var requestBuilder =
-            QueryEnhancedRequest.builder()
-                    .queryConditional(conditional)
-                    .scanIndexForward(false) // Ordena os itens do mais recente para o mais antigo
-                    .limit(limit); // limite de itens por página
+        QueryEnhancedRequest.builder()
+            .queryConditional(conditional)
+            .scanIndexForward(false)
+            .limit(limit);
 
     if (cursor != null && !cursor.isBlank()) {
       requestBuilder.exclusiveStartKey(cursorCodec.decode(cursor));
@@ -137,19 +174,68 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     }
 
     Page<UrlEntity> page = iterator.next();
-    List<UrlListItemResult> urls = page.items().stream()
-            .map(urlMapper::toDomain)
-            .map(urlMapper::toListItemResult)
-            .toList();
+    List<UrlListItemResult> urls =
+        page.items().stream().map(urlMapper::toDomain).map(urlMapper::toListItemResult).toList();
 
-    String nextCursor = page.lastEvaluatedKey() != null
-            ? cursorCodec.encode(page.lastEvaluatedKey())
-            : null;
+    String nextCursor =
+        page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
 
     return new PageUrlResult(urls, nextCursor);
   }
 
+  private UpdateItemRequest incrementCounterAndUpdateLastAccessedAt(
+      String shortCode,
+      long delta,
+      Instant lastAccessedAt) {
+
+    return UpdateItemRequest.builder()
+        .tableName(urlTable.tableName())
+        .key(urlPrimaryKey(shortCode))
+        .updateExpression("SET #lastAccessedAt = :lastAccessedAt ADD #accessCount :delta")
+        .conditionExpression("attribute_exists(#pk) AND (attribute_not_exists(#lastAccessedAt) OR #lastAccessedAt <= :lastAccessedAt)")
+        .expressionAttributeNames(
+            Map.of(
+                "#pk", SHORT_CODE_ATTRIBUTE,
+                "#accessCount", ACCESS_COUNT_ATTRIBUTE,
+                "#lastAccessedAt", LAST_ACCESSED_AT_ATTRIBUTE))
+        .expressionAttributeValues(
+            Map.of(
+                ":delta", toNumberAttributeValue(delta),
+                ":lastAccessedAt", toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
+        .build();
+  }
+
+  private UpdateItemRequest incrementCounterWhenLastAccessedAtIsNewer(
+          String shortCode,
+          long delta,
+          Instant lastAccessedAt) {
+
+    return UpdateItemRequest.builder()
+        .tableName(urlTable.tableName())
+        .key(urlPrimaryKey(shortCode))
+        .updateExpression("ADD #accessCount :delta")
+        .conditionExpression("attribute_exists(#pk) AND #lastAccessedAt > :lastAccessedAt")
+        .expressionAttributeNames(
+            Map.of(
+                "#pk", SHORT_CODE_ATTRIBUTE,
+                "#accessCount", ACCESS_COUNT_ATTRIBUTE,
+                "#lastAccessedAt", LAST_ACCESSED_AT_ATTRIBUTE))
+        .expressionAttributeValues(
+            Map.of(
+                ":delta", toNumberAttributeValue(delta),
+                ":lastAccessedAt", toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
+        .build();
+  }
+
+  private Map<String, AttributeValue> urlPrimaryKey(String shortCode) {
+    return Map.of(SHORT_CODE_ATTRIBUTE, toAttributeValue(shortCode));
+  }
+
   private AttributeValue toAttributeValue(String value) {
     return AttributeValue.builder().s(value).build();
+  }
+
+  private AttributeValue toNumberAttributeValue(long value) {
+    return AttributeValue.builder().n(Long.toString(value)).build();
   }
 }
