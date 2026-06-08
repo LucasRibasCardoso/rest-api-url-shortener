@@ -1,8 +1,8 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.config.BaseRedisSliceTest;
-import com.app.url_shortener.url.application.result.RedirectCacheStatus;
-import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import java.time.Duration;
 import java.util.Set;
@@ -82,7 +82,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
     void shouldDeserializeEntryFromRedisJson() {
       // 1. Arrange
       var shortCode = "jsonActive";
-      var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, "https://example.com");
+      var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, "https://example.com");
       redisTemplate.opsForValue().set(redisKey(shortCode), objectMapper.writeValueAsString(entry));
 
       // 2. Act
@@ -122,7 +122,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isTrue();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofMinutes(15));
     }
 
@@ -139,7 +139,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isFalse();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.DELETED, null));
     }
 
     @Test
@@ -155,7 +155,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
 
       // 3. Assert
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofMinutes(15));
     }
   }
@@ -176,7 +176,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isTrue();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofMinutes(5));
     }
 
@@ -194,7 +194,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isFalse();
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl));
     }
   }
 
@@ -214,7 +214,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
 
       // 3. Assert
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.DELETED, null));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofHours(1));
     }
 
@@ -230,7 +230,7 @@ class RedisRedirectCacheAdapterTest extends BaseRedisSliceTest {
 
       // 3. Assert
       assertThat(adapter.findByShortCode(shortCode))
-          .contains(new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null));
+          .contains(new RedirectCacheEntry(RedirectCacheStatus.DELETED, null));
       assertThatTtlIsCloseTo(redisKey(shortCode), Duration.ofHours(1));
     }
   }

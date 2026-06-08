@@ -5,8 +5,8 @@ import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.RedirectCacheStatus;
-import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import com.app.url_shortener.url.domain.model.Url;
@@ -60,7 +60,7 @@ class ResolveUrlUseCaseImplTest {
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
       var originalUrl = "https://google.com";
-      var cacheEntry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl);
+      var cacheEntry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, originalUrl);
       when(redirectCachePort.findByShortCode(shortCode)).thenReturn(Optional.of(cacheEntry));
 
       // 2. Act
@@ -124,7 +124,7 @@ class ResolveUrlUseCaseImplTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
-      var cacheEntry = new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null);
+      var cacheEntry = new RedirectCacheEntry(RedirectCacheStatus.DELETED, null);
       when(redirectCachePort.findByShortCode(shortCode)).thenReturn(Optional.of(cacheEntry));
 
       // 2. Act & 3. Assert
@@ -141,7 +141,7 @@ class ResolveUrlUseCaseImplTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
-      var cacheEntry = new UrlRedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
+      var cacheEntry = new RedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
       when(redirectCachePort.findByShortCode(shortCode)).thenReturn(Optional.of(cacheEntry));
 
       // 2. Act & 3. Assert
@@ -195,7 +195,7 @@ class ResolveUrlUseCaseImplTest {
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
       var dynamoUrl = Url.create(userId, shortCode, "https://google.com");
-      var cachedEntry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, "https://example.com");
+      var cachedEntry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, "https://example.com");
       when(redirectCachePort.findByShortCode(shortCode))
           .thenReturn(Optional.empty())
           .thenReturn(Optional.of(cachedEntry));
@@ -223,7 +223,7 @@ class ResolveUrlUseCaseImplTest {
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
       var url = Url.create(userId, shortCode, "https://google.com");
-      var deletedEntry = new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null);
+      var deletedEntry = new RedirectCacheEntry(RedirectCacheStatus.DELETED, null);
       when(redirectCachePort.findByShortCode(shortCode))
           .thenReturn(Optional.empty())
           .thenReturn(Optional.of(deletedEntry));

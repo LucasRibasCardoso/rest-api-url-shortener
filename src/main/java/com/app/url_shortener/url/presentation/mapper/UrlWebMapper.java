@@ -42,7 +42,7 @@ public interface UrlWebMapper {
   @Mapping(target = "urls", source = "urls")
   UrlRankingResponseDto toUrlRankingResponse(UrlRankingResult result, @Context String baseUrl);
 
-  UrlPageResponseDto toUrlPagelResponse(PageUrlResult result, @Context String baseUrl);
+  UrlPageResponseDto toUrlPagelResponse(UrlPageResult result, @Context String baseUrl);
 
   @Named("toFullShortUrl")
   default String toFullShortUrl(String shortCode, @Context String baseUrl) {

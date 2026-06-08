@@ -1,11 +1,11 @@
 package com.app.url_shortener.url.application.port.output;
 
-import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import java.util.Optional;
 
 public interface RedirectCachePort {
 
-  Optional<UrlRedirectCacheEntry> findByShortCode(String shortCode);
+  Optional<RedirectCacheEntry> findByShortCode(String shortCode);
 
   boolean saveActiveIfAbsent(String shortCode, String longUrl);
 

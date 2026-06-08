@@ -1,7 +1,7 @@
 package com.app.url_shortener.url.presentation.controller;
 
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
-import com.app.url_shortener.url.application.result.ResolvedUrlResult;
+import com.app.url_shortener.url.application.result.ResolveUrlResult;
 import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import java.net.URI;
@@ -26,7 +26,7 @@ public class RedirectController {
   @GetMapping(SHORT_CODE_PATH)
   public ResponseEntity<?> redirectToOriginalUrl(@PathVariable String shortCode) {
     ResolveUrlCommand command = urlWebMapper.toResolveUrlCommand(shortCode);
-    ResolvedUrlResult result = resolveUrlUseCase.execute(command);
+    ResolveUrlResult result = resolveUrlUseCase.execute(command);
     return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(result.originalUrl())).build();
   }
 }

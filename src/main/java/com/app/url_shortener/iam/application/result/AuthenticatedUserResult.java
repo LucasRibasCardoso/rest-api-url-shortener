@@ -11,4 +11,8 @@ public record AuthenticatedUserResult(
         List<String> authorities,
         String plan
 ) {
+  public AuthenticatedUserResult {
+    roles = List.copyOf(roles);
+    authorities = List.copyOf(authorities);
+  }
 }

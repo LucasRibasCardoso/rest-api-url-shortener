@@ -2,7 +2,7 @@ package com.app.url_shortener.url.presentation.controller;
 
 import com.app.url_shortener.config.BaseWebSliceTest;
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
-import com.app.url_shortener.url.application.result.ResolvedUrlResult;
+import com.app.url_shortener.url.application.result.ResolveUrlResult;
 import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import com.app.url_shortener.shared.config.JacksonConfig;
@@ -74,7 +74,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
-      var result = new ResolvedUrlResult("https://google.com");
+      var result = new ResolveUrlResult("https://google.com");
       given(urlWebMapper.toResolveUrlCommand(shortCode)).willReturn(command);
       given(resolveUrlUseCase.execute(command)).willReturn(result);
 

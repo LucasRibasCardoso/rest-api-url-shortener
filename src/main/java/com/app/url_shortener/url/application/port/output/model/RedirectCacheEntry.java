@@ -1,6 +1,6 @@
-package com.app.url_shortener.url.application.result;
+package com.app.url_shortener.url.application.port.output.model;
 
-public record UrlRedirectCacheEntry(RedirectCacheStatus status, String longUrl) {
+public record RedirectCacheEntry(RedirectCacheStatus status, String longUrl) {
 
   public boolean isRedirectable() {
     return status == RedirectCacheStatus.ACTIVE && longUrl != null;

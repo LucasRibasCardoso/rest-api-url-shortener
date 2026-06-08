@@ -3,7 +3,7 @@ package com.app.url_shortener.url.application.usecase.impl;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.PageUrlResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.domain.model.UrlStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -48,7 +48,7 @@ class FindAllUrlsByUserIdUseCaseImplTest {
       var cursor = "next-page-cursor";
       var status = UrlStatusFilter.ALL;
       var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor, status);
-      var pageUrlResult = new PageUrlResult(List.of(
+      var pageUrlResult = new UrlPageResult(List.of(
           new UrlListItemResult(
               "https://google.com",
               "aB3dE",
@@ -80,7 +80,7 @@ class FindAllUrlsByUserIdUseCaseImplTest {
       String cursor = null;
       var status = UrlStatusFilter.ACTIVE;
       var command = new FindAllUrlsByUserIdCommand(userId, limit, cursor, status);
-      var pageUrlResult = new PageUrlResult(List.of(), null);
+      var pageUrlResult = new UrlPageResult(List.of(), null);
       when(urlRepositoryPort.findAllByUserId(userId, limit, cursor, status)).thenReturn(pageUrlResult);
 
       // 2. Act

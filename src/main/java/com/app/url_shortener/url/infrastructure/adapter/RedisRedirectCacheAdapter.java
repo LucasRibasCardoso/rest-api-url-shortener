@@ -1,8 +1,8 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
-import com.app.url_shortener.url.application.result.RedirectCacheStatus;
-import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import java.time.Duration;
 import java.util.Objects;
@@ -37,7 +37,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   }
 
   @Override
-  public Optional<UrlRedirectCacheEntry> findByShortCode(String shortCode) {
+  public Optional<RedirectCacheEntry> findByShortCode(String shortCode) {
     return executeCacheSupplier(
         () -> {
           String value = redisTemplate.opsForValue().get(key(shortCode));
@@ -54,7 +54,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   public boolean saveActiveIfAbsent(String shortCode, String longUrl) {
     return executeCacheSupplier(
         () -> {
-          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
           return Boolean.TRUE.equals(
               redisTemplate.opsForValue().setIfAbsent(key(shortCode), serialize(entry), ttlActive));
         });
@@ -64,7 +64,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   public void saveActive(String shortCode, String longUrl) {
     executeCacheOperation(
         () -> {
-          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.ACTIVE, longUrl);
           redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlActive);
         });
   }
@@ -73,7 +73,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   public void saveDeleted(String shortCode) {
     executeCacheOperation(
         () -> {
-          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.DELETED, null);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.DELETED, null);
           redisTemplate.opsForValue().set(key(shortCode), serialize(entry), ttlDeleted);
         });
   }
@@ -82,7 +82,7 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
   public boolean saveNotFoundIfAbsent(String shortCode) {
     return executeCacheSupplier(
         () -> {
-          var entry = new UrlRedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
+          var entry = new RedirectCacheEntry(RedirectCacheStatus.NOT_FOUND, null);
           return Boolean.TRUE.equals(
               redisTemplate
                   .opsForValue()
@@ -99,12 +99,12 @@ public class RedisRedirectCacheAdapter implements RedirectCachePort {
     return KEY_STRING + shortCode;
   }
 
-  private String serialize(UrlRedirectCacheEntry entry) {
+  private String serialize(RedirectCacheEntry entry) {
     return objectMapper.writeValueAsString(entry);
   }
 
-  private UrlRedirectCacheEntry deserialize(String value) {
-    return objectMapper.readValue(value, UrlRedirectCacheEntry.class);
+  private RedirectCacheEntry deserialize(String value) {
+    return objectMapper.readValue(value, RedirectCacheEntry.class);
   }
 
   private void executeCacheOperation(CacheOperation operation) {

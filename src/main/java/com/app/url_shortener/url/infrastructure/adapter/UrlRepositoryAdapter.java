@@ -2,7 +2,7 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.PageUrlResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.application.result.UrlRankingItemResult;
 import com.app.url_shortener.url.application.result.UrlRankingResult;
@@ -171,7 +171,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   }
 
   @Override
-  public PageUrlResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
+  public UrlPageResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
 
     String indexName = statusFilter.isAll() ? "user-index" : "user-status-index";
     DynamoDbIndex<UrlEntity> index = urlTable.index(indexName);
@@ -197,7 +197,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     var iterator = pages.iterator();
 
     if (!iterator.hasNext()) {
-      return new PageUrlResult(List.of(), null);
+      return new UrlPageResult(List.of(), null);
     }
 
     Page<UrlEntity> page = iterator.next();
@@ -208,7 +208,7 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
 
     String nextCursor = page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
 
-    return new PageUrlResult(urls, nextCursor);
+    return new UrlPageResult(urls, nextCursor);
   }
 
   private UpdateItemRequest incrementCounterAndUpdateLastAccessedAt(

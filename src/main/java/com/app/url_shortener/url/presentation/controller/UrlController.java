@@ -92,7 +92,7 @@ public class UrlController {
       @RequestParam(required = false) String cursor) {
     FindAllUrlsByUserIdCommand command =
         urlWebMapper.toFindAllUrlsByUserIdCommand(userId, limit, cursor, status);
-    PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
+    UrlPageResult result = findAllUrlsByUserIdUseCase.execute(command);
     UrlPageResponseDto response = urlWebMapper.toUrlPagelResponse(result, baseUrl);
     return ResponseEntity.ok(response);
   }
@@ -106,7 +106,7 @@ public class UrlController {
       @RequestParam(required = false) String cursor) {
     FindAllUrlsByUserIdCommand command =
         urlWebMapper.toFindAllUrlsByUserIdCommand(user.getId(), limit, cursor, status);
-    PageUrlResult result = findAllUrlsByUserIdUseCase.execute(command);
+    UrlPageResult result = findAllUrlsByUserIdUseCase.execute(command);
     UrlPageResponseDto response = urlWebMapper.toUrlPagelResponse(result, baseUrl);
     return ResponseEntity.ok(response);
   }

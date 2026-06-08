@@ -22,7 +22,7 @@ import com.app.url_shortener.url.application.command.ShortenUrlCommand;
 import com.app.url_shortener.url.application.command.UrlRankingCommand;
 import com.app.url_shortener.url.application.command.UrlDetailsCommand;
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
-import com.app.url_shortener.url.application.result.PageUrlResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
@@ -565,7 +565,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 10;
       var cursor = "next-page-cursor";
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
-      var result = new PageUrlResult(List.of(), null);
+      var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
@@ -597,7 +597,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var status = UrlStatusFilter.DELETED;
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
-      var result = new PageUrlResult(List.of(), null);
+      var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
@@ -788,7 +788,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var pageResult = new PageUrlResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
+      var pageResult = new UrlPageResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
       var response = new UrlPageResponseDto(List.of(
           new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
       ), "next");
@@ -825,7 +825,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var limit = 20;
       var status = UrlStatusFilter.ALL;
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
-      var result = new PageUrlResult(List.of(), null);
+      var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
       given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);

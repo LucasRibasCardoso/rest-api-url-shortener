@@ -5,8 +5,8 @@ import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.ResolvedUrlResult;
-import com.app.url_shortener.url.application.result.UrlRedirectCacheEntry;
+import com.app.url_shortener.url.application.result.ResolveUrlResult;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
@@ -26,15 +26,15 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
   private final UrlRedirectEventPublisherPort urlRedirectEventPublisherPort;
 
   @Override
-  public ResolvedUrlResult execute(ResolveUrlCommand command) {
+  public ResolveUrlResult execute(ResolveUrlCommand command) {
     String shortCode = command.shortCode();
-    ResolvedUrlResult result = resolve(shortCode);
+    ResolveUrlResult result = resolve(shortCode);
     urlRedirectEventPublisherPort.publishAsync(UrlRedirectedEvent.create(shortCode));
     return result;
   }
 
-  private ResolvedUrlResult resolve(String shortCode) {
-    Optional<UrlRedirectCacheEntry> urlCacheEntry;
+  private ResolveUrlResult resolve(String shortCode) {
+    Optional<RedirectCacheEntry> urlCacheEntry;
 
     try {
       urlCacheEntry = fetchInCache(shortCode);
@@ -49,7 +49,7 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     return fetchInRepository(shortCode);
   }
 
-  private Optional<UrlRedirectCacheEntry> fetchInCache(String shortCode) {
+  private Optional<RedirectCacheEntry> fetchInCache(String shortCode) {
     try {
       return redirectCachePort.findByShortCode(shortCode);
     } catch (RedirectCacheException e) {
@@ -58,7 +58,7 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     }
   }
 
-  private ResolvedUrlResult fetchInRepository(String shortCode) {
+  private ResolveUrlResult fetchInRepository(String shortCode) {
     Optional<Url> urlOpt = urlRepositoryPort.findByShortCode(shortCode);
 
     if (urlOpt.isPresent()) {
@@ -69,15 +69,15 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     throw new UrlNotFoundException();
   }
 
-  private ResolvedUrlResult resolveCachedUrl(UrlRedirectCacheEntry entry) {
+  private ResolveUrlResult resolveCachedUrl(RedirectCacheEntry entry) {
     if (entry.isRedirectable()) {
-      return new ResolvedUrlResult(entry.longUrl());
+      return new ResolveUrlResult(entry.longUrl());
     }
 
     throw new UrlNotFoundException();
   }
 
-  private ResolvedUrlResult resolvePersistedUrl(String shortCode, Url url) {
+  private ResolveUrlResult resolvePersistedUrl(String shortCode, Url url) {
     if (!url.isRedirectable()) {
       saveStatusDeleteInRedirectCache(shortCode);
       throw new UrlNotFoundException();
@@ -86,26 +86,26 @@ public class ResolveUrlUseCaseImpl implements ResolveUrlUseCase {
     boolean cached = saveStatusActiveInRedirectCache(shortCode, url);
 
     if (cached) {
-      return new ResolvedUrlResult(url.getOriginalUrl());
+      return new ResolveUrlResult(url.getOriginalUrl());
     }
 
     return resolveWithCacheRecheck(shortCode, url);
   }
 
-  private ResolvedUrlResult resolveWithCacheRecheck(String shortCode, Url url) {
-    Optional<UrlRedirectCacheEntry> urlCacheEntry;
+  private ResolveUrlResult resolveWithCacheRecheck(String shortCode, Url url) {
+    Optional<RedirectCacheEntry> urlCacheEntry;
 
     try {
       urlCacheEntry = fetchInCache(shortCode);
     } catch (RedirectCacheException exception) {
-      return new ResolvedUrlResult(url.getOriginalUrl());
+      return new ResolveUrlResult(url.getOriginalUrl());
     }
 
     if (urlCacheEntry.isPresent()) {
       return resolveCachedUrl(urlCacheEntry.get());
     }
 
-    return new ResolvedUrlResult(url.getOriginalUrl());
+    return new ResolveUrlResult(url.getOriginalUrl());
   }
 
   private void saveStatusDeleteInRedirectCache(String shortCode) {

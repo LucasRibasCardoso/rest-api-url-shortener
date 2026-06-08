@@ -3,7 +3,7 @@ package com.app.url_shortener.url.presentation.mapper;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
-import com.app.url_shortener.url.application.result.PageUrlResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
@@ -249,7 +249,7 @@ class UrlWebMapperTest {
       // 1. Arrange
       var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
       var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
-      var result = new PageUrlResult(List.of(
+      var result = new UrlPageResult(List.of(
           new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
           new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)
       ), "next-page-cursor");
