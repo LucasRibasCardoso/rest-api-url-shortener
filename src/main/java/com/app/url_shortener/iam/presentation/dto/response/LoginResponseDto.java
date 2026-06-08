@@ -4,7 +4,7 @@ public record LoginResponseDto(
         String accessToken,
         String tokenType,
         Long expiresInSeconds,
-        AuthenticatedUserDto user
+        AuthenticatedUserResponseDto user
 ) {
 
   @Override

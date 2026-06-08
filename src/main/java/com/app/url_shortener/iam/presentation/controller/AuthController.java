@@ -6,9 +6,9 @@ import com.app.url_shortener.iam.application.usecase.*;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidRefreshTokenException;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponse;
+import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
@@ -41,18 +41,18 @@ public class AuthController {
   private final ResendVerificationUseCase resendVerificationUseCase;
 
   @PostMapping("/register")
-  public ResponseEntity<GenericMessageResponse> register(@Valid @RequestBody RegisterRequestDto request) {
+  public ResponseEntity<GenericMessageResponseDto> register(@Valid @RequestBody RegisterRequestDto request) {
     RegisterUserCommand command = iamWebMapper.toRegisterUserCommand(request);
     RegisterUserResult result = registerUserUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
+    GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @PostMapping("/verify-email")
-  public ResponseEntity<GenericMessageResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequestDto request) {
+  public ResponseEntity<GenericMessageResponseDto> verifyEmail(@Valid @RequestBody VerifyEmailRequestDto request) {
     VerifyEmailCommand command = iamWebMapper.toVerifyEmailCommand(request);
     VerifyEmailResult result = verifyEmailUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
+    GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
@@ -87,10 +87,10 @@ public class AuthController {
   }
 
   @PostMapping("/resend-verification")
-  public ResponseEntity<GenericMessageResponse> resend(@Valid @RequestBody ResendVerificationRequest request) {
+  public ResponseEntity<GenericMessageResponseDto> resend(@Valid @RequestBody ResendVerificationRequestDto request) {
     ResendVerificationCommand command = iamWebMapper.toResendVerificationCommand(request);
     ResendVerificationResult result = resendVerificationUseCase.execute(command);
-    GenericMessageResponse response = iamWebMapper.toGenericMessageResponse(result);
+    GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
 
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }

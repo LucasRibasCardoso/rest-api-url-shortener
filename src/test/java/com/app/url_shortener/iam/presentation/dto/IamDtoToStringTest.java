@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserDto;
+import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import java.util.List;
@@ -70,7 +70,7 @@ class IamDtoToStringTest {
     void shouldNotExposeAccessTokenInLoginResponseDto() {
       // 1. Arrange
       var accessToken = "jwt-access-token";
-      var user = new AuthenticatedUserDto(UUID.randomUUID(), "User Name", "user@email.com", "FREE", List.of("USER"));
+      var user = new AuthenticatedUserResponseDto(UUID.randomUUID(), "User Name", "user@email.com", "FREE", List.of("USER"));
       var dto = new LoginResponseDto(accessToken, "Bearer", 900L, user);
 
       // 2. Act

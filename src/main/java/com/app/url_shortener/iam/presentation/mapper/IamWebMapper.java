@@ -5,9 +5,9 @@ import com.app.url_shortener.iam.application.result.*;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponse;
+import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import org.mapstruct.Mapper;
@@ -18,11 +18,11 @@ public interface IamWebMapper {
 
   RegisterUserCommand toRegisterUserCommand(RegisterRequestDto request);
 
-  GenericMessageResponse toGenericMessageResponse(RegisterUserResult result);
+  GenericMessageResponseDto toGenericMessageResponse(RegisterUserResult result);
 
   VerifyEmailCommand toVerifyEmailCommand(VerifyEmailRequestDto request);
 
-  GenericMessageResponse toGenericMessageResponse(VerifyEmailResult result);
+  GenericMessageResponseDto toGenericMessageResponse(VerifyEmailResult result);
 
   LoginCommand toLoginCommand(LoginRequestDto request, String clientIp);
 
@@ -30,9 +30,9 @@ public interface IamWebMapper {
 
   LogoutCommand toLogoutCommand(String refreshToken);
 
-  ResendVerificationCommand toResendVerificationCommand(ResendVerificationRequest request);
+  ResendVerificationCommand toResendVerificationCommand(ResendVerificationRequestDto request);
 
-  GenericMessageResponse toGenericMessageResponse(ResendVerificationResult result);
+  GenericMessageResponseDto toGenericMessageResponse(ResendVerificationResult result);
 
   RefreshTokenCommand toRefreshTokenCommand(String refreshToken);
 

@@ -6,10 +6,10 @@ import com.app.url_shortener.iam.application.usecase.*;
 import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserDto;
-import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponse;
+import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserResponseDto;
+import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
@@ -122,7 +122,7 @@ class AuthControllerTest extends BaseWebSliceTest {
       var request = new RegisterRequestDto("User Name", "user@email.com", "secure-password");
       var command = new RegisterUserCommand(request.name(), request.email(), request.password());
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
+      var response = new GenericMessageResponseDto(result.message());
 
       given(iamWebMapper.toRegisterUserCommand(request)).willReturn(command);
       given(registerUserUseCase.execute(command)).willReturn(result);
@@ -155,7 +155,7 @@ class AuthControllerTest extends BaseWebSliceTest {
       var request = new VerifyEmailRequestDto("user@email.com", "123456");
       var command = new VerifyEmailCommand(request.email(), null);
       var result = new VerifyEmailResult("Email verificado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
+      var response = new GenericMessageResponseDto(result.message());
 
       given(iamWebMapper.toVerifyEmailCommand(request)).willReturn(command);
       given(verifyEmailUseCase.execute(command)).willReturn(result);
@@ -415,7 +415,7 @@ class AuthControllerTest extends BaseWebSliceTest {
     @DisplayName("Deve exigir autenticação para reenviar verificação")
     void shouldRequireAuthenticationForResendVerification() throws Exception {
       // 1. Arrange
-      var request = new ResendVerificationRequest("user@email.com");
+      var request = new ResendVerificationRequestDto("user@email.com");
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request));
@@ -433,10 +433,10 @@ class AuthControllerTest extends BaseWebSliceTest {
     @DisplayName("Deve retornar 200 e delegar reenvio quando autenticado")
     void shouldReturnOkAndDelegateResendVerificationWhenAuthenticated() throws Exception {
       // 1. Arrange
-      var request = new ResendVerificationRequest("user@email.com");
+      var request = new ResendVerificationRequestDto("user@email.com");
       var command = new ResendVerificationCommand(request.email());
       var result = new ResendVerificationResult("Código reenviado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
+      var response = new GenericMessageResponseDto(result.message());
 
       given(iamWebMapper.toResendVerificationCommand(request)).willReturn(command);
       given(resendVerificationUseCase.execute(command)).willReturn(result);
@@ -500,7 +500,7 @@ class AuthControllerTest extends BaseWebSliceTest {
             "jwt-access-token",
             "Bearer",
             3_600L,
-            new AuthenticatedUserDto(
+            new AuthenticatedUserResponseDto(
                     userId(),
                     "User Name",
                     "user@email.com",

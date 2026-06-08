@@ -9,7 +9,7 @@ import com.app.url_shortener.iam.application.result.VerifyEmailResult;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -92,7 +92,7 @@ class IamWebMapperTest {
     @DisplayName("Deve mapear request de reenvio de verificação para comando")
     void shouldMapResendVerificationRequestToCommand() {
       // 1. Arrange
-      var request = new ResendVerificationRequest("  USER@EMAIL.COM  ");
+      var request = new ResendVerificationRequestDto("  USER@EMAIL.COM  ");
 
       // 2. Act
       var command = mapper.toResendVerificationCommand(request);
