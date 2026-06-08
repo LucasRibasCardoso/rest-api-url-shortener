@@ -166,9 +166,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
       var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE);
-      given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
+      given(urlWebMapper.toShortenUrlCommand(request, USER_ID, planType)).willReturn(command);
       given(shortenUrlUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("", request)
@@ -187,9 +187,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.accessCount").doesNotExist())
           .andExpect(jsonPath("$.lastAccessedAt").doesNotExist());
 
-      verify(urlWebMapper).toCommand(request, USER_ID, planType);
+      verify(urlWebMapper).toShortenUrlCommand(request, USER_ID, planType);
       verify(shortenUrlUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, shortenUrlUseCase);
     }
 
@@ -218,7 +218,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       var planType = PlanType.FREE;
       var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
 
-      given(urlWebMapper.toCommand(request, USER_ID, planType)).willReturn(command);
+      given(urlWebMapper.toShortenUrlCommand(request, USER_ID, planType)).willReturn(command);
       doThrow(new TooManyRequestsException(Duration.ofSeconds(45)))
           .when(shortenUrlUseCase).execute(command);
 
@@ -237,7 +237,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.detail").value(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
           .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
 
-      verify(urlWebMapper).toCommand(request, USER_ID, planType);
+      verify(urlWebMapper).toShortenUrlCommand(request, USER_ID, planType);
       verify(shortenUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, shortenUrlUseCase);
     }
@@ -271,9 +271,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
       var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
       var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
-      given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
+      given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result)).willReturn(response);
+      given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -294,9 +294,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.accessCount").value(42))
           .andExpect(jsonPath("$.lastAccessedAt").value(lastAccessedAt.toString()));
 
-      verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
+      verify(urlWebMapper).toUrlDetailsCommand(USER_ID, shortCode, false);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result);
+      verify(urlWebMapper).toUrlDetailsResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -309,9 +309,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
       var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
-      given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
+      given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result)).willReturn(response);
+      given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -324,9 +324,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.userId").value(response.userId().toString()))
           .andExpect(jsonPath("$.status").value(response.status().name()));
 
-      verify(urlWebMapper).toCommand(USER_ID, shortCode, true);
+      verify(urlWebMapper).toUrlDetailsCommand(USER_ID, shortCode, true);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result);
+      verify(urlWebMapper).toUrlDetailsResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -341,9 +341,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac003");
       var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
       var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
-      given(urlWebMapper.toCommand(USER_ID, shortCode, true)).willReturn(command);
+      given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result)).willReturn(response);
+      given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -362,9 +362,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.deletedAt").value(response.deletedAt().toString()))
           .andExpect(jsonPath("$.deletedBy").value(response.deletedBy().toString()));
 
-      verify(urlWebMapper).toCommand(USER_ID, shortCode, true);
+      verify(urlWebMapper).toUrlDetailsCommand(USER_ID, shortCode, true);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result);
+      verify(urlWebMapper).toUrlDetailsResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -377,9 +377,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
       var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
-      given(urlWebMapper.toCommand(USER_ID, shortCode, false)).willReturn(command);
+      given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result)).willReturn(response);
+      given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
@@ -390,9 +390,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.shortCode").value(response.shortCode()));
 
-      verify(urlWebMapper).toCommand(USER_ID, shortCode, false);
+      verify(urlWebMapper).toUrlDetailsCommand(USER_ID, shortCode, false);
       verify(findUrlDetailsUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result);
+      verify(urlWebMapper).toUrlDetailsResponse(result);
       verifyNoMoreInteractions(urlWebMapper, findUrlDetailsUseCase);
     }
 
@@ -450,7 +450,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new DeleteUrlCommand(USER_ID, shortCode, false);
-      given(urlWebMapper.toCommandDelete(USER_ID, shortCode, false)).willReturn(command);
+      given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, false)).willReturn(command);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -461,7 +461,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isNoContent())
           .andExpect(content().string(""));
 
-      verify(urlWebMapper).toCommandDelete(USER_ID, shortCode, false);
+      verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, false);
       verify(deleteUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, deleteUrlUseCase);
     }
@@ -472,7 +472,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "a".repeat(64);
       var command = new DeleteUrlCommand(USER_ID, shortCode, false);
-      given(urlWebMapper.toCommandDelete(USER_ID, shortCode, false)).willReturn(command);
+      given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, false)).willReturn(command);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortCode}", shortCode)
@@ -483,7 +483,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isNoContent())
           .andExpect(content().string(""));
 
-      verify(urlWebMapper).toCommandDelete(USER_ID, shortCode, false);
+      verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, false);
       verify(deleteUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, deleteUrlUseCase);
     }
@@ -523,7 +523,7 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new DeleteUrlCommand(USER_ID, shortCode, true);
-      given(urlWebMapper.toCommandDelete(USER_ID, shortCode, true)).willReturn(command);
+      given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, true)).willReturn(command);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortcode}", shortCode)
@@ -534,7 +534,7 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(status().isNoContent())
           .andExpect(content().string(""));
 
-      verify(urlWebMapper).toCommandDelete(USER_ID, shortCode, true);
+      verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, true);
       verify(deleteUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, deleteUrlUseCase);
     }
@@ -567,9 +567,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       var result = new PageUrlResult(List.of(), null);
       var response = new PageUrlResponseDto(List.of(), null);
-      given(urlWebMapper.toCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
@@ -584,9 +584,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls").isArray())
           .andExpect(jsonPath("$.nextCursor").doesNotExist());
 
-      verify(urlWebMapper).toCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
+      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -599,9 +599,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
       var result = new PageUrlResult(List.of(), null);
       var response = new PageUrlResponseDto(List.of(), null);
-      given(urlWebMapper.toCommand(USER_ID, limit, null, status)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
@@ -614,9 +614,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.urls").isArray());
 
-      verify(urlWebMapper).toCommand(USER_ID, limit, null, status);
+      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -687,9 +687,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var response = new UrlRankingResponseDto(List.of(
           new UrlRankingItemResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
       ));
-      given(urlWebMapper.toCommandRanking(USER_ID, rankingSize)).willReturn(command);
+      given(urlWebMapper.toUrlRankingCommand(USER_ID, rankingSize)).willReturn(command);
       given(findTopAccessedUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toRankingResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlRankingResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
@@ -706,9 +706,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].accessCount").value(42))
           .andExpect(jsonPath("$.urls[0].lastAccessedAt").value(lastAccessedAt.toString()));
 
-      verify(urlWebMapper).toCommandRanking(USER_ID, rankingSize);
+      verify(urlWebMapper).toUrlRankingCommand(USER_ID, rankingSize);
       verify(findTopAccessedUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toRankingResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlRankingResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
     }
 
@@ -720,9 +720,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new UrlRankingCommand(USER_ID, rankingSize);
       var result = new UrlRankingResult(List.of());
       var response = new UrlRankingResponseDto(List.of());
-      given(urlWebMapper.toCommandRanking(USER_ID, rankingSize)).willReturn(command);
+      given(urlWebMapper.toUrlRankingCommand(USER_ID, rankingSize)).willReturn(command);
       given(findTopAccessedUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toRankingResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toUrlRankingResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
@@ -735,9 +735,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.urls").isArray());
 
-      verify(urlWebMapper).toCommandRanking(USER_ID, rankingSize);
+      verify(urlWebMapper).toUrlRankingCommand(USER_ID, rankingSize);
       verify(findTopAccessedUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toRankingResponse(result, BASE_URL);
+      verify(urlWebMapper).toUrlRankingResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
     }
 
@@ -792,9 +792,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var response = new PageUrlResponseDto(List.of(
           new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
       ), "next");
-      given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
-      given(urlWebMapper.toResponse(pageResult, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toPageUrlResponse(pageResult, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
@@ -812,9 +812,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].lastAccessedAt").doesNotExist())
           .andExpect(jsonPath("$.nextCursor").value("next"));
 
-      verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
+      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toResponse(pageResult, BASE_URL);
+      verify(urlWebMapper).toPageUrlResponse(pageResult, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 
@@ -827,9 +827,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
       var result = new PageUrlResult(List.of(), null);
       var response = new PageUrlResponseDto(List.of(), null);
-      given(urlWebMapper.toCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
-      given(urlWebMapper.toResponse(result, BASE_URL)).willReturn(response);
+      given(urlWebMapper.toPageUrlResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
@@ -842,9 +842,9 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
           .andExpect(jsonPath("$.urls").isArray());
 
-      verify(urlWebMapper).toCommand(TARGET_USER_ID, limit, null, status);
+      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
       verify(findAllUrlsByUserIdUseCase).execute(command);
-      verify(urlWebMapper).toResponse(result, BASE_URL);
+      verify(urlWebMapper).toPageUrlResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
     }
 

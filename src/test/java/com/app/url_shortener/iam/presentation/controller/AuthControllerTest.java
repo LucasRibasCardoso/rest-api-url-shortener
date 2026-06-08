@@ -243,9 +243,12 @@ class AuthControllerTest extends BaseWebSliceTest {
       resultActions
               .andExpect(status().isBadRequest())
               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.title").value("Bad Request"))
+              .andExpect(jsonPath("$.type").value(ProblemType.VALIDATION))
+              .andExpect(jsonPath("$.title").value("Validação"))
               .andExpect(jsonPath("$.status").value(400))
-              .andExpect(jsonPath("$.detail").value("Invalid request content."))
+              .andExpect(jsonPath("$.detail").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage()))
+              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+              .andExpect(jsonPath("$.errors[?(@.field == '%s')]".formatted(invalidField)).exists())
               .andExpect(result -> {
                 assertThat(scenario).isNotBlank();
                 assertThat(result.getResolvedException())

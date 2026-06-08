@@ -44,7 +44,7 @@ class UrlWebMapperTest {
       var planType = PlanType.PREMIUM;
 
       // 2. Act
-      var command = mapper.toCommand(request, userId, planType);
+      var command = mapper.toShortenUrlCommand(request, userId, planType);
 
       // 3. Assert
       assertAll(
@@ -63,7 +63,7 @@ class UrlWebMapperTest {
       var canReadAny = true;
 
       // 2. Act
-      var command = mapper.toCommand(requesterId, shortCode, canReadAny);
+      var command = mapper.toUrlDetailsCommand(requesterId, shortCode, canReadAny);
 
       // 3. Assert
       assertAll(
@@ -82,7 +82,7 @@ class UrlWebMapperTest {
       var canDeleteAny = true;
 
       // 2. Act
-      var command = mapper.toCommandDelete(requesterId, shortCode, canDeleteAny);
+      var command = mapper.toDeleteUrlCommand(requesterId, shortCode, canDeleteAny);
 
       // 3. Assert
       assertAll(
@@ -102,7 +102,7 @@ class UrlWebMapperTest {
       var status = UrlStatusFilter.DELETED;
 
       // 2. Act
-      var command = mapper.toCommand(userId, limit, cursor, status);
+      var command = mapper.toFindAllUrlsByUserIdCommand(userId, limit, cursor, status);
 
       // 3. Assert
       assertAll(
@@ -134,7 +134,7 @@ class UrlWebMapperTest {
       var shortCode = "  aB3dE  ";
 
       // 2. Act
-      var command = mapper.toCommand(shortCode);
+      var command = mapper.toResolveUrlCommand(shortCode);
 
       // 3. Assert
       assertThat(command.shortCode()).isEqualTo("aB3dE");
@@ -154,7 +154,7 @@ class UrlWebMapperTest {
       var baseUrl = "https://sho.rt";
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toUrlResponse(result, baseUrl);
 
       // 3. Assert
       assertAll(
@@ -187,7 +187,7 @@ class UrlWebMapperTest {
           lastAccessedAt);
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toUrlDetailsResponse(result);
 
       // 3. Assert
       assertAll(
@@ -226,7 +226,7 @@ class UrlWebMapperTest {
           lastAccessedAt);
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toUrlDetailsResponse(result);
 
       // 3. Assert
       assertAll(
@@ -256,7 +256,7 @@ class UrlWebMapperTest {
       var baseUrl = "https://sho.rt";
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toPageUrlResponse(result, baseUrl);
 
       // 3. Assert
       assertAll(

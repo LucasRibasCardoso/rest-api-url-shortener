@@ -75,7 +75,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
       var result = new ResolvedUrlResult("https://google.com");
-      given(urlWebMapper.toCommand(shortCode)).willReturn(command);
+      given(urlWebMapper.toResolveUrlCommand(shortCode)).willReturn(command);
       given(resolveUrlUseCase.execute(command)).willReturn(result);
 
       // 2. Act
@@ -86,7 +86,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
           .andExpect(status().isFound())
           .andExpect(header().string(HttpHeaders.LOCATION, result.originalUrl()));
 
-      verify(urlWebMapper).toCommand(shortCode);
+      verify(urlWebMapper).toResolveUrlCommand(shortCode);
       verify(resolveUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, resolveUrlUseCase);
     }
@@ -97,7 +97,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
       // 1. Arrange
       var shortCode = "aB3dE";
       var command = new ResolveUrlCommand(shortCode);
-      given(urlWebMapper.toCommand(shortCode)).willReturn(command);
+      given(urlWebMapper.toResolveUrlCommand(shortCode)).willReturn(command);
       doThrow(new UrlNotFoundException())
           .when(resolveUrlUseCase).execute(command);
 
@@ -106,7 +106,7 @@ class RedirectControllerTest extends BaseWebSliceTest {
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());
-      verify(urlWebMapper).toCommand(shortCode);
+      verify(urlWebMapper).toResolveUrlCommand(shortCode);
       verify(resolveUrlUseCase).execute(command);
       verifyNoMoreInteractions(urlWebMapper, resolveUrlUseCase);
     }

@@ -17,34 +17,34 @@ public interface UrlWebMapper {
 
   @Mapping(target = "userId", source = "userId")
   @Mapping(target = "originalUrl", source = "request.originalUrl")
-  ShortenUrlCommand toCommand(ShortenUrlRequestDto request, UUID userId, PlanType planType);
+  ShortenUrlCommand toShortenUrlCommand(ShortenUrlRequestDto request, UUID userId, PlanType planType);
 
-  UrlDetailsCommand toCommand(UUID requesterId, String shortCode, boolean canReadAny);
+  ResolveUrlCommand toResolveUrlCommand(String shortCode);
 
-  DeleteUrlCommand toCommandDelete(UUID requesterId, String shortCode, boolean canDeleteAny);
+  UrlRankingCommand toUrlRankingCommand(UUID userId, int rankingSize);
 
-  FindAllUrlsByUserIdCommand toCommand(UUID userId, int limit, String cursor, UrlStatusFilter status);
+  DeleteUrlCommand toDeleteUrlCommand(UUID requesterId, String shortCode, boolean canDeleteAny);
 
-  ResolveUrlCommand toCommand(String shortCode);
+  UrlDetailsCommand toUrlDetailsCommand(UUID requesterId, String shortCode, boolean canReadAny);
 
-  UrlRankingCommand toCommandRanking(UUID userId, int rankingSize);
+  FindAllUrlsByUserIdCommand toFindAllUrlsByUserIdCommand(UUID userId, int limit, String cursor, UrlStatusFilter status);
 
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
   @Mapping(target = "status", constant = "ACTIVE")
-  UrlResponseDto toResponse(ShortenUrlResult result, @Context String baseUrl);
+  UrlResponseDto toUrlResponse(ShortenUrlResult result, @Context String baseUrl);
 
-  UrlDetailsResponseDto toResponse(UrlDetailsResult result);
-
-  @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
-  UrlResponseDto toResponse(UrlListItemResult result, @Context String baseUrl);
+  UrlDetailsResponseDto toUrlDetailsResponse(UrlDetailsResult result);
 
   @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
-  UrlRankingItemResponseDto toRankingItemResponse(UrlRankingItemResult result, @Context String baseUrl);
+  UrlResponseDto toUrlResponse(UrlListItemResult result, @Context String baseUrl);
+
+  @Mapping(target = "shortUrl", source = "shortCode", qualifiedByName = "toFullShortUrl")
+  UrlRankingItemResponseDto toUrlRankingItemResponse(UrlRankingItemResult result, @Context String baseUrl);
 
   @Mapping(target = "urls", source = "urls")
-  UrlRankingResponseDto toRankingResponse(UrlRankingResult result, @Context String baseUrl);
+  UrlRankingResponseDto toUrlRankingResponse(UrlRankingResult result, @Context String baseUrl);
 
-  PageUrlResponseDto toResponse(PageUrlResult result, @Context String baseUrl);
+  PageUrlResponseDto toPageUrlResponse(PageUrlResult result, @Context String baseUrl);
 
   @Named("toFullShortUrl")
   default String toFullShortUrl(String shortCode, @Context String baseUrl) {
