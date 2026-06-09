@@ -326,6 +326,6 @@ class VerifyEmailUseCaseTest {
   }
 
   private Role defaultRole() {
-    return Role.restore(UUID.randomUUID(), "ROLE_USER", true, Set.of());
+    return Role.restore(UUID.randomUUID(), "USER", true, Set.of());
   }
 }

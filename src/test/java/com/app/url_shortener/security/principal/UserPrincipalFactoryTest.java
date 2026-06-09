@@ -64,11 +64,11 @@ class UserPrincipalFactoryTest {
     }
 
     @Test
-    @DisplayName("Deve prefixar roles sem prefixo e preservar permissões exatamente pelo nome")
-    void shouldPrefixRolesWithoutPrefixAndMapPermissionsExactlyByName() {
+    @DisplayName("Deve prefixar nomes canônicos de roles e preservar permissões exatamente pelo nome")
+    void shouldPrefixCanonicalRoleNamesAndMapPermissionsExactlyByName() {
       // 1. Arrange
       var adminRole = role("ADMIN", permission("url:create"), permission("url:delete"));
-      var supportRole = role("ROLE_SUPPORT", permission("users:read"));
+      var supportRole = role("SUPPORT", permission("users:read"));
       var user = userEntity(roles(adminRole, supportRole));
 
       // 2. Act
@@ -91,8 +91,8 @@ class UserPrincipalFactoryTest {
     void shouldRemoveDuplicateAuthorities() {
       // 1. Arrange
       var userRole = role("USER", permission("url:read"), permission("url:create"));
-      var prefixedUserRole = role("ROLE_USER", permission("url:read"), permission("url:create"));
-      var user = userEntity(roles(userRole, prefixedUserRole));
+      var adminRole = role("ADMIN", permission("url:read"), permission("url:create"));
+      var user = userEntity(roles(userRole, adminRole));
 
       // 2. Act
       var principal = factory.from(user);
@@ -100,7 +100,12 @@ class UserPrincipalFactoryTest {
       // 3. Assert
       assertThat(principal.getAuthorities())
               .extracting("authority")
-              .contains("ROLE_USER", "url:read", "url:create");
+              .containsExactlyInAnyOrder(
+                      "ROLE_USER",
+                      "ROLE_ADMIN",
+                      "url:read",
+                      "url:create"
+              );
     }
 
     @Test

@@ -9,6 +9,8 @@ import lombok.Getter;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Role {
 
+  private static final String LEGACY_PREFIX = "ROLE_";
+
   @EqualsAndHashCode.Include private final UUID id;
   private final String name;
   private final boolean isDefault;
@@ -16,7 +18,7 @@ public class Role {
 
   private Role(UUID id, String name, boolean isDefault, Set<Permission> permissions) {
     this.id = Objects.requireNonNull(id, "id is required");
-    this.name = RequiredText.normalize(name, "name");
+    this.name = canonicalizeName(name);
     this.isDefault = isDefault;
     this.permissions = permissions == null ? new HashSet<>() : new HashSet<>(permissions);
   }
@@ -33,6 +35,20 @@ public class Role {
 
   public Set<Permission> getPermissions() {
     return Collections.unmodifiableSet(permissions);
+  }
+
+  private static String canonicalizeName(String name) {
+    String canonicalName = RequiredText.normalize(name, "name").toUpperCase(Locale.ROOT);
+
+    while (canonicalName.startsWith(LEGACY_PREFIX)) {
+      canonicalName = canonicalName.substring(LEGACY_PREFIX.length());
+    }
+
+    if (canonicalName.isBlank()) {
+      throw new IllegalArgumentException("name must not be blank");
+    }
+
+    return canonicalName;
   }
 
   @Override

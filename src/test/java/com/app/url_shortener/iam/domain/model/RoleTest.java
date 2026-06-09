@@ -19,16 +19,42 @@ class RoleTest {
   class CreationAndRestoreTests {
 
     @Test
-    @DisplayName("Deve normalizar o nome ao restaurar uma role")
+    @DisplayName("Deve canonicalizar o nome ao restaurar uma role")
     void shouldNormalizeNameWhenRestoringRole() {
       // 1. Arrange
       var id = UUID.randomUUID();
 
       // 2. Act
-      var role = Role.restore(id, "  ROLE_USER  ", true, Set.of());
+      var role = Role.restore(id, "  role_user  ", true, Set.of());
 
       // 3. Assert
-      assertThat(role.getName()).isEqualTo("ROLE_USER");
+      assertThat(role.getName()).isEqualTo("USER");
+    }
+
+    @Test
+    @DisplayName("Deve manter nome canônico sem prefixo de authority")
+    void shouldKeepCanonicalNameWithoutAuthorityPrefix() {
+      // 1. Arrange
+
+      // 2. Act
+      var role = Role.create("admin", Set.of());
+
+      // 3. Assert
+      assertThat(role.getName()).isEqualTo("ADMIN");
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar nome composto apenas pelo prefixo de authority")
+    void shouldRejectAuthorityPrefixWithoutRoleName() {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> Role.create("ROLE_", Set.of()));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("name must not be blank");
     }
 
     @Test

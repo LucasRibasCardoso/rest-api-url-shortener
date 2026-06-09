@@ -39,9 +39,6 @@ public class UserPrincipalFactory {
   }
 
   private String toRoleAuthority(String roleName) {
-    if (roleName.startsWith(ROLE_PREFIX)) {
-      return roleName;
-    }
     return ROLE_PREFIX + roleName;
   }
 }

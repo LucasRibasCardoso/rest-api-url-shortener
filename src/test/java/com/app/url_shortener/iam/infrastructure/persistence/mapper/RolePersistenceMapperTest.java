@@ -36,7 +36,7 @@ class RolePersistenceMapperTest {
               "url:create",
               "Criar URLs encurtadas"
       );
-      var entity = new RoleEntity(roleId, "ROLE_ADMIN", true, Set.of(permissionEntity));
+      var entity = new RoleEntity(roleId, "ADMIN", true, Set.of(permissionEntity));
 
       // 2. Act
       var domain = mapper.toDomainWithPermissions(entity);
@@ -44,7 +44,7 @@ class RolePersistenceMapperTest {
       // 3. Assert
       assertThat(domain).isNotNull();
       assertThat(domain.getId()).isEqualTo(roleId);
-      assertThat(domain.getName()).isEqualTo("ROLE_ADMIN");
+      assertThat(domain.getName()).isEqualTo("ADMIN");
       assertThat(domain.isDefault()).isTrue();
       assertThat(domain.getPermissions())
               .singleElement()
@@ -65,7 +65,7 @@ class RolePersistenceMapperTest {
               "url:create",
               "Criar URLs encurtadas"
       );
-      var entity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var entity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
 
       // 2. Act
       var domain = mapper.toDomainWithoutPermissions(entity);
@@ -73,7 +73,7 @@ class RolePersistenceMapperTest {
       // 3. Assert
       assertThat(domain).isNotNull();
       assertThat(domain.getId()).isEqualTo(roleId);
-      assertThat(domain.getName()).isEqualTo("ROLE_USER");
+      assertThat(domain.getName()).isEqualTo("USER");
       assertThat(domain.isDefault()).isTrue();
       assertThat(domain.getPermissions()).isEmpty();
     }
@@ -107,7 +107,7 @@ class RolePersistenceMapperTest {
               "url:read",
               "Consultar URLs encurtadas"
       );
-      var domain = Role.restore(roleId, "ROLE_USER", false, Set.of(permission));
+      var domain = Role.restore(roleId, "USER", false, Set.of(permission));
 
       // 2. Act
       var entity = mapper.toEntity(domain);
@@ -115,7 +115,7 @@ class RolePersistenceMapperTest {
       // 3. Assert
       assertThat(entity).isNotNull();
       assertThat(entity.getId()).isEqualTo(roleId);
-      assertThat(entity.getName()).isEqualTo("ROLE_USER");
+      assertThat(entity.getName()).isEqualTo("USER");
       assertThat(entity.isDefault()).isFalse();
       assertThat(entity.getCreatedAt()).isNull();
       assertThat(entity.getUpdatedAt()).isNull();

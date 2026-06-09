@@ -232,7 +232,7 @@ class UserAccountTest {
     void shouldRejectNonDefaultRoleWithoutChangingUser() {
       // 1. Arrange
       var user = UserAccount.createPendingRegistration("Maria", "maria@mail.com", "hash");
-      var nonDefaultRole = Role.create("ROLE_USER", Set.of());
+      var nonDefaultRole = Role.create("USER", Set.of());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> user.verifyEmail(nonDefaultRole));
@@ -295,6 +295,6 @@ class UserAccountTest {
   }
 
   private static Role defaultRole() {
-    return Role.restore(UUID.randomUUID(), "ROLE_USER", true, Set.of());
+    return Role.restore(UUID.randomUUID(), "USER", true, Set.of());
   }
 }

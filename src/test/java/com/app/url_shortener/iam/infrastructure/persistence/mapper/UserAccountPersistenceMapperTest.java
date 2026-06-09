@@ -37,7 +37,7 @@ class UserAccountPersistenceMapperTest {
       var roleId = UUID.randomUUID();
       var permissionId = UUID.randomUUID();
       var permissionEntity = new PermissionEntity(permissionId, "url:create", "Criar URLs");
-      var roleEntity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var roleEntity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
       var entity = new UserEntity(
               userId,
               "Maria Silva",
@@ -70,7 +70,7 @@ class UserAccountPersistenceMapperTest {
               "url:create",
               "Criar URLs"
       );
-      var roleEntity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var roleEntity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
       var entity = userEntity(userId, Set.of(roleEntity));
 
       // 2. Act
@@ -82,7 +82,7 @@ class UserAccountPersistenceMapperTest {
               .singleElement()
               .satisfies(role -> {
                 assertThat(role.getId()).isEqualTo(roleId);
-                assertThat(role.getName()).isEqualTo("ROLE_USER");
+                assertThat(role.getName()).isEqualTo("USER");
                 assertThat(role.isDefault()).isTrue();
                 assertThat(role.getPermissions()).isEmpty();
               });
@@ -96,7 +96,7 @@ class UserAccountPersistenceMapperTest {
       var roleId = UUID.randomUUID();
       var permissionId = UUID.randomUUID();
       var permissionEntity = new PermissionEntity(permissionId, "url:create", "Criar URLs");
-      var roleEntity = new RoleEntity(roleId, "ROLE_USER", true, Set.of(permissionEntity));
+      var roleEntity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
       var entity = userEntity(userId, Set.of(roleEntity));
 
       // 2. Act
@@ -108,7 +108,7 @@ class UserAccountPersistenceMapperTest {
               .singleElement()
               .satisfies(role -> {
                 assertThat(role.getId()).isEqualTo(roleId);
-                assertThat(role.getName()).isEqualTo("ROLE_USER");
+                assertThat(role.getName()).isEqualTo("USER");
                 assertThat(role.isDefault()).isTrue();
                 assertThat(role.getPermissions())
                         .singleElement()
@@ -163,7 +163,7 @@ class UserAccountPersistenceMapperTest {
       var roleId = UUID.randomUUID();
       var permissionId = UUID.randomUUID();
       var permission = Permission.restore(permissionId, "url:read", "Consultar URLs");
-      var role = Role.restore(roleId, "ROLE_ADMIN", false, Set.of(permission));
+      var role = Role.restore(roleId, "ADMIN", false, Set.of(permission));
       var domain = UserAccount.restore(
               userId,
               "João Silva",
@@ -196,7 +196,7 @@ class UserAccountPersistenceMapperTest {
               .singleElement()
               .satisfies(roleEntity -> {
                 assertThat(roleEntity.getId()).isEqualTo(roleId);
-                assertThat(roleEntity.getName()).isEqualTo("ROLE_ADMIN");
+                assertThat(roleEntity.getName()).isEqualTo("ADMIN");
                 assertThat(roleEntity.isDefault()).isFalse();
                 assertThat(roleEntity.getPermissions())
                         .singleElement()

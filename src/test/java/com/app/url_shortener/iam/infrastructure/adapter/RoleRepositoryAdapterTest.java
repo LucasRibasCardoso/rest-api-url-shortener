@@ -47,8 +47,8 @@ class RoleRepositoryAdapterTest {
     @DisplayName("Deve retornar role padrão quando entidade existir")
     void shouldReturnDefaultRoleWhenEntityExists() {
       // 1. Arrange
-      var entity = roleEntity("ROLE_USER", true);
-      var domain = roleDomain(entity.getId(), "ROLE_USER", true);
+      var entity = roleEntity("USER", true);
+      var domain = roleDomain(entity.getId(), "USER", true);
 
       given(roleJpaRepository.findDefaultRole()).willReturn(Optional.of(entity));
       given(rolePersistenceMapper.toDomainWithoutPermissions(entity)).willReturn(domain);
