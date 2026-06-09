@@ -117,15 +117,24 @@ class UserAccountRepositoryAdapterTest extends BaseDataJpaSliceTest {
     @DisplayName("Deve lançar DataIntegrityViolationException quando status obrigatório estiver nulo")
     void shouldThrowDataIntegrityViolationWhenRequiredStatusIsNull() {
       // 1. Arrange
-      var user = userAccount(
-          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac301"),
-          "null-status@email.com",
-          null,
-          PlanType.FREE
-      );
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac301");
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.save(user));
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  jdbcTemplate.update(
+                      """
+                          INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
+                          VALUES (?, ?, ?, ?, ?, ?, ?)
+                          """,
+                      userId,
+                      "Null Status",
+                      "null-status@email.com",
+                      "password-hash",
+                      null,
+                      "FREE",
+                      false));
 
       // 3. Assert
       throwableAssert
