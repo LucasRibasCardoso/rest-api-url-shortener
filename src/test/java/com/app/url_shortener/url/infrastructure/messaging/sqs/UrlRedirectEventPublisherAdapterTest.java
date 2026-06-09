@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
+import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectEventPublisherAdapter;
 import io.awspring.cloud.sqs.operations.SendResult;
 import io.awspring.cloud.sqs.operations.SqsAsyncOperations;
 import java.time.Instant;

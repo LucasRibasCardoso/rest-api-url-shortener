@@ -1,4 +1,4 @@
-package com.app.url_shortener.url.infrastructure.messaging.sqs;
+package com.app.url_shortener.url.infrastructure.messaging;
 
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
+import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectCounterConsumer;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
 import java.time.Instant;
 import java.util.Collection;
