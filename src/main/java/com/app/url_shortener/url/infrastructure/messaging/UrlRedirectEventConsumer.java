@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UrlRedirectCounterConsumer {
+public class UrlRedirectEventConsumer {
 
   private final UrlRepositoryPort urlRepositoryPort;
 

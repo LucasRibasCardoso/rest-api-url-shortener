@@ -4,13 +4,10 @@ set -euo pipefail
 REGION="${AWS_REGION:-us-east-1}"
 ENDPOINT_URL="${LOCALSTACK_ENDPOINT_URL:-http://localhost:4566}"
 
-QUEUE_NAME="${URL_REDIRECT_EVENTS_QUEUE_NAME:-url-redirect-events-queue}"
-DLQ_NAME="${URL_REDIRECT_EVENTS_DLQ_NAME:-url-redirect-events-dlq}"
-
-VISIBILITY_TIMEOUT="${URL_REDIRECT_EVENTS_VISIBILITY_TIMEOUT:-30}"
-RECEIVE_WAIT_TIME="${URL_REDIRECT_EVENTS_RECEIVE_WAIT_TIME:-20}"
-MESSAGE_RETENTION_PERIOD="${URL_REDIRECT_EVENTS_MESSAGE_RETENTION_PERIOD:-345600}"
-MAX_RECEIVE_COUNT="${URL_REDIRECT_EVENTS_MAX_RECEIVE_COUNT:-5}"
+VISIBILITY_TIMEOUT="${SQS_VISIBILITY_TIMEOUT:-30}"
+RECEIVE_WAIT_TIME="${SQS_RECEIVE_WAIT_TIME:-20}"
+MESSAGE_RETENTION_PERIOD="${SQS_MESSAGE_RETENTION_PERIOD:-345600}"
+MAX_RECEIVE_COUNT="${SQS_MAX_RECEIVE_COUNT:-5}"
 
 if command -v awslocal >/dev/null 2>&1; then
     SQS_CMD=(awslocal sqs)
@@ -51,8 +48,10 @@ get_queue_arn() {
 }
 
 create_dlq_if_absent() {
-    if queue_exists "$DLQ_NAME"; then
-        echo "SQS DLQ '$DLQ_NAME' already exists. Skipping creation."
+    local dlq_name="$1"
+
+    if queue_exists "$dlq_name"; then
+        echo "SQS DLQ '$dlq_name' already exists. Skipping creation."
         return
     fi
 
@@ -68,20 +67,22 @@ EOF
 )"
 
     "${SQS_CMD[@]}" create-queue \
-        --queue-name "$DLQ_NAME" \
+        --queue-name "$dlq_name" \
         --region "$REGION" \
         --attributes "$dlq_attributes" >/dev/null
 
-    echo "SQS DLQ '$DLQ_NAME' created."
+    echo "SQS DLQ '$dlq_name' created."
 }
 
 create_or_update_main_queue() {
+    local queue_name="$1"
+    local dlq_name="$2"
     local dlq_url
     local dlq_arn
     local redrive_policy
     local queue_attributes
 
-    dlq_url="$(get_queue_url "$DLQ_NAME")"
+    dlq_url="$(get_queue_url "$dlq_name")"
     dlq_arn="$(get_queue_arn "$dlq_url")"
 
     redrive_policy="{\\\"deadLetterTargetArn\\\":\\\"$dlq_arn\\\",\\\"maxReceiveCount\\\":\\\"$MAX_RECEIVE_COUNT\\\"}"
@@ -97,30 +98,43 @@ cat <<EOF
 EOF
 )"
 
-    if queue_exists "$QUEUE_NAME"; then
-        echo "SQS queue '$QUEUE_NAME' already exists. Updating attributes."
+    if queue_exists "$queue_name"; then
+        echo "SQS queue '$queue_name' already exists. Updating attributes."
 
         local queue_url
-        queue_url="$(get_queue_url "$QUEUE_NAME")"
+        queue_url="$(get_queue_url "$queue_name")"
 
         "${SQS_CMD[@]}" set-queue-attributes \
             --queue-url "$queue_url" \
             --region "$REGION" \
             --attributes "$queue_attributes" >/dev/null
 
-        echo "SQS queue '$QUEUE_NAME' attributes updated."
+        echo "SQS queue '$queue_name' attributes updated."
         return
     fi
 
     "${SQS_CMD[@]}" create-queue \
-        --queue-name "$QUEUE_NAME" \
+        --queue-name "$queue_name" \
         --region "$REGION" \
         --attributes "$queue_attributes" >/dev/null
 
-    echo "SQS queue '$QUEUE_NAME' created with DLQ '$DLQ_NAME'."
+    echo "SQS queue '$queue_name' created with DLQ '$dlq_name'."
 }
 
-create_dlq_if_absent
-create_or_update_main_queue
+create_queue_pair() {
+    local queue_name="$1"
+    local dlq_name="$2"
+
+    create_dlq_if_absent "$dlq_name"
+    create_or_update_main_queue "$queue_name" "$dlq_name"
+}
+
+create_queue_pair \
+    "${URL_REDIRECT_EVENTS_QUEUE_NAME:-url-redirect-events-queue}" \
+    "${URL_REDIRECT_EVENTS_DLQ_NAME:-url-redirect-events-dlq}"
+
+create_queue_pair \
+    "${EMAIL_VERIFICATION_EVENTS_QUEUE_NAME:-email-verification-events-queue}" \
+    "${EMAIL_VERIFICATION_EVENTS_DLQ_NAME:-email-verification-events-dlq}"
 
 echo "SQS queues are ready."

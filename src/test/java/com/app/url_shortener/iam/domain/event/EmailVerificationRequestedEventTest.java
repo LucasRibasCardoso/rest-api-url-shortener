@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.domain.event;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
+import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,23 +15,26 @@ import org.junit.jupiter.api.Test;
 class EmailVerificationRequestedEventTest {
 
   @Nested
-  @DisplayName("Representação textual segura")
-  class SafeToStringTests {
+  @DisplayName("Criação")
+  class CreationTests {
 
     @Test
-    @DisplayName("Não deve expor o código de verificação no toString")
-    void shouldNotExposeVerificationCodeInToString() {
+    @DisplayName("Deve criar evento com identificador, razão e data")
+    void shouldCreateEventWithIdentifierReasonAndOccurredAt() {
       // 1. Arrange
-      var rawCode = "123456";
-      var event =
-          EmailVerificationRequestedEvent.create(
-              UUID.randomUUID(), "usuario@email.com", VerificationCode.of(rawCode));
+      var userId = UUID.randomUUID();
 
       // 2. Act
-      var text = event.toString();
+      var event =
+          EmailVerificationRequestedEvent.create(
+              userId, "  USUARIO@EMAIL.COM ", EmailVerificationReason.REGISTER);
 
       // 3. Assert
-      assertThat(text).doesNotContain(rawCode).contains("[REDACTED]");
+      assertThat(event.eventId()).isNotNull();
+      assertThat(event.userId()).isEqualTo(userId);
+      assertThat(event.email()).isEqualTo("usuario@email.com");
+      assertThat(event.reason()).isEqualTo(EmailVerificationReason.REGISTER);
+      assertThat(event.occurredAt()).isNotNull();
     }
   }
 }

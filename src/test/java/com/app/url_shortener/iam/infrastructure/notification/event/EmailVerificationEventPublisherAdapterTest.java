@@ -4,7 +4,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
+import com.app.url_shortener.iam.application.event.EmailVerificationReason;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -40,7 +41,8 @@ class EmailVerificationEventPublisherAdapterTest {
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac100"),
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac101"),
               "user@email.com",
-              VerificationCode.of("123456"));
+              EmailVerificationReason.REGISTER,
+              Instant.parse("2026-06-09T12:00:00Z"));
 
       // 2. Act
       adapter.publish(event);

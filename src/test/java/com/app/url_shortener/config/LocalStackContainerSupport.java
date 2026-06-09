@@ -27,6 +27,8 @@ public final class LocalStackContainerSupport {
   private static final String SECRET_KEY = "test";
   private static final String URL_REDIRECT_EVENTS_QUEUE = "url-redirect-events-queue";
   private static final String URL_REDIRECT_EVENTS_DLQ = "url-redirect-events-dlq";
+  private static final String EMAIL_VERIFICATION_EVENTS_QUEUE = "email-verification-events-queue";
+  private static final String EMAIL_VERIFICATION_EVENTS_DLQ = "email-verification-events-dlq";
   private static final String MESSAGE_RETENTION_PERIOD = "345600";
   private static final String RECEIVE_MESSAGE_WAIT_TIME_SECONDS = "20";
   private static final String VISIBILITY_TIMEOUT = "30";
@@ -61,6 +63,8 @@ public final class LocalStackContainerSupport {
     registry.add("spring.cloud.aws.credentials.secret-key", () -> SECRET_KEY);
     registry.add("app.aws.sqs.url-redirect-events-queue", () -> URL_REDIRECT_EVENTS_QUEUE);
     registry.add("app.aws.sqs.url-redirect-events-dlq", () -> URL_REDIRECT_EVENTS_DLQ);
+    registry.add("app.aws.sqs.email-verification-events-queue", () -> EMAIL_VERIFICATION_EVENTS_QUEUE);
+    registry.add("app.aws.sqs.email-verification-events-dlq", () -> EMAIL_VERIFICATION_EVENTS_DLQ);
   }
 
   public static void setupDynamoDbTable() {
@@ -142,30 +146,8 @@ public final class LocalStackContainerSupport {
 
   public static void setupSqsQueues() {
     try (SqsClient sqsClient = createSqsClient()) {
-      String dlqUrl = createQueueIfAbsent(sqsClient, URL_REDIRECT_EVENTS_DLQ, defaultQueueAttributes());
-      String dlqArn =
-          sqsClient
-              .getQueueAttributes(
-                  GetQueueAttributesRequest.builder()
-                      .queueUrl(dlqUrl)
-                      .attributeNames(QueueAttributeName.QUEUE_ARN)
-                      .build())
-              .attributes()
-              .get(QueueAttributeName.QUEUE_ARN);
-
-      Map<QueueAttributeName, String> queueAttributes =
-          Map.of(
-              QueueAttributeName.VISIBILITY_TIMEOUT, VISIBILITY_TIMEOUT,
-              QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS, RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
-              QueueAttributeName.MESSAGE_RETENTION_PERIOD, MESSAGE_RETENTION_PERIOD,
-              QueueAttributeName.REDRIVE_POLICY,
-              "{\"deadLetterTargetArn\":\""
-                  + dlqArn
-                  + "\",\"maxReceiveCount\":\""
-                  + MAX_RECEIVE_COUNT
-                  + "\"}");
-
-      createQueueIfAbsent(sqsClient, URL_REDIRECT_EVENTS_QUEUE, queueAttributes);
+      setupQueuePair(sqsClient, URL_REDIRECT_EVENTS_QUEUE, URL_REDIRECT_EVENTS_DLQ);
+      setupQueuePair(sqsClient, EMAIL_VERIFICATION_EVENTS_QUEUE, EMAIL_VERIFICATION_EVENTS_DLQ);
     }
   }
 
@@ -173,7 +155,36 @@ public final class LocalStackContainerSupport {
     try (SqsClient sqsClient = createSqsClient()) {
       purgeQueue(sqsClient, URL_REDIRECT_EVENTS_QUEUE);
       purgeQueue(sqsClient, URL_REDIRECT_EVENTS_DLQ);
+      purgeQueue(sqsClient, EMAIL_VERIFICATION_EVENTS_QUEUE);
+      purgeQueue(sqsClient, EMAIL_VERIFICATION_EVENTS_DLQ);
     }
+  }
+
+  private static void setupQueuePair(SqsClient sqsClient, String queueName, String dlqName) {
+    String dlqUrl = createQueueIfAbsent(sqsClient, dlqName, defaultQueueAttributes());
+    String dlqArn =
+        sqsClient
+            .getQueueAttributes(
+                GetQueueAttributesRequest.builder()
+                    .queueUrl(dlqUrl)
+                    .attributeNames(QueueAttributeName.QUEUE_ARN)
+                    .build())
+            .attributes()
+            .get(QueueAttributeName.QUEUE_ARN);
+
+    Map<QueueAttributeName, String> queueAttributes =
+        Map.of(
+            QueueAttributeName.VISIBILITY_TIMEOUT, VISIBILITY_TIMEOUT,
+            QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS, RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
+            QueueAttributeName.MESSAGE_RETENTION_PERIOD, MESSAGE_RETENTION_PERIOD,
+            QueueAttributeName.REDRIVE_POLICY,
+            "{\"deadLetterTargetArn\":\""
+                + dlqArn
+                + "\",\"maxReceiveCount\":\""
+                + MAX_RECEIVE_COUNT
+                + "\"}");
+
+    createQueueIfAbsent(sqsClient, queueName, queueAttributes);
   }
 
   static SqsClient createSqsClient() {

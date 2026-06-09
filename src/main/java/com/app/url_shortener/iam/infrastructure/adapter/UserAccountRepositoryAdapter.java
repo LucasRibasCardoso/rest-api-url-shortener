@@ -54,6 +54,11 @@ public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
   }
 
   @Override
+  public Optional<UserAccount> findById(UUID id) {
+    return userJpaRepository.findById(id).map(userAccountPersistenceMapper::toDomainWithoutRoles);
+  }
+
+  @Override
   public Optional<UserAccount> findByIdWithRolesAndPermissions(UUID id) {
     return userJpaRepository
         .findByIdWithRolesAndPermissions(id)

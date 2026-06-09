@@ -74,6 +74,8 @@ app:
     sqs:
       url-redirect-events-queue: url-redirect-events-queue
       url-redirect-events-dlq: url-redirect-events-dlq
+      email-verification-events-queue: email-verification-events-queue
+      email-verification-events-dlq: email-verification-events-dlq
   rate-limit:
     enabled: true
     key-prefix: "rate-limit"

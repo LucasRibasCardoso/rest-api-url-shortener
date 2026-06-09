@@ -13,7 +13,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectCounterConsumer;
+import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectEventConsumer;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
 import java.time.Instant;
 import java.util.Collection;
@@ -37,13 +37,13 @@ import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Consumidor SQS de Contador de Redirect")
 @SuppressWarnings({"unchecked", "rawtypes"})
-class UrlRedirectCounterConsumerTest {
+class UrlRedirectEventConsumerTest {
 
   @Mock
   private UrlRepositoryPort urlRepositoryPort;
 
   @InjectMocks
-  private UrlRedirectCounterConsumer consumer;
+  private UrlRedirectEventConsumer consumer;
 
   @Nested
   @DisplayName("Consumo em lote")

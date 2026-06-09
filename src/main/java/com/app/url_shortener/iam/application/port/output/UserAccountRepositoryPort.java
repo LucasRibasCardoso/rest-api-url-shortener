@@ -14,5 +14,7 @@ public interface UserAccountRepositoryPort {
 
   Optional<UserAccount> findByEmailWithRoles(String email);
 
+  Optional<UserAccount> findById(UUID id);
+
   Optional<UserAccount> findByIdWithRolesAndPermissions(UUID id);
 }
