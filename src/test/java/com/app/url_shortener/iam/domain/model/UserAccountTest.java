@@ -159,7 +159,7 @@ class UserAccountTest {
     void shouldVerifyEmailAndActivateAccount() {
       // Arrange
       var user = UserAccount.createPendingRegistration("Maria", "maria@mail.com", "hash");
-      var defaultRole = Role.create("ROLE_USER", Set.of());
+      var defaultRole = defaultRole();
 
       // Act
       user.verifyEmail(defaultRole);
@@ -175,7 +175,7 @@ class UserAccountTest {
     @DisplayName("Não deve alterar o estado se a conta já estiver ativada e verificada")
     void shouldDoNothingIfAlreadyVerifiedAndActive() {
       // Arrange
-      var defaultRole = Role.create("ROLE_USER", Set.of());
+      var defaultRole = defaultRole();
       var user =
               UserAccount.restore(
                       UUID.randomUUID(),
@@ -199,7 +199,7 @@ class UserAccountTest {
     @DisplayName("Deve lançar exceção ao tentar verificar e-mail de conta bloqueada")
     void shouldThrowExceptionWhenAccountIsLocked() {
       // Arrange
-      var defaultRole = Role.create("ROLE_USER", Set.of());
+      var defaultRole = defaultRole();
       var lockedUser = UserAccount.restore(
               UUID.randomUUID(),
               "Maria",
@@ -225,6 +225,25 @@ class UserAccountTest {
       assertThatThrownBy(() -> user.verifyEmail(null))
               .isInstanceOf(NullPointerException.class)
               .hasMessage("defaultRole must not be null");
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar role que não seja padrão sem alterar o usuário")
+    void shouldRejectNonDefaultRoleWithoutChangingUser() {
+      // 1. Arrange
+      var user = UserAccount.createPendingRegistration("Maria", "maria@mail.com", "hash");
+      var nonDefaultRole = Role.create("ROLE_USER", Set.of());
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> user.verifyEmail(nonDefaultRole));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("defaultRole must be a default role");
+      assertThat(user.isEmailVerified()).isFalse();
+      assertThat(user.isPending()).isTrue();
+      assertThat(user.getRoles()).isEmpty();
     }
   }
 
@@ -273,5 +292,9 @@ class UserAccountTest {
             "maria@mail.com",
             "   ",
             "passwordHash must not be blank"));
+  }
+
+  private static Role defaultRole() {
+    return Role.restore(UUID.randomUUID(), "ROLE_USER", true, Set.of());
   }
 }

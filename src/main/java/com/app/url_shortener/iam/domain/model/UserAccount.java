@@ -95,6 +95,10 @@ public class UserAccount {
   public void verifyEmail(Role defaultRole) {
     Objects.requireNonNull(defaultRole, "defaultRole must not be null");
 
+    if (!defaultRole.isDefault()) {
+      throw new IllegalArgumentException("defaultRole must be a default role");
+    }
+
     if (this.emailVerified && this.status == UserStatus.ACTIVE) {
       return;
     }

@@ -76,7 +76,7 @@ class VerifyEmailUseCaseTest {
       var command = new VerifyEmailCommand(" USER@EMAIL.COM ", code);
       var token = validToken("user@email.com", code);
       var pendingUser = pendingUser();
-      var defaultRole = Role.create("ROLE_USER", Set.of());
+      var defaultRole = defaultRole();
 
       given(emailVerificationTokenStorePort.consumeByEmailAndCode("user@email.com", code)).willReturn(Optional.of(token));
       given(userAccountRepositoryPort.findByEmailWithRoles("user@email.com")).willReturn(Optional.of(pendingUser));
@@ -255,7 +255,7 @@ class VerifyEmailUseCaseTest {
       var command = new VerifyEmailCommand("user@email.com", code);
       var token = validToken(command.email(), code);
       var pendingUser = pendingUser();
-      var defaultRole = Role.create("ROLE_USER", Set.of());
+      var defaultRole = defaultRole();
       var exception = new IllegalStateException("Falha ao salvar usuário.");
 
       given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
@@ -323,5 +323,9 @@ class VerifyEmailUseCaseTest {
             false,
             Set.of()
     );
+  }
+
+  private Role defaultRole() {
+    return Role.restore(UUID.randomUUID(), "ROLE_USER", true, Set.of());
   }
 }
