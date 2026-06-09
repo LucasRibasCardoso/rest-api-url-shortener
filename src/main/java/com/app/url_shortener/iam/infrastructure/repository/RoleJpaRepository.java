@@ -1,6 +1,6 @@
-package com.app.url_shortener.iam.infrastructure.persistence.repository;
+package com.app.url_shortener.iam.infrastructure.repository;
 
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -2,9 +2,9 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
 import com.app.url_shortener.iam.domain.model.RefreshToken;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RefreshTokenEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.app.url_shortener.iam.infrastructure.entity.RefreshTokenEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.Optional;

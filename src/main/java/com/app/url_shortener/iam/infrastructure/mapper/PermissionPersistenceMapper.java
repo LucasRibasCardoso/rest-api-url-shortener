@@ -1,7 +1,7 @@
-package com.app.url_shortener.iam.infrastructure.persistence.mapper;
+package com.app.url_shortener.iam.infrastructure.mapper;
 
 import com.app.url_shortener.iam.domain.model.Permission;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 

@@ -2,9 +2,9 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.domain.model.UserAccount;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.UserAccountPersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.persistence.repository.UserJpaRepository;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.UserAccountPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
 import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
 import java.util.Optional;
 import java.util.UUID;

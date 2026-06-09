@@ -1,9 +1,9 @@
-package com.app.url_shortener.iam.infrastructure.persistence.mapper;
+package com.app.url_shortener.iam.infrastructure.mapper;
 
 import com.app.url_shortener.iam.domain.model.Permission;
 import com.app.url_shortener.iam.domain.model.Role;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;

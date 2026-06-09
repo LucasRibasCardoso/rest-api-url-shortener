@@ -1,4 +1,4 @@
-package com.app.url_shortener.iam.infrastructure.persistence.entity;
+package com.app.url_shortener.iam.infrastructure.entity;
 
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;

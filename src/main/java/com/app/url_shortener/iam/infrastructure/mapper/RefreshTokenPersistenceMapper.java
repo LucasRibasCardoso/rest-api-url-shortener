@@ -1,8 +1,8 @@
-package com.app.url_shortener.iam.infrastructure.persistence.mapper;
+package com.app.url_shortener.iam.infrastructure.mapper;
 
 import com.app.url_shortener.iam.domain.model.RefreshToken;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RefreshTokenEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RefreshTokenEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import jakarta.persistence.EntityManager;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

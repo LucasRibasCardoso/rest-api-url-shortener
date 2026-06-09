@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

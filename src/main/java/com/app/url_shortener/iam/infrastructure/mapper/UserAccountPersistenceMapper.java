@@ -1,7 +1,7 @@
-package com.app.url_shortener.iam.infrastructure.persistence.mapper;
+package com.app.url_shortener.iam.infrastructure.mapper;
 
 import com.app.url_shortener.iam.domain.model.UserAccount;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import java.util.Collections;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;

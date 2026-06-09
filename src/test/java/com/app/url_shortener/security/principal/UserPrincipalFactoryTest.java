@@ -2,9 +2,9 @@ package com.app.url_shortener.security.principal;
 
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;

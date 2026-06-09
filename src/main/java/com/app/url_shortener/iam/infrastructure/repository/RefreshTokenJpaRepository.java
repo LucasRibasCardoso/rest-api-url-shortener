@@ -1,6 +1,6 @@
-package com.app.url_shortener.iam.infrastructure.persistence.repository;
+package com.app.url_shortener.iam.infrastructure.repository;
 
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RefreshTokenEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RefreshTokenEntity;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -1,6 +1,6 @@
 package com.app.url_shortener.security.principal;
 
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;

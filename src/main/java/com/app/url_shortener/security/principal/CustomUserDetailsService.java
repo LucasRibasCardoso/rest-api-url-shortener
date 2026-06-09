@@ -1,6 +1,6 @@
 package com.app.url_shortener.security.principal;
 
-import com.app.url_shortener.iam.infrastructure.persistence.repository.UserJpaRepository;
+import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

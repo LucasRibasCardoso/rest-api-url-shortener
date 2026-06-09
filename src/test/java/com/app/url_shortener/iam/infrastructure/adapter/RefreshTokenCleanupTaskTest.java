@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
 import com.app.url_shortener.config.BaseDataJpaSliceTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

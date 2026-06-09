@@ -1,6 +1,6 @@
-package com.app.url_shortener.iam.infrastructure.persistence.repository;
+package com.app.url_shortener.iam.infrastructure.repository;
 
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;

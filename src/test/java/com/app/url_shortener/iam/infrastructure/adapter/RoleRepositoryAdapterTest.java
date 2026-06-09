@@ -9,10 +9,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.iam.domain.exception.rbac.DefaultRoleNotFoundException;
 import com.app.url_shortener.iam.domain.model.Role;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.RolePersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.persistence.repository.RoleJpaRepository;
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.RolePersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.repository.RoleJpaRepository;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
