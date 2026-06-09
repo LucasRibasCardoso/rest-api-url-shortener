@@ -1,10 +1,10 @@
 package com.app.url_shortener.shared.presentation.error;
 
-import com.app.url_shortener.iam.domain.exception.auth.AccountLockedException;
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsException;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidRefreshTokenException;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
+import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
 import com.app.url_shortener.shared.exception.AppBusinessException;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.ErrorCode;
@@ -89,9 +89,9 @@ class GlobalExceptionHandlerTest {
       verify(problemDetailFactory).create(
               HttpStatus.BAD_REQUEST,
               "Validação",
-              AuthErrorCode.AUTH_INVALID_CREDENTIALS.getMessage(),
+              IamErrorCode.AUTH_INVALID_CREDENTIALS.getMessage(),
               ProblemType.VALIDATION,
-              AuthErrorCode.AUTH_INVALID_CREDENTIALS
+              IamErrorCode.AUTH_INVALID_CREDENTIALS
       );
       verifyNoMoreInteractions(problemDetailFactory);
     }
@@ -120,9 +120,9 @@ class GlobalExceptionHandlerTest {
       verify(problemDetailFactory).create(
               HttpStatus.CONFLICT,
               "Conflito",
-              AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getMessage(),
+              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getMessage(),
               ProblemType.CONFLICT,
-              AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS
       );
       verifyNoMoreInteractions(problemDetailFactory);
     }
@@ -182,9 +182,9 @@ class GlobalExceptionHandlerTest {
       verify(problemDetailFactory).create(
               HttpStatus.UNAUTHORIZED,
               "Não autorizado",
-              AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage(),
+              IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage(),
               ProblemType.UNAUTHORIZED,
-              AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID
+              IamErrorCode.AUTH_REFRESH_TOKEN_INVALID
       );
       verifyNoMoreInteractions(problemDetailFactory);
     }
@@ -193,7 +193,7 @@ class GlobalExceptionHandlerTest {
     @DisplayName("Deve mapear ForbiddenException para 403 e ProblemType de proibido")
     void shouldMapForbiddenExceptionToForbidden() {
       // 1. Arrange
-      var exception = new AccountLockedException();
+      var exception = new UserAccountLockedException();
       var problemDetail = problemDetail(HttpStatus.FORBIDDEN);
 
       given(problemDetailFactory.create(
@@ -213,9 +213,9 @@ class GlobalExceptionHandlerTest {
       verify(problemDetailFactory).create(
               HttpStatus.FORBIDDEN,
               "Proibido",
-              AuthErrorCode.AUTH_ACCOUNT_LOCKED.getMessage(),
+              IamErrorCode.AUTH_ACCOUNT_LOCKED.getMessage(),
               ProblemType.FORBIDDEN,
-              AuthErrorCode.AUTH_ACCOUNT_LOCKED
+              IamErrorCode.AUTH_ACCOUNT_LOCKED
       );
       verifyNoMoreInteractions(problemDetailFactory);
     }
@@ -503,7 +503,7 @@ class GlobalExceptionHandlerTest {
               "Conflito",
               "Email já cadastrado.",
               ProblemType.CONFLICT,
-              AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS
       );
 
       // 3. Assert
@@ -514,7 +514,7 @@ class GlobalExceptionHandlerTest {
               () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.CONFLICT)),
               () -> assertThat(problemDetail.getProperties()).containsEntry(
                       "errorCode",
-                      AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getCode()
+                      IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getCode()
               )
       );
     }

@@ -1,6 +1,6 @@
 package com.app.url_shortener.shared.presentation.error;
 
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -88,9 +88,9 @@ class ProblemDetailFactoryTest {
       var problemDetail = factory.create(
               status,
               "Negócio",
-              AuthErrorCode.AUTH_EMAIL_ALREADY_VERIFIED.getMessage(),
+              IamErrorCode.AUTH_INVALID_CREDENTIALS.getMessage(),
               ProblemType.BUSINESS,
-              AuthErrorCode.AUTH_EMAIL_ALREADY_VERIFIED
+              IamErrorCode.AUTH_INVALID_CREDENTIALS
       );
 
       // 3. Assert
@@ -98,10 +98,10 @@ class ProblemDetailFactoryTest {
               () -> assertThat(problemDetail.getStatus()).isEqualTo(422),
               () -> assertThat(problemDetail.getTitle()).isEqualTo("Negócio"),
               () -> assertThat(problemDetail.getDetail())
-                      .isEqualTo(AuthErrorCode.AUTH_EMAIL_ALREADY_VERIFIED.getMessage()),
+                      .isEqualTo(IamErrorCode.AUTH_INVALID_CREDENTIALS.getMessage()),
               () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.BUSINESS)),
               () -> assertThat(problemDetail.getProperties())
-                      .containsEntry("errorCode", AuthErrorCode.AUTH_EMAIL_ALREADY_VERIFIED.getCode())
+                      .containsEntry("errorCode", IamErrorCode.AUTH_INVALID_CREDENTIALS.getCode())
       );
     }
   }

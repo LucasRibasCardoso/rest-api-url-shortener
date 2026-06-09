@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.presentation.controller;
 import com.app.url_shortener.iam.application.command.*;
 import com.app.url_shortener.iam.application.result.*;
 import com.app.url_shortener.iam.application.usecase.*;
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
@@ -346,8 +346,8 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(jsonPath("$.type").value(ProblemType.UNAUTHORIZED))
               .andExpect(jsonPath("$.title").value("Não autorizado"))
               .andExpect(jsonPath("$.status").value(401))
-              .andExpect(jsonPath("$.detail").value(AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
-              .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
+              .andExpect(jsonPath("$.detail").value(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
+              .andExpect(jsonPath("$.errorCode").value(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
 
       verifyNoInteractions(refreshTokenUseCase, iamWebMapper);
     }

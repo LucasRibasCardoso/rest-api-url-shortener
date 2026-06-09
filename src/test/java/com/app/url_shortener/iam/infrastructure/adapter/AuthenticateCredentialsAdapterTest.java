@@ -3,10 +3,10 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.domain.exception.auth.AccountDisabledException;
-import com.app.url_shortener.iam.domain.exception.auth.AccountLockedException;
-import com.app.url_shortener.iam.domain.exception.auth.AccountNotFoundException;
+import com.app.url_shortener.iam.domain.exception.auth.AccountPendingVerificationException;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsException;
+import com.app.url_shortener.iam.domain.exception.user.UserAccountDisabledException;
+import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
 import com.app.url_shortener.security.principal.UserPrincipal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -158,17 +158,17 @@ class AuthenticateCredentialsAdapterTest {
       return Stream.of(
               Arguments.of(
                       new AccountExpiredException("account expired"),
-                      AccountNotFoundException.class,
-                      "Conta não existe ou foi removida."
+                      UserAccountDisabledException.class,
+                      "Conta desabilitada."
               ),
               Arguments.of(
                       new DisabledException("account disabled"),
-                      AccountDisabledException.class,
+                      AccountPendingVerificationException.class,
                       "Conta pendente de verificação."
               ),
               Arguments.of(
                       new LockedException("account locked"),
-                      AccountLockedException.class,
+                      UserAccountLockedException.class,
                       "Conta bloqueada."
               ),
               Arguments.of(

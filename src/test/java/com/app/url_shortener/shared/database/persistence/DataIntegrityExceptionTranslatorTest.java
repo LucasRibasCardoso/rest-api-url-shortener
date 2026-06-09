@@ -1,6 +1,6 @@
 package com.app.url_shortener.shared.database.persistence;
 
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
 import com.app.url_shortener.shared.database.DatabaseConstraints;
@@ -57,7 +57,7 @@ class DataIntegrityExceptionTranslatorTest {
               .isInstanceOf(EmailAlreadyRegisteredException.class)
               .hasMessage("Email já cadastrado.");
       assertThat(((EmailAlreadyRegisteredException) result).getErrorCode())
-              .isEqualTo(AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
+              .isEqualTo(IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
 
       verify(postgresConstraintExtractor).extractUniqueConstraintName(exception);
       verifyNoMoreInteractions(postgresConstraintExtractor);

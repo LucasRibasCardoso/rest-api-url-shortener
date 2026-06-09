@@ -1,11 +1,11 @@
 package com.app.url_shortener.iam.domain.exception.user;
 
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.shared.exception.validation.DomainValidationException;
 
 public class InvalidVerificationCodeException extends DomainValidationException {
 
   public InvalidVerificationCodeException() {
-    super(AuthErrorCode.AUTH_INVALID_VERIFICATION_CODE);
+    super(IamErrorCode.AUTH_INVALID_VERIFICATION_CODE);
   }
 }
