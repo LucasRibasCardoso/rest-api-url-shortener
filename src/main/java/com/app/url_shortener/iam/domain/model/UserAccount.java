@@ -4,7 +4,12 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountDisabledException;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
-import java.util.*;
+import com.app.url_shortener.shared.domain.validation.RequiredText;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
@@ -33,13 +38,15 @@ public class UserAccount {
       boolean emailVerified,
       Set<Role> roles) {
     this.id = Objects.requireNonNull(id, "id is required");
-    this.name = Objects.requireNonNull(name, "name is required").trim();
-    this.email = Objects.requireNonNull(email, "email is required").trim();
-    this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash is required").trim();
-    this.status = status;
-    this.plan = planType;
+    this.name = RequiredText.normalize(name, "name");
+    this.email = RequiredText.normalize(email, "email");
+    this.passwordHash = RequiredText.normalize(passwordHash, "passwordHash");
+    this.status = Objects.requireNonNull(status, "status is required");
+    this.plan = Objects.requireNonNull(planType, "planType is required");
     this.emailVerified = emailVerified;
     this.roles = roles == null ? new HashSet<>() : new HashSet<>(roles);
+
+    validateStatusConsistency();
   }
 
   public static UserAccount createPendingRegistration(
@@ -73,6 +80,16 @@ public class UserAccount {
 
   public Set<Role> getRoles() {
     return Collections.unmodifiableSet(roles);
+  }
+
+  private void validateStatusConsistency() {
+    if (status == UserStatus.ACTIVE && !emailVerified) {
+      throw new IllegalArgumentException("Active user account must have a verified email");
+    }
+
+    if (status == UserStatus.PENDING_EMAIL_VERIFICATION && emailVerified) {
+      throw new IllegalArgumentException("Pending user account must not have a verified email");
+    }
   }
 
   public void verifyEmail(Role defaultRole) {

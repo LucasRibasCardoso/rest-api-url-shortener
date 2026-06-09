@@ -2,8 +2,7 @@ package com.app.url_shortener.iam.domain.model;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,9 +22,7 @@ class RefreshTokenTest {
     void shouldCreateValidTokenWith7DaysExpiration() {
       // Arrange
       var userId = UUID.randomUUID();
-      var tokenHash = "hash-seguro-123";
-      var now = Instant.now();
-
+      var tokenHash = "  hash-seguro-123  ";
       // Act
       var token = RefreshToken.create(userId, tokenHash);
 
@@ -33,11 +30,26 @@ class RefreshTokenTest {
       assertThat(token).isNotNull();
       assertThat(token.getId()).isNotNull();
       assertThat(token.getUserId()).isEqualTo(userId);
-      assertThat(token.getTokenHash()).isEqualTo(tokenHash);
+      assertThat(token.getTokenHash()).isEqualTo("hash-seguro-123");
       assertThat(token.isRevoked()).isFalse();
 
-      var expectedExpiration = now.plus(7, ChronoUnit.DAYS);
-      assertThat(token.getExpiresAt()).isCloseTo(expectedExpiration, within(1, ChronoUnit.SECONDS));
+      assertThat(Duration.between(token.getCreatedAt(), token.getExpiresAt()))
+          .isEqualTo(Duration.ofDays(7));
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar hash do token em branco")
+    void shouldRejectBlankTokenHash() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> RefreshToken.create(userId, "   "));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("tokenHash must not be blank");
     }
   }
 
@@ -56,9 +68,7 @@ class RefreshTokenTest {
       var text = token.toString();
 
       // 3. Assert
-      assertThat(text)
-          .doesNotContain(tokenHash)
-          .doesNotContain("tokenHash");
+      assertThat(text).doesNotContain(tokenHash).doesNotContain("tokenHash");
     }
   }
 }

@@ -7,9 +7,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,6 +58,95 @@ class UserAccountTest {
       // Act & Assert
       var roles = user.getRoles();
       assertThatThrownBy(() -> roles.add(role)).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("com.app.url_shortener.iam.domain.model.UserAccountTest#blankRequiredFields")
+    @DisplayName("Deve rejeitar campos textuais obrigatórios em branco")
+    void shouldRejectBlankRequiredTextFields(
+        String scenario, String name, String email, String passwordHash, String expectedMessage) {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> UserAccount.createPendingRegistration(name, email, passwordHash));
+
+      // 3. Assert
+      throwableAssert.isInstanceOf(IllegalArgumentException.class).hasMessage(expectedMessage);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar restauração quando o status for nulo")
+    void shouldRejectRestoreWhenStatusIsNull() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  UserAccount.restore(
+                      userId, "Maria", "maria@mail.com", "hash", null, PlanType.FREE, false, Set.of()));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("status is required");
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar restauração quando o plano for nulo")
+    void shouldRejectRestoreWhenPlanIsNull() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  UserAccount.restore(
+                      userId,
+                      "Maria",
+                      "maria@mail.com",
+                      "hash",
+                      UserStatus.PENDING_EMAIL_VERIFICATION,
+                      null,
+                      false,
+                      Set.of()));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("planType is required");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("com.app.url_shortener.iam.domain.model.UserAccountTest#invalidStatusCombinations")
+    @DisplayName("Deve rejeitar combinações inconsistentes de status e verificação de e-mail")
+    void shouldRejectInconsistentStatusAndEmailVerification(
+        String scenario, UserStatus status, boolean emailVerified, String expectedMessage) {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  UserAccount.restore(
+                      userId,
+                      "Maria",
+                      "maria@mail.com",
+                      "hash",
+                      status,
+                      PlanType.FREE,
+                      emailVerified,
+                      Set.of()));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage(expectedMessage);
     }
   }
 
@@ -154,5 +247,31 @@ class UserAccountTest {
           .doesNotContain(passwordHash)
           .doesNotContain("passwordHash");
     }
+  }
+
+  private static Stream<Arguments> invalidStatusCombinations() {
+    return Stream.of(
+        Arguments.of(
+            "ACTIVE sem e-mail verificado",
+            UserStatus.ACTIVE,
+            false,
+            "Active user account must have a verified email"),
+        Arguments.of(
+            "PENDING_EMAIL_VERIFICATION com e-mail verificado",
+            UserStatus.PENDING_EMAIL_VERIFICATION,
+            true,
+            "Pending user account must not have a verified email"));
+  }
+
+  private static Stream<Arguments> blankRequiredFields() {
+    return Stream.of(
+        Arguments.of("nome em branco", "   ", "maria@mail.com", "hash", "name must not be blank"),
+        Arguments.of("e-mail em branco", "Maria", "   ", "hash", "email must not be blank"),
+        Arguments.of(
+            "hash da senha em branco",
+            "Maria",
+            "maria@mail.com",
+            "   ",
+            "passwordHash must not be blank"));
   }
 }

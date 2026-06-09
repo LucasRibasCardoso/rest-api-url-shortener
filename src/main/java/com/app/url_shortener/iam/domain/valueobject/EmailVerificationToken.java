@@ -1,5 +1,6 @@
 package com.app.url_shortener.iam.domain.valueobject;
 
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -8,7 +9,7 @@ public record EmailVerificationToken(UUID userId, String email, VerificationCode
 
   public EmailVerificationToken(UUID userId, String email, VerificationCode code, Instant expiresAt) {
     this.userId = Objects.requireNonNull(userId, "userId is required");
-    this.email = Objects.requireNonNull(email, "email is required").trim();
+    this.email = RequiredText.normalize(email, "email");
     this.code = Objects.requireNonNull(code, "code is required");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt is required");
   }

@@ -1,7 +1,8 @@
 package com.app.url_shortener.iam.domain.model;
 
+import com.app.url_shortener.shared.domain.validation.RequiredText;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.EqualsAndHashCode;
@@ -10,6 +11,8 @@ import lombok.Getter;
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class RefreshToken {
+
+  private static final Duration EXPIRATION_DURATION = Duration.ofDays(7);
 
   @EqualsAndHashCode.Include private final UUID id;
 
@@ -31,7 +34,7 @@ public class RefreshToken {
       UUID replacedByTokenId) {
     this.id = Objects.requireNonNull(id, "id is required");
     this.userId = Objects.requireNonNull(userId, "userId is required");
-    this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash is required");
+    this.tokenHash = RequiredText.normalize(tokenHash, "tokenHash");
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt is required");
     this.revokedAt = revokedAt;
@@ -40,8 +43,7 @@ public class RefreshToken {
 
   public static RefreshToken create(UUID userId, String tokenHash) {
     Instant now = Instant.now();
-    return new RefreshToken(
-        UUID.randomUUID(), userId, tokenHash, now, now.plus(7, ChronoUnit.DAYS), null, null);
+    return new RefreshToken(UUID.randomUUID(), userId, tokenHash, now, now.plus(EXPIRATION_DURATION), null, null);
   }
 
   public static RefreshToken restore(

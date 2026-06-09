@@ -1,5 +1,6 @@
 package com.app.url_shortener.iam.domain.model;
 
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.EqualsAndHashCode;
@@ -15,7 +16,7 @@ public class Permission {
 
   private Permission(UUID id, String name, String description) {
     this.id = Objects.requireNonNull(id, "id is required");
-    this.name = Objects.requireNonNull(name, "name is required");
+    this.name = RequiredText.normalize(name, "name");
     this.description = normalizeDescription(description);
   }
 
@@ -33,8 +34,7 @@ public class Permission {
       return null;
     }
 
-    String normalizedDescription = description.trim();
-    return normalizedDescription.isBlank() ? null : normalizedDescription;
+    return description.trim().isBlank() ? null : description.trim();
   }
 
   @Override

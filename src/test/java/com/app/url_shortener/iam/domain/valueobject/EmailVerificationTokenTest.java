@@ -55,6 +55,24 @@ class EmailVerificationTokenTest {
               .isInstanceOf(NullPointerException.class)
               .hasMessageContaining("userId is required");
     }
+
+    @Test
+    @DisplayName("Deve rejeitar e-mail em branco")
+    void shouldRejectBlankEmail() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+      var code = VerificationCode.of("123456");
+      var expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(() -> EmailVerificationToken.create(userId, "   ", code, expiresAt));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("email must not be blank");
+    }
   }
 
   @Nested

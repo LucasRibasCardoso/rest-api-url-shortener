@@ -109,8 +109,8 @@ class UrlTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> Url.create(USER_ID, invalidShortCode, originalUrl))
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("shortCode is required.");
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("shortCode is required");
     }
 
     @ParameterizedTest
@@ -122,8 +122,8 @@ class UrlTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> Url.create(USER_ID, shortCode, invalidOriginalUrl))
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("originalUrl is required.");
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("originalUrl is required");
     }
 
     @ParameterizedTest
@@ -150,7 +150,7 @@ class UrlTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> Url.create(USER_ID, blankShortCode, originalUrl))
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("shortCode is required.");
+          .hasMessage("shortCode must not be blank");
     }
 
     @ParameterizedTest
@@ -163,7 +163,7 @@ class UrlTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> Url.create(USER_ID, shortCode, blankOriginalUrl))
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("originalUrl is required.");
+          .hasMessage("originalUrl must not be blank");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.app.url_shortener.url.domain.model;
 
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
@@ -31,8 +32,8 @@ public class Url implements Serializable {
       long accessCount,
       Instant lastAccessedAt) {
     this.userId = Objects.requireNonNull(userId, "userId is required.");
-    this.shortCode = validateNotBlank(shortCode, "shortCode");
-    this.originalUrl = validateNotBlank(originalUrl, "originalUrl");
+    this.shortCode = RequiredText.normalize(shortCode, "shortCode");
+    this.originalUrl = RequiredText.normalize(originalUrl, "originalUrl");
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required.");
     this.status = Objects.requireNonNull(urlStatus, "urlStatus is required.");
     this.deletedAt = deletedAt;
@@ -78,14 +79,6 @@ public class Url implements Serializable {
     if (accessCount < 0) {
       throw new IllegalArgumentException("accessCount must not be negative.");
     }
-  }
-
-  private static String validateNotBlank(String value, String field) {
-    if (value == null || value.isBlank()) {
-      throw new IllegalArgumentException(field + " is required.");
-    }
-
-    return value.trim();
   }
 
   public boolean isDeleted() {

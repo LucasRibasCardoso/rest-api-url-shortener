@@ -1,5 +1,6 @@
 package com.app.url_shortener.iam.domain.model;
 
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.util.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -15,7 +16,7 @@ public class Role {
 
   private Role(UUID id, String name, boolean isDefault, Set<Permission> permissions) {
     this.id = Objects.requireNonNull(id, "id is required");
-    this.name = Objects.requireNonNull(name, "name is required").trim();
+    this.name = RequiredText.normalize(name, "name");
     this.isDefault = isDefault;
     this.permissions = permissions == null ? new HashSet<>() : new HashSet<>(permissions);
   }

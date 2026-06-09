@@ -64,7 +64,6 @@ app:
       secret: "X43Q+VZwzlK3qYRVPzn3fnvNJvvWJmOG+yV0r+tj9ok="
       issuer: ${spring.application.name}
       access-token-expiration-seconds: 900 # 15 minutos
-      refresh-token-expiration-days: 7
   url:
     redirect-cache:
       ttl:
