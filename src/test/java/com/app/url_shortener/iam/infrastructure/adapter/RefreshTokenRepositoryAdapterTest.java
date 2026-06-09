@@ -1,9 +1,9 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.domain.model.RefreshToken;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.RefreshTokenPersistenceMapperImpl;
-import com.app.url_shortener.iam.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapperImpl;
+import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
 import com.app.url_shortener.config.BaseDataJpaSliceTest;
 import com.app.url_shortener.shared.config.JpaAuditingConfig;
 import org.junit.jupiter.api.*;

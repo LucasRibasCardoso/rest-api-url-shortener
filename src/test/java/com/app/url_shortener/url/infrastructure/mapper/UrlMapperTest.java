@@ -152,44 +152,6 @@ class UrlMapperTest {
   }
 
   @Nested
-  @DisplayName("Criação de URL")
-  class CreateUrlTests {
-
-    @Test
-    @DisplayName("Deve criar domínio a partir da entidade")
-    void shouldCreateDomainFromEntity() {
-      // 1. Arrange
-      var entity = urlEntity();
-
-      // 2. Act
-      var result = mapper.createUrl(entity);
-
-      // 3. Assert
-      assertThat(result.getUserId()).isEqualTo(USER_ID);
-      assertThat(result.getShortCode()).isEqualTo("aB3dE");
-      assertThat(result.getOriginalUrl()).isEqualTo("https://google.com");
-      assertThat(result.getCreatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
-      assertThat(result.getUpdatedAt()).isEqualTo(Instant.parse("2026-05-07T10:15:30Z"));
-      assertThat(result.getStatus()).isEqualTo(UrlStatus.ACTIVE);
-      assertThat(result.getAccessCount()).isEqualTo(42);
-      assertThat(result.getLastAccessedAt()).isEqualTo(Instant.parse("2026-05-08T11:30:00Z"));
-    }
-
-    @Test
-    @DisplayName("Deve retornar nulo quando entidade for nula")
-    void shouldReturnNullWhenEntityIsNull() {
-      // 1. Arrange
-      UrlEntity entity = null;
-
-      // 2. Act
-      var result = mapper.createUrl(entity);
-
-      // 3. Assert
-      assertThat(result).isNull();
-    }
-  }
-
-  @Nested
   @DisplayName("Mapeamento para item de listagem")
   class ToListItemResultTests {
 

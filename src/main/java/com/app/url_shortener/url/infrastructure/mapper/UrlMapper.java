@@ -34,10 +34,6 @@ public interface UrlMapper {
         entity.getLastAccessedAt());
   }
 
-  default Url createUrl(UrlEntity entity) {
-    return toDomain(entity);
-  }
-
   default UrlListItemResult toListItemResult(Url url) {
     if (url == null) {
       return null;
