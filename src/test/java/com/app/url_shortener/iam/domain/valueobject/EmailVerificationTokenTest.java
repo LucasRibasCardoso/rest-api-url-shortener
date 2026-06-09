@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +26,7 @@ class EmailVerificationTokenTest {
       var userId = UUID.randomUUID();
       var unformattedEmail = "   usuario@email.com   ";
       var code = VerificationCode.of("123456");
-      var expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
+      var expiresAt = Instant.now().plusSeconds(15 * 60);
 
       // 2. Act
       var token = EmailVerificationToken.create(userId, unformattedEmail, code, expiresAt);
@@ -62,7 +61,7 @@ class EmailVerificationTokenTest {
       // 1. Arrange
       var userId = UUID.randomUUID();
       var code = VerificationCode.of("123456");
-      var expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
+      var expiresAt = Instant.now().plusSeconds(15 * 60);
 
       // 2. Act
       var throwableAssert =
@@ -83,7 +82,7 @@ class EmailVerificationTokenTest {
     @DisplayName("Deve retornar true se a data de expiração for no passado")
     void shouldReturnTrueWhenExpired() {
       // 1. Arrange
-      var pastExpiration = Instant.now().minus(1, ChronoUnit.MINUTES);
+      var pastExpiration = Instant.now().minusSeconds(60);
       var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", VerificationCode.of("123456"), pastExpiration);
 
       // 2. Act
@@ -97,7 +96,7 @@ class EmailVerificationTokenTest {
     @DisplayName("Deve retornar false se a data de expiração for no futuro")
     void shouldReturnFalseWhenNotExpired() {
       // 1. Arrange
-      var futureExpiration = Instant.now().plus(1, ChronoUnit.MINUTES);
+      var futureExpiration = Instant.now().plusSeconds(60);
       var token = EmailVerificationToken.create(UUID.randomUUID(), "a@b.com", VerificationCode.of("123456"), futureExpiration);
 
       // 2. Act
@@ -106,6 +105,7 @@ class EmailVerificationTokenTest {
       // 3. Assert
       assertThat(isExpired).isFalse();
     }
+
   }
 
   @Nested
@@ -122,7 +122,7 @@ class EmailVerificationTokenTest {
               UUID.randomUUID(),
               "usuario@email.com",
               VerificationCode.of(rawCode),
-              Instant.now().plus(15, ChronoUnit.MINUTES));
+              Instant.now().plusSeconds(15 * 60));
 
       // 2. Act
       var text = token.toString();

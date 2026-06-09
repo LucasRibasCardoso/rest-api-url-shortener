@@ -23,7 +23,7 @@ public record EmailVerificationToken(UUID userId, String email, VerificationCode
   }
 
   public boolean isExpired() {
-    return !expiresAt.isAfter(Instant.now());
+    return !Instant.now().isBefore(expiresAt);
   }
 
   @Override

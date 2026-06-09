@@ -3,6 +3,7 @@ package com.app.url_shortener.iam.domain.model;
 import static org.assertj.core.api.Assertions.*;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,6 +51,33 @@ class RefreshTokenTest {
       throwableAssert
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("tokenHash must not be blank");
+    }
+  }
+
+  @Nested
+  @DisplayName("Expiração")
+  class ExpirationTests {
+
+    @Test
+    @DisplayName("Deve considerar um token restaurado com expiração passada como expirado")
+    void shouldBeExpiredWhenExpirationIsInThePast() {
+      // 1. Arrange
+      var now = Instant.now();
+      var token =
+          RefreshToken.restore(
+              UUID.randomUUID(),
+              UUID.randomUUID(),
+              "token-hash",
+              now.minus(Duration.ofDays(8)),
+              now.minus(Duration.ofDays(1)),
+              null,
+              null);
+
+      // 2. Act
+      var expired = token.isExpired();
+
+      // 3. Assert
+      assertThat(expired).isTrue();
     }
   }
 

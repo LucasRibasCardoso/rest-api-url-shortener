@@ -42,8 +42,15 @@ public class RefreshToken {
   }
 
   public static RefreshToken create(UUID userId, String tokenHash) {
-    Instant now = Instant.now();
-    return new RefreshToken(UUID.randomUUID(), userId, tokenHash, now, now.plus(EXPIRATION_DURATION), null, null);
+    Instant createdAt = Instant.now();
+    return new RefreshToken(
+        UUID.randomUUID(),
+        userId,
+        tokenHash,
+        createdAt,
+        createdAt.plus(EXPIRATION_DURATION),
+        null,
+        null);
   }
 
   public static RefreshToken restore(
@@ -58,8 +65,8 @@ public class RefreshToken {
         id, userId, tokenHash, createdAt, expiresAt, revokedAt, replacedByTokenId);
   }
 
-  public boolean isExpired(Instant now) {
-    return !now.isBefore(expiresAt);
+  public boolean isExpired() {
+    return !Instant.now().isBefore(expiresAt);
   }
 
   public boolean isRevoked() {
