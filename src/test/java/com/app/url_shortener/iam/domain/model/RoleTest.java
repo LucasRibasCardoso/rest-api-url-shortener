@@ -25,7 +25,7 @@ class RoleTest {
       var id = UUID.randomUUID();
 
       // 2. Act
-      var role = Role.restore(id, "  role_user  ", true, Set.of());
+      var role = Role.restore(id, "  user  ", true, Set.of());
 
       // 3. Assert
       assertThat(role.getName()).isEqualTo("USER");
@@ -44,17 +44,17 @@ class RoleTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar nome composto apenas pelo prefixo de authority")
-    void shouldRejectAuthorityPrefixWithoutRoleName() {
+    @DisplayName("Deve rejeitar nome com prefixo reservado para authorities")
+    void shouldRejectNameWithAuthorityPrefix() {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> Role.create("ROLE_", Set.of()));
+      var throwableAssert = assertThatThrownBy(() -> Role.create("ROLE_USER", Set.of()));
 
       // 3. Assert
       throwableAssert
           .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("name must not be blank");
+          .hasMessage("name must not use the ROLE_ authority prefix");
     }
 
     @Test

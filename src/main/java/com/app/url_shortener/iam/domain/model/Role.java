@@ -9,7 +9,7 @@ import lombok.Getter;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Role {
 
-  private static final String LEGACY_PREFIX = "ROLE_";
+  private static final String RESERVED_AUTHORITY_PREFIX = "ROLE_";
 
   @EqualsAndHashCode.Include private final UUID id;
   private final String name;
@@ -40,12 +40,8 @@ public class Role {
   private static String canonicalizeName(String name) {
     String canonicalName = RequiredText.normalize(name, "name").toUpperCase(Locale.ROOT);
 
-    while (canonicalName.startsWith(LEGACY_PREFIX)) {
-      canonicalName = canonicalName.substring(LEGACY_PREFIX.length());
-    }
-
-    if (canonicalName.isBlank()) {
-      throw new IllegalArgumentException("name must not be blank");
+    if (canonicalName.startsWith(RESERVED_AUTHORITY_PREFIX)) {
+      throw new IllegalArgumentException("name must not use the ROLE_ authority prefix");
     }
 
     return canonicalName;
