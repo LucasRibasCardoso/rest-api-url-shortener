@@ -1,4 +1,4 @@
-package com.app.url_shortener.shared.presentation.error;
+package com.app.url_shortener.shared.error;
 
 import com.app.url_shortener.shared.exception.ErrorCode;
 import org.springframework.http.HttpStatusCode;

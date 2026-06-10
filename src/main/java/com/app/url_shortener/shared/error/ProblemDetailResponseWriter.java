@@ -1,4 +1,4 @@
-package com.app.url_shortener.shared.presentation.error;
+package com.app.url_shortener.shared.error;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

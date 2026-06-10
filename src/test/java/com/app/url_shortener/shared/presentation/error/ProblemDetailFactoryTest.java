@@ -1,6 +1,8 @@
 package com.app.url_shortener.shared.presentation.error;
 
 import com.app.url_shortener.iam.domain.exception.IamErrorCode;
+import com.app.url_shortener.shared.error.ProblemDetailFactory;
+import com.app.url_shortener.shared.error.ProblemType;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

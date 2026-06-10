@@ -5,6 +5,10 @@ import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsExcepti
 import com.app.url_shortener.iam.domain.exception.auth.InvalidRefreshTokenException;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
+import com.app.url_shortener.shared.error.GlobalExceptionHandler;
+import com.app.url_shortener.shared.error.ProblemDetailFactory;
+import com.app.url_shortener.shared.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.error.ProblemType;
 import com.app.url_shortener.shared.exception.AppBusinessException;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.exception.ErrorCode;

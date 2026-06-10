@@ -1,9 +1,9 @@
 package com.app.url_shortener.security.exception.handler;
 
 import com.app.url_shortener.shared.exception.CommonErrorCode;
-import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
-import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
-import com.app.url_shortener.shared.presentation.error.ProblemType;
+import com.app.url_shortener.shared.error.ProblemDetailFactory;
+import com.app.url_shortener.shared.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.error.ProblemType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

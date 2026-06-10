@@ -1,4 +1,4 @@
-package com.app.url_shortener.shared.presentation.error;
+package com.app.url_shortener.shared.error;
 
 public final class ProblemType {
 
