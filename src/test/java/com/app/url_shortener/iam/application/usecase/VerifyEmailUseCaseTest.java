@@ -78,8 +78,8 @@ class VerifyEmailUseCaseTest {
       var pendingUser = pendingUser();
       var defaultRole = defaultRole();
 
-      given(emailVerificationTokenStorePort.consumeByEmailAndCode("user@email.com", code)).willReturn(Optional.of(token));
       given(userAccountRepositoryPort.findByEmailWithRoles("user@email.com")).willReturn(Optional.of(pendingUser));
+      given(emailVerificationTokenStorePort.consumeByEmailAndCode("user@email.com", code)).willReturn(Optional.of(token));
       given(roleRepositoryPort.findDefaultRole()).willReturn(defaultRole);
 
       // 2. Act
@@ -98,12 +98,16 @@ class VerifyEmailUseCaseTest {
               () -> assertThat(savedUser.getRoles()).containsExactly(defaultRole)
       );
 
-      verify(userAccountRepositoryPort).findByEmailWithRoles("user@email.com");
-      verify(roleRepositoryPort).findDefaultRole();
-
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(
+              checkAuthRateLimitPort,
+              userAccountRepositoryPort,
+              emailVerificationTokenStorePort,
+              roleRepositoryPort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail("user@email.com");
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles("user@email.com");
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode("user@email.com", code);
+      inOrder.verify(roleRepositoryPort).findDefaultRole();
+      inOrder.verify(userAccountRepositoryPort).save(pendingUser);
 
       verifyNoMoreInteractions(
               checkAuthRateLimitPort,
@@ -117,7 +121,9 @@ class VerifyEmailUseCaseTest {
     void shouldThrowExceptionWhenVerificationTokenDoesNotExist() {
       // 1. Arrange
       var command = new VerifyEmailCommand("user@email.com", VerificationCode.of("123456"));
+      var pendingUser = pendingUser();
 
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
       given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), command.code())).willReturn(Optional.empty());
 
       // 2. Act
@@ -128,12 +134,13 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
               .hasMessage("Código de verificação inválido ou expirado.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), command.code());
 
-      verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      verifyNoInteractions(roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
     }
 
     @Test
@@ -143,7 +150,9 @@ class VerifyEmailUseCaseTest {
       var code = VerificationCode.of("123456");
       var command = new VerifyEmailCommand("user@email.com", code);
       var expiredToken = expiredToken(command.email(), code);
+      var pendingUser = pendingUser();
 
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
       given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(expiredToken));
 
       // 2. Act
@@ -154,12 +163,13 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
               .hasMessage("Código de verificação inválido ou expirado.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), code);
 
-      verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      verifyNoInteractions(roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
     }
 
     @Test
@@ -167,7 +177,9 @@ class VerifyEmailUseCaseTest {
     void shouldThrowGenericExceptionWhenVerificationCodeIsInvalidOrAlreadyConsumed() {
       // 1. Arrange
       var command = new VerifyEmailCommand("user@email.com", VerificationCode.of("654321"));
+      var pendingUser = pendingUser();
 
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
       given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), command.code())).willReturn(Optional.empty());
 
       // 2. Act
@@ -178,12 +190,13 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
               .hasMessage("Código de verificação inválido ou expirado.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), command.code());
 
-      verifyNoInteractions(userAccountRepositoryPort, roleRepositoryPort);
-      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      verifyNoInteractions(roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
     }
 
     @Test
@@ -192,9 +205,7 @@ class VerifyEmailUseCaseTest {
       // 1. Arrange
       var code = VerificationCode.of("123456");
       var command = new VerifyEmailCommand("user@email.com", code);
-      var token = validToken(command.email(), code);
 
-      given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.empty());
 
       // 2. Act
@@ -205,13 +216,12 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
               .hasMessage("Código de verificação inválido ou expirado.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
-      inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), code);
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
 
-      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
-      verifyNoInteractions(roleRepositoryPort);
-      verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenStorePort, userAccountRepositoryPort);
+      verifyNoInteractions(emailVerificationTokenStorePort, roleRepositoryPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
     @Test
@@ -227,8 +237,8 @@ class VerifyEmailUseCaseTest {
               Instant.now().plus(10, ChronoUnit.MINUTES));
       var pendingUser = pendingUser();
 
-      given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
+      given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> verifyEmailUseCase.execute(command));
@@ -238,11 +248,11 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(InvalidOrExpiredEmailVerificationCodeException.class)
               .hasMessage("Código de verificação inválido ou expirado.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort, emailVerificationTokenStorePort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), code);
 
-      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       verifyNoInteractions(roleRepositoryPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, emailVerificationTokenStorePort, userAccountRepositoryPort);
     }
@@ -258,8 +268,8 @@ class VerifyEmailUseCaseTest {
       var defaultRole = defaultRole();
       var exception = new IllegalStateException("Falha ao salvar usuário.");
 
-      given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.of(pendingUser));
+      given(emailVerificationTokenStorePort.consumeByEmailAndCode(command.email(), code)).willReturn(Optional.of(token));
       given(roleRepositoryPort.findDefaultRole()).willReturn(defaultRole);
       given(userAccountRepositoryPort.save(pendingUser)).willThrow(exception);
 
@@ -271,13 +281,16 @@ class VerifyEmailUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao salvar usuário.");
 
-      InOrder inOrder = inOrder(checkAuthRateLimitPort, emailVerificationTokenStorePort);
+      InOrder inOrder = inOrder(
+              checkAuthRateLimitPort,
+              userAccountRepositoryPort,
+              emailVerificationTokenStorePort,
+              roleRepositoryPort);
       inOrder.verify(checkAuthRateLimitPort).checkVerifyEmail(command.email());
+      inOrder.verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
       inOrder.verify(emailVerificationTokenStorePort).consumeByEmailAndCode(command.email(), code);
-
-      verify(userAccountRepositoryPort).findByEmailWithRoles(command.email());
-      verify(roleRepositoryPort).findDefaultRole();
-      verify(userAccountRepositoryPort).save(pendingUser);
+      inOrder.verify(roleRepositoryPort).findDefaultRole();
+      inOrder.verify(userAccountRepositoryPort).save(pendingUser);
       verifyNoMoreInteractions(
               checkAuthRateLimitPort,
               emailVerificationTokenStorePort,

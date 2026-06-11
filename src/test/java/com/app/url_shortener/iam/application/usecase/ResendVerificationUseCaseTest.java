@@ -3,31 +3,26 @@ package com.app.url_shortener.iam.application.usecase;
 import com.app.url_shortener.iam.application.command.ResendVerificationCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPublisherPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.ResendVerificationUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -39,16 +34,13 @@ class ResendVerificationUseCaseTest {
   private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
 
   @Mock
-  private EmailVerificationEventPublisherPort emailVerificationEventPublisherPort;
+  private EmailVerificationEventPort emailVerificationEventPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;
 
   @Mock
   private CheckAuthRateLimitPort checkAuthRateLimitPort;
-
-  @Captor
-  private ArgumentCaptor<EmailVerificationRequestedEvent> emailVerificationEventCaptor;
 
   @InjectMocks
   private ResendVerificationUseCaseImpl resendVerificationUseCase;
@@ -63,7 +55,6 @@ class ResendVerificationUseCaseTest {
       // 1. Arrange
       var command = new ResendVerificationCommand(" USER@EMAIL.COM ");
       var pendingUser = pendingUser();
-      var beforeExecution = Instant.now();
 
       given(userAccountRepositoryPort.findByEmail("user@email.com")).willReturn(Optional.of(pendingUser));
 
@@ -73,16 +64,10 @@ class ResendVerificationUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(RESPONSE_MESSAGE);
 
-      verify(emailVerificationEventPublisherPort).publish(emailVerificationEventCaptor.capture());
-      var publishedEvent = emailVerificationEventCaptor.getValue();
-
-      assertAll(
-              () -> assertThat(publishedEvent.userId()).isEqualTo(pendingUser.getId()),
-              () -> assertThat(publishedEvent.email()).isEqualTo(pendingUser.getEmail()),
-              () -> assertThat(publishedEvent.reason()).isEqualTo(EmailVerificationReason.RESEND),
-              () -> assertThat(publishedEvent.eventId()).isNotNull(),
-              () -> assertThat(publishedEvent.occurredAt()).isAfterOrEqualTo(beforeExecution)
-      );
+      verify(emailVerificationEventPort).publishEmailVerificationRequestedEvent(
+              pendingUser.getId(),
+              pendingUser.getEmail(),
+              EmailVerificationReason.RESEND);
 
       InOrder inOrder = inOrder(checkAuthRateLimitPort, userAccountRepositoryPort);
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification("user@email.com");
@@ -91,12 +76,12 @@ class ResendVerificationUseCaseTest {
       verifyNoMoreInteractions(
               checkAuthRateLimitPort,
               userAccountRepositoryPort,
-              emailVerificationEventPublisherPort);
+              emailVerificationEventPort);
     }
 
     @Test
-    @DisplayName("Deve retornar mensagem padrão sem armazenar token quando o usuário não existir")
-    void shouldReturnDefaultMessageWithoutStoringTokenWhenUserDoesNotExist() {
+    @DisplayName("Deve retornar mensagem padrão sem publicar evento quando o usuário não existir")
+    void shouldReturnDefaultMessageWithoutPublishingEventWhenUserDoesNotExist() {
       // 1. Arrange
       var command = new ResendVerificationCommand("unknown@email.com");
 
@@ -112,13 +97,13 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
 
-      verifyNoInteractions(emailVerificationEventPublisherPort);
+      verifyNoInteractions(emailVerificationEventPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
     @Test
-    @DisplayName("Deve retornar mensagem padrão sem armazenar token quando o usuário não estiver pendente")
-    void shouldReturnDefaultMessageWithoutStoringTokenWhenUserIsNotPending() {
+    @DisplayName("Deve retornar mensagem padrão sem publicar evento quando o usuário não estiver pendente")
+    void shouldReturnDefaultMessageWithoutPublishingEventWhenUserIsNotPending() {
       // 1. Arrange
       var command = new ResendVerificationCommand("user@email.com");
       var activeUser = activeUser();
@@ -135,7 +120,7 @@ class ResendVerificationUseCaseTest {
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
 
-      verifyNoInteractions(emailVerificationEventPublisherPort);
+      verifyNoInteractions(emailVerificationEventPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
 
