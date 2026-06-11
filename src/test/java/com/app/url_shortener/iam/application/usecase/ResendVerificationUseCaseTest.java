@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.application.usecase;
 import com.app.url_shortener.iam.application.command.ResendVerificationCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.ResendVerificationUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
@@ -34,7 +34,7 @@ class ResendVerificationUseCaseTest {
   private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
 
   @Mock
-  private EmailVerificationEventPort emailVerificationEventPort;
+  private EmailVerificationOutboxPort emailVerificationEventPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;

@@ -2,7 +2,7 @@ package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.RegisterUserResult;
@@ -20,7 +20,7 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
 
   private final PasswordEncoderPort passwordEncoderPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
-  private final EmailVerificationEventPort emailVerificationEventPort;
+  private final EmailVerificationOutboxPort emailVerificationEventPort;
 
   @Override
   @Transactional

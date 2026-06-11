@@ -2,7 +2,7 @@ package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.RegisterUserUseCaseImpl;
@@ -41,7 +41,7 @@ class RegisterUserUseCaseTest {
   private PasswordEncoderPort passwordEncoderPort;
 
   @Mock
-  private EmailVerificationEventPort emailVerificationEventPort;
+  private EmailVerificationOutboxPort emailVerificationEventPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;

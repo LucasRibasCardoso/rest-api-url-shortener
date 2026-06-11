@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventSerializerPort;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EmailVerificationOutboxAdapter implements EmailVerificationEventPort {
+public class EmailVerificationOutboxAdapter implements EmailVerificationOutboxPort {
 
   private final OutboxEventRepositoryPort outboxEventRepositoryPort;
   private final OutboxEventSerializerPort outboxEventSerializerPort;
