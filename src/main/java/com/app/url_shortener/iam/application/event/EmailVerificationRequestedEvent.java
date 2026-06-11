@@ -6,11 +6,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record EmailVerificationRequestedEvent(
-    UUID eventId,
-    UUID userId,
-    String email,
-    EmailVerificationReason reason,
-    Instant occurredAt) {
+        UUID eventId,
+        UUID userId,
+        String email,
+        EmailVerificationReason reason,
+        Instant occurredAt) {
 
   public EmailVerificationRequestedEvent {
     Objects.requireNonNull(eventId, "eventId must not be null");

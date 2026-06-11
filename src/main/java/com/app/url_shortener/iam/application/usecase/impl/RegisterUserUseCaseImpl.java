@@ -2,8 +2,7 @@ package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
-import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPublisherPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.result.RegisterUserResult;
@@ -21,20 +20,24 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
 
   private final PasswordEncoderPort passwordEncoderPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
-  private final EmailVerificationEventPublisherPort emailVerificationEventPublisherPort;
+  private final EmailVerificationEventPort emailVerificationEventPort;
 
   @Override
   @Transactional
   public RegisterUserResult execute(RegisterUserCommand command) {
     String passwordHash = passwordEncoderPort.encode(command.password());
 
-    UserAccount userAccount = UserAccount.createPendingRegistration(command.name(), command.email(), passwordHash);
-    UserAccount savedUserAccount = userAccountRepositoryPort.create(userAccount);
+    var userAccount = UserAccount.createPendingRegistration(
+            command.name(),
+            command.email(),
+            passwordHash);
 
-    emailVerificationEventPublisherPort.publish(EmailVerificationRequestedEvent.create(
+    var savedUserAccount = userAccountRepositoryPort.create(userAccount);
+
+    emailVerificationEventPort.publishEmailVerificationRequestedEvent(
             savedUserAccount.getId(),
             savedUserAccount.getEmail(),
-            EmailVerificationReason.REGISTER)
+            EmailVerificationReason.REGISTER
     );
 
     return new RegisterUserResult(SUCCESS_MESSAGE);

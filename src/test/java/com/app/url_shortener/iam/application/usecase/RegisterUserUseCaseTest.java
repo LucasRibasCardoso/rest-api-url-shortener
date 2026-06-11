@@ -2,14 +2,16 @@ package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPublisherPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationEventPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.RegisterUserUseCaseImpl;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.iam.domain.model.UserAccount;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -18,12 +20,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.Instant;
-import java.util.Set;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,16 +41,13 @@ class RegisterUserUseCaseTest {
   private PasswordEncoderPort passwordEncoderPort;
 
   @Mock
-  private EmailVerificationEventPublisherPort emailVerificationEventPublisherPort;
+  private EmailVerificationEventPort emailVerificationEventPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;
 
   @Captor
   private ArgumentCaptor<UserAccount> userAccountCaptor;
-
-  @Captor
-  private ArgumentCaptor<EmailVerificationRequestedEvent> emailVerificationEventCaptor;
 
   @InjectMocks
   private RegisterUserUseCaseImpl registerUserUseCase;
@@ -61,13 +57,12 @@ class RegisterUserUseCaseTest {
   class ExecuteTests {
 
     @Test
-    @DisplayName("Deve criar usuário pendente e publicar evento de registro com sucesso")
+    @DisplayName("Deve salvar usuário pendente e solicitar evento de verificação com sucesso")
     void shouldCreatePendingUserAndPublishRegisterEventSuccessfully() {
       // 1. Arrange
       var command = new RegisterUserCommand("  User   Name  ", " USER@EMAIL.COM ", "raw-password");
       var passwordHash = "encoded-password";
       var savedUser = savedPendingUser();
-      var beforeExecution = Instant.now();
 
       given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
       given(userAccountRepositoryPort.create(any(UserAccount.class))).willReturn(savedUser);
@@ -78,7 +73,10 @@ class RegisterUserUseCaseTest {
       // 3. Assert
       assertThat(result.message()).isEqualTo(SUCCESS_MESSAGE);
 
-      verify(userAccountRepositoryPort).create(userAccountCaptor.capture());
+      InOrder inOrder =
+          inOrder(passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
+      inOrder.verify(passwordEncoderPort).encode(command.password());
+      inOrder.verify(userAccountRepositoryPort).create(userAccountCaptor.capture());
       var userToPersist = userAccountCaptor.getValue();
 
       assertAll(
@@ -92,21 +90,15 @@ class RegisterUserUseCaseTest {
               () -> assertThat(userToPersist.getRoles()).isEmpty()
       );
 
-      verify(emailVerificationEventPublisherPort).publish(emailVerificationEventCaptor.capture());
-      var publishedEvent = emailVerificationEventCaptor.getValue();
-
-      assertAll(
-              () -> assertThat(publishedEvent.userId()).isEqualTo(savedUser.getId()),
-              () -> assertThat(publishedEvent.email()).isEqualTo(savedUser.getEmail()),
-              () -> assertThat(publishedEvent.reason()).isEqualTo(EmailVerificationReason.REGISTER),
-              () -> assertThat(publishedEvent.eventId()).isNotNull(),
-              () -> assertThat(publishedEvent.occurredAt()).isAfterOrEqualTo(beforeExecution)
+      inOrder.verify(emailVerificationEventPort).publishEmailVerificationRequestedEvent(
+              savedUser.getId(),
+              savedUser.getEmail(),
+              EmailVerificationReason.REGISTER
       );
 
-      verify(passwordEncoderPort).encode(command.password());
       verifyNoMoreInteractions(
               passwordEncoderPort,
-              emailVerificationEventPublisherPort,
+              emailVerificationEventPort,
               userAccountRepositoryPort
       );
     }
@@ -131,13 +123,13 @@ class RegisterUserUseCaseTest {
       verify(passwordEncoderPort).encode(command.password());
       verifyNoInteractions(
               userAccountRepositoryPort,
-              emailVerificationEventPublisherPort);
+              emailVerificationEventPort);
       verifyNoMoreInteractions(passwordEncoderPort);
     }
 
     @Test
-    @DisplayName("Deve propagar exceção e não armazenar token quando a persistência do usuário falhar")
-    void shouldPropagateExceptionAndNotStoreTokenWhenUserPersistenceFails() {
+    @DisplayName("Deve propagar exceção e não solicitar evento quando a persistência do usuário falhar")
+    void shouldPropagateExceptionAndNotPublishEventWhenUserPersistenceFails() {
       // 1. Arrange
       var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
       var passwordHash = "encoded-password";
@@ -156,8 +148,73 @@ class RegisterUserUseCaseTest {
 
       verify(passwordEncoderPort).encode(command.password());
       verify(userAccountRepositoryPort).create(any(UserAccount.class));
-      verifyNoInteractions(emailVerificationEventPublisherPort);
+      verifyNoInteractions(emailVerificationEventPort);
       verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Não deve solicitar evento quando o e-mail já estiver registrado")
+    void shouldNotPublishEventWhenEmailIsAlreadyRegistered() {
+      // 1. Arrange
+      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var passwordHash = "encoded-password";
+      var exception = new EmailAlreadyRegisteredException();
+
+      given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
+      given(userAccountRepositoryPort.create(any(UserAccount.class))).willThrow(exception);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
+
+      // 3. Assert
+      throwableAssert.isSameAs(exception);
+
+      verify(passwordEncoderPort).encode(command.password());
+      verify(userAccountRepositoryPort).create(any(UserAccount.class));
+      verifyNoInteractions(emailVerificationEventPort);
+      verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort);
+    }
+
+    @Test
+    @DisplayName("Deve propagar exceção quando a solicitação do evento de verificação falhar")
+    void shouldPropagateExceptionWhenEmailVerificationEventRequestFails() {
+      // 1. Arrange
+      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var passwordHash = "encoded-password";
+      var savedUser = savedPendingUser();
+      var exception = new IllegalStateException("Falha ao salvar evento no Outbox.");
+
+      given(passwordEncoderPort.encode(command.password())).willReturn(passwordHash);
+      given(userAccountRepositoryPort.create(any(UserAccount.class))).willReturn(savedUser);
+      doThrow(exception)
+          .when(emailVerificationEventPort)
+          .publishEmailVerificationRequestedEvent(
+                  savedUser.getId(),
+                  savedUser.getEmail(),
+                  EmailVerificationReason.REGISTER
+          );
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Falha ao salvar evento no Outbox.");
+
+      InOrder inOrder =
+          inOrder(passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
+      inOrder.verify(passwordEncoderPort).encode(command.password());
+      inOrder.verify(userAccountRepositoryPort).create(any(UserAccount.class));
+      inOrder
+          .verify(emailVerificationEventPort)
+          .publishEmailVerificationRequestedEvent(
+              savedUser.getId(),
+                  savedUser.getEmail(),
+                  EmailVerificationReason.REGISTER
+          );
+      verifyNoMoreInteractions(
+          passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
     }
   }
 
