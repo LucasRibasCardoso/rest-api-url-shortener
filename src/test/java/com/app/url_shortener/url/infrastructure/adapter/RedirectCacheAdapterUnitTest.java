@@ -1,6 +1,7 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
+import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -156,9 +157,8 @@ class RedirectCacheAdapterUnitTest {
 
   private RedirectCacheAdapter adapter() {
     return new RedirectCacheAdapter(
-        TTL_ACTIVE,
-        TTL_DELETED,
-        TTL_NOT_FOUND,
+        new RedirectCacheProperties(
+            new RedirectCacheProperties.Ttl(TTL_ACTIVE, TTL_DELETED, TTL_NOT_FOUND)),
         new ObjectMapper(),
         redisTemplate);
   }

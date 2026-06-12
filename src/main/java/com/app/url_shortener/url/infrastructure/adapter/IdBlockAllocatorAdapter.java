@@ -3,8 +3,9 @@ package com.app.url_shortener.url.infrastructure.adapter;
 import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import com.app.url_shortener.url.domain.exception.CounterIdAllocationException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
+import com.app.url_shortener.shared.config.DynamoDbProperties;
+import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.exception.SdkException;
@@ -23,11 +24,11 @@ public class IdBlockAllocatorAdapter implements IdBlockAllocatorPort {
 
   public IdBlockAllocatorAdapter(
       DynamoDbClient dynamoDbClient,
-      @Value("${aws.dynamodb.tables.url-counter}") String counterTableName,
-      @Value("${app.id-generator.counter-name}") String counterName) {
+      DynamoDbProperties dynamoDbProperties,
+      IdGeneratorProperties idGeneratorProperties) {
     this.dynamoDbClient = dynamoDbClient;
-    this.counterTableName = counterTableName;
-    this.counterName = counterName;
+    this.counterTableName = dynamoDbProperties.tables().urlCounter();
+    this.counterName = idGeneratorProperties.counterName();
   }
 
   @Override

@@ -2,7 +2,7 @@ package com.app.url_shortener.shared.outbox.application.service;
 
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventPublisherPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
-import com.app.url_shortener.shared.outbox.config.OutboxPublisherProperties;
+import com.app.url_shortener.shared.outbox.application.policy.OutboxPublisherPolicy;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
 import java.time.Instant;
 import java.util.List;
@@ -16,12 +16,12 @@ public class OutboxPublisherService {
 
   private final OutboxEventRepositoryPort outboxEventRepositoryPort;
   private final OutboxEventPublisherPort outboxEventPublisherPort;
-  private final OutboxPublisherProperties outboxProperties;
+  private final OutboxPublisherPolicy outboxPublisherPolicy;
 
   @Transactional
   public void publishPendingEvents() {
     Instant now = Instant.now();
-    List<OutboxEvent> events = outboxEventRepositoryPort.findPendingToPublish(now, outboxProperties.batchSize());
+    List<OutboxEvent> events = outboxEventRepositoryPort.findPendingToPublish(now, outboxPublisherPolicy.batchSize());
 
     for (OutboxEvent event : events) {
       publishEvent(event, now);
@@ -39,8 +39,8 @@ public class OutboxPublisherService {
       event.registerFailure(
               e.getMessage(),
               now,
-              outboxProperties.maxAttempts(),
-              outboxProperties.retryDelay()
+              outboxPublisherPolicy.maxAttempts(),
+              outboxPublisherPolicy.retryDelay()
       );
     }
   }

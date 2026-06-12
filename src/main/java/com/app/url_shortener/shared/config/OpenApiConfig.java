@@ -6,7 +6,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,8 +14,8 @@ public class OpenApiConfig {
 
   @Bean
   public OpenAPI customOpenApi(
-      @Value("${app.base-url:http://localhost:8080}") String baseUrl,
-      @Value("${spring.application.name:url-shortener}") String applicationName) {
+      ApplicationProperties applicationProperties,
+      SpringApplicationProperties springApplicationProperties) {
 
     return new OpenAPI()
         .info(
@@ -34,6 +33,8 @@ public class OpenApiConfig {
                     new License().name("MIT License").url("https://opensource.org/licenses/MIT")))
         .servers(
             List.of(
-                new Server().url(baseUrl).description("Servidor Local (" + applicationName + ")")));
+                new Server()
+                    .url(applicationProperties.baseUrl())
+                    .description("Servidor Local (" + springApplicationProperties.name() + ")")));
   }
 }

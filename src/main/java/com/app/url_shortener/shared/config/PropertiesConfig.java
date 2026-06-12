@@ -9,6 +9,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @EnableConfigurationProperties({
+  ApplicationProperties.class,
+  SpringApplicationProperties.class,
+  DynamoDbProperties.class,
+  AwsSqsProperties.class,
   JwtProperties.class,
   IdempotencyProperties.class,
   RateLimitProperties.class,

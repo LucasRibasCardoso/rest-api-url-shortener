@@ -2,7 +2,7 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import com.app.url_shortener.url.application.port.output.IdGeneratorPort;
-import org.springframework.beans.factory.annotation.Value;
+import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -10,22 +10,11 @@ public class IdGeneratorAdapter implements IdGeneratorPort {
 
   private final IdBlockAllocatorPort idBlockAllocatorPort;
   private final long blockSize;
-
-  // Representa o bloco de IDs atualmente reservado para esta instância da aplicação.
   private IdBlock currentIdBlock;
 
-  public IdGeneratorAdapter(
-      IdBlockAllocatorPort idBlockAllocatorPort,
-      @Value("${app.id-generator.block-size}") long blockSize) {
-
-    if (blockSize <= 0) {
-      throw new IllegalArgumentException("block size must be greater than 0");
-    }
-
+  public IdGeneratorAdapter(IdBlockAllocatorPort idBlockAllocatorPort, IdGeneratorProperties properties) {
     this.idBlockAllocatorPort = idBlockAllocatorPort;
-    this.blockSize = blockSize;
-
-    // Inicia um bloco esgotado para forçar a alocação de um bloco real no primeiro uso
+    this.blockSize = properties.blockSize();
     this.currentIdBlock = IdBlock.requiringAllocation(blockSize);
   }
 

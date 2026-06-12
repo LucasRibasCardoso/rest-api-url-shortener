@@ -4,6 +4,7 @@ import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
+import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,7 +29,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Tag("redis-slice")
 @Import({
     RedirectCacheAdapter.class,
-    RedirectCacheAdapterObjectMapperTestConfig.class
+    RedirectCacheAdapterObjectMapperTestConfig.class,
+    RedirectCacheAdapterPropertiesTestConfig.class
 })
 @TestPropertySource(properties = {
     "app.url.redirect-cache.ttl.active=15m",
@@ -276,6 +279,10 @@ class RedirectCacheAdapterTest extends BaseRedisSliceTest {
     return KEY_PREFIX + shortCode;
   }
 }
+
+@TestConfiguration
+@EnableConfigurationProperties(RedirectCacheProperties.class)
+class RedirectCacheAdapterPropertiesTestConfig {}
 
 @TestConfiguration
 class RedirectCacheAdapterObjectMapperTestConfig {

@@ -13,7 +13,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventPublisherPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
-import com.app.url_shortener.shared.outbox.config.OutboxPublisherProperties;
+import com.app.url_shortener.shared.outbox.application.policy.OutboxPublisherPolicy;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
@@ -185,16 +185,9 @@ class OutboxPublisherServiceTest {
   }
 
   private OutboxPublisherService service(int maxAttempts) {
-    var properties =
-        new OutboxPublisherProperties(
-            true,
-            BATCH_SIZE,
-            Duration.ofSeconds(5),
-            Duration.ofSeconds(5),
-            maxAttempts,
-            RETRY_DELAY);
+    var policy = new OutboxPublisherPolicy(BATCH_SIZE, maxAttempts, RETRY_DELAY);
     return new OutboxPublisherService(
-        outboxEventRepositoryPort, outboxEventPublisherPort, properties);
+        outboxEventRepositoryPort, outboxEventPublisherPort, policy);
   }
 
   private OutboxEvent event(String eventId) {

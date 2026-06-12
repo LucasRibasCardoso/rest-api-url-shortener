@@ -58,7 +58,7 @@ app:
     jwt:
       secret: "rTtcljj9j9k16M65zQOnxjc1ujxwmyrmAVOJZ1dlEws="
       issuer: ${spring.application.name}
-      access-token-expiration-minutes: 15
+      access-token-expiration-seconds: 900
   url:
     redirect-cache:
       ttl:

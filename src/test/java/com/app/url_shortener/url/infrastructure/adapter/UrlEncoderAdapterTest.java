@@ -1,5 +1,6 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import com.app.url_shortener.url.infrastructure.config.HashidsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +20,7 @@ class UrlEncoderAdapterTest {
 
   @BeforeEach
   void setUp() {
-    adapter = new UrlEncoderAdapter(SALT, MIN_LENGTH);
+    adapter = new UrlEncoderAdapter(new HashidsProperties(SALT, MIN_LENGTH));
     adapter.initialize();
   }
 

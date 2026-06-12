@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectEventPublisherAdapter;
+import com.app.url_shortener.shared.config.AwsSqsProperties;
 import io.awspring.cloud.sqs.operations.SendResult;
 import io.awspring.cloud.sqs.operations.SqsAsyncOperations;
 import java.time.Instant;
@@ -37,7 +38,13 @@ class UrlRedirectEventPublisherAdapterTest {
 
   @BeforeEach
   void setUp() {
-    adapter = new UrlRedirectEventPublisherAdapter(URL_REDIRECT_EVENTS_QUEUE, sqsAsyncOperations);
+    var properties =
+        new AwsSqsProperties(
+            URL_REDIRECT_EVENTS_QUEUE,
+            "url-redirect-events-dlq",
+            "email-verification-events",
+            "email-verification-events-dlq");
+    adapter = new UrlRedirectEventPublisherAdapter(properties, sqsAsyncOperations);
   }
 
   @Nested

@@ -2,7 +2,6 @@ package com.app.url_shortener.shared.config;
 
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import java.net.URI;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -17,16 +16,13 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 public class DynamoDbConfig {
 
   @Bean
-  public DynamoDbClient dynamoDbClient(
-      @Value("${aws.dynamodb.endpoint}") String endpoint,
-      @Value("${aws.dynamodb.region}") String region,
-      @Value("${aws.dynamodb.access-key}") String accessKey,
-      @Value("${aws.dynamodb.secret-key}") String secretKey) {
+  public DynamoDbClient dynamoDbClient(DynamoDbProperties properties) {
+    var awsBasicCredentials = AwsBasicCredentials.create(properties.accessKey(), properties.secretKey());
 
     return DynamoDbClient.builder()
-        .endpointOverride(URI.create(endpoint))
-        .region(Region.of(region))
-        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
+        .endpointOverride(URI.create(properties.endpoint()))
+        .region(Region.of(properties.region()))
+        .credentialsProvider(StaticCredentialsProvider.create(awsBasicCredentials))
         .build();
   }
 
@@ -38,8 +34,9 @@ public class DynamoDbConfig {
   @Bean
   public DynamoDbTable<UrlEntity> urlTable(
       DynamoDbEnhancedClient dynamoDbEnhancedClient,
-      @Value("${aws.dynamodb.tables.url}") String tableName) {
+      DynamoDbProperties properties) {
 
-    return dynamoDbEnhancedClient.table(tableName, TableSchema.fromImmutableClass(UrlEntity.class));
+    return dynamoDbEnhancedClient.table(
+        properties.tables().url(), TableSchema.fromImmutableClass(UrlEntity.class));
   }
 }

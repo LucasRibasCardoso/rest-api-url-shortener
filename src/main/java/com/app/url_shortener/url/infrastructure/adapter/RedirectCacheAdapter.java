@@ -4,10 +4,10 @@ import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
+import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -24,16 +24,14 @@ public class RedirectCacheAdapter implements RedirectCachePort {
   private final StringRedisTemplate redisTemplate;
 
   public RedirectCacheAdapter(
-      @Value("${app.url.redirect-cache.ttl.active}") Duration ttlActive,
-      @Value("${app.url.redirect-cache.ttl.deleted}") Duration ttlDeleted,
-      @Value("${app.url.redirect-cache.ttl.not-found}") Duration ttlNotFound,
+      RedirectCacheProperties properties,
       ObjectMapper objectMapper,
       StringRedisTemplate redisTemplate) {
-    this.ttlActive = Objects.requireNonNull(ttlActive, "ttlActive must not be null");
-    this.ttlDeleted = Objects.requireNonNull(ttlDeleted, "ttlDeleted must not be null");
-    this.ttlNotFound = Objects.requireNonNull(ttlNotFound, "ttlNotFound must not be null");
-    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
-    this.redisTemplate = Objects.requireNonNull(redisTemplate, "redisTemplate must not be null");
+    this.ttlActive = properties.ttl().active();
+    this.ttlDeleted = properties.ttl().deleted();
+    this.ttlNotFound = properties.ttl().notFound();
+    this.objectMapper = objectMapper;
+    this.redisTemplate = redisTemplate;
   }
 
   @Override

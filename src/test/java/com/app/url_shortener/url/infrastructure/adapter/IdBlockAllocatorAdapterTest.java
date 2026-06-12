@@ -2,6 +2,8 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.domain.exception.CounterIdAllocationException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
+import com.app.url_shortener.shared.config.DynamoDbProperties;
+import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -46,7 +48,15 @@ class IdBlockAllocatorAdapterTest {
 
   @BeforeEach
   void setUp() {
-    adapter = new IdBlockAllocatorAdapter(dynamoDbClient, COUNTER_TABLE_NAME, COUNTER_NAME);
+    var dynamoDbProperties =
+        new DynamoDbProperties(
+            "http://localhost:4566",
+            "us-east-1",
+            "access-key",
+            "secret-key",
+            new DynamoDbProperties.Tables("url", COUNTER_TABLE_NAME));
+    var idGeneratorProperties = new IdGeneratorProperties(100L, COUNTER_NAME);
+    adapter = new IdBlockAllocatorAdapter(dynamoDbClient, dynamoDbProperties, idGeneratorProperties);
   }
 
   @Nested

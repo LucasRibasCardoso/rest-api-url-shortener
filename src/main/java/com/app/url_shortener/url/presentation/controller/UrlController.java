@@ -1,6 +1,7 @@
 package com.app.url_shortener.url.presentation.controller;
 
 import com.app.url_shortener.security.principal.UserPrincipal;
+import com.app.url_shortener.shared.config.ApplicationProperties;
 import com.app.url_shortener.url.application.command.*;
 import com.app.url_shortener.url.application.result.*;
 import com.app.url_shortener.url.application.usecase.*;
@@ -14,7 +15,6 @@ import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.Objects;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,14 +35,14 @@ public class UrlController {
   private final FindTopAccessedUrlsByUserIdUseCase findTopAccessedUrlsByUserIdUseCase;
 
   public UrlController(
-      @Value("${app.base-url}") String baseUrl,
+      ApplicationProperties applicationProperties,
       UrlWebMapper urlWebMapper,
       DeleteUrlUseCase deleteUrlUseCase,
       ShortenUrlUseCase shortenUrlUseCase,
       FindUrlDetailsUseCase findUrlDetailsUseCase,
       FindAllUrlsByUserIdUseCase findAllUrlsByUserIdUseCase,
       FindTopAccessedUrlsByUserIdUseCase findTopAccessedUrlsByUserIdUseCase) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = applicationProperties.baseUrl();
     this.urlWebMapper = urlWebMapper;
     this.deleteUrlUseCase = deleteUrlUseCase;
     this.shortenUrlUseCase = shortenUrlUseCase;

@@ -1,9 +1,9 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.port.output.UrlEncoderPort;
+import com.app.url_shortener.url.infrastructure.config.HashidsProperties;
 import jakarta.annotation.PostConstruct;
 import org.hashids.Hashids;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,15 +13,11 @@ public class UrlEncoderAdapter implements UrlEncoderPort {
 
   private final String salt;
   private final int minLength;
-
   private Hashids hashids;
 
-  public UrlEncoderAdapter(
-      @Value("${app.hashids.salt}") String salt,
-      @Value("${app.hashids.min-length}") int minLength
-  ) {
-    this.salt = salt;
-    this.minLength = minLength;
+  public UrlEncoderAdapter(HashidsProperties properties) {
+    this.salt = properties.salt();
+    this.minLength = properties.minLength();
   }
 
   @PostConstruct
@@ -34,4 +30,3 @@ public class UrlEncoderAdapter implements UrlEncoderPort {
     return hashids.encode(id);
   }
 }
-

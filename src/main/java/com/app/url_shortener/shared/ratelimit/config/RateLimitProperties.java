@@ -27,4 +27,14 @@ public record RateLimitProperties(
 
     return properties;
   }
+
+  @Override
+  public String toString() {
+    return "RateLimitProperties{"
+        + "enabled=" + enabled
+        + ", keyPrefix='" + keyPrefix + '\''
+        + ", emailHashSecret='[REDACTED]'"
+        + ", policies=" + policies
+        + '}';
+  }
 }

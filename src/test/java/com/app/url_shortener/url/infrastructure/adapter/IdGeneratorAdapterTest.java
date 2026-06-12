@@ -1,6 +1,21 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
+import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -10,22 +25,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.LongStream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -38,25 +37,6 @@ class IdGeneratorAdapterTest {
   private IdBlockAllocatorPort idBlockAllocatorPort;
 
   @Nested
-  @DisplayName("Inicialização")
-  class InitializationTests {
-
-    @ParameterizedTest
-    @ValueSource(longs = {0L, -1L})
-    @DisplayName("Deve rejeitar tamanho de bloco inválido")
-    void shouldRejectInvalidBlockSize(long invalidBlockSize) {
-      // 1. Arrange
-
-      // 2. Act / 3. Assert
-      assertThatThrownBy(() -> new IdGeneratorAdapter(idBlockAllocatorPort, invalidBlockSize))
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessageContaining("block size must be greater than 0");
-
-      verifyNoInteractions(idBlockAllocatorPort);
-    }
-  }
-
-  @Nested
   @DisplayName("Geração sequencial")
   class SequentialGenerationTests {
 
@@ -65,7 +45,7 @@ class IdGeneratorAdapterTest {
     void shouldAllocateFirstBlockOnFirstGenerateId() {
       // 1. Arrange
       when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(BLOCK_SIZE));
 
       // 2. Act
       var id = adapter.generateId();
@@ -81,7 +61,7 @@ class IdGeneratorAdapterTest {
     void shouldGenerateSequentialIdsInsideSameBlock() {
       // 1. Arrange
       when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L);
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(BLOCK_SIZE));
 
       // 2. Act
       var firstId = adapter.generateId();
@@ -100,7 +80,7 @@ class IdGeneratorAdapterTest {
     void shouldAllocateNewBlockOnlyWhenCurrentBlockIsExhausted() {
       // 1. Arrange
       when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(1L, 11L);
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(BLOCK_SIZE));
 
       // 2. Act
       var generatedIds = LongStream.rangeClosed(1, 11)
@@ -131,7 +111,7 @@ class IdGeneratorAdapterTest {
       var nextBaseId = new AtomicLong(1L);
       when(idBlockAllocatorPort.allocateBlock(blockSize))
           .thenAnswer(invocation -> nextBaseId.getAndAdd(blockSize));
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, blockSize);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(blockSize));
 
       // 2. Act
       var generatedIds = generateConcurrently(adapter, totalIds, threadPoolSize);
@@ -156,7 +136,7 @@ class IdGeneratorAdapterTest {
       var nextBaseId = new AtomicLong(1L);
       when(idBlockAllocatorPort.allocateBlock(blockSize))
           .thenAnswer(invocation -> nextBaseId.getAndAdd(blockSize));
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, blockSize);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(blockSize));
 
       // 2. Act
       var generatedIds = generateConcurrently(adapter, totalIds, threadPoolSize);
@@ -182,7 +162,7 @@ class IdGeneratorAdapterTest {
     void shouldFailWhenCounterReturnsInvalidBaseId(long invalidBaseId) {
       // 1. Arrange
       when(idBlockAllocatorPort.allocateBlock(BLOCK_SIZE)).thenReturn(invalidBaseId);
-      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, BLOCK_SIZE);
+      var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(BLOCK_SIZE));
 
       // 2. Act / 3. Assert
       assertThatThrownBy(adapter::generateId)
@@ -198,6 +178,10 @@ class IdGeneratorAdapterTest {
     return LongStream.rangeClosed(startInclusive, endInclusive)
         .boxed()
         .toList();
+  }
+
+  private static IdGeneratorProperties properties(long blockSize) {
+    return new IdGeneratorProperties(blockSize, "url-id");
   }
 
   private static int expectedBlocks(int totalIds, long blockSize) {

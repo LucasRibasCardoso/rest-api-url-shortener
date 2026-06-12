@@ -9,6 +9,7 @@ import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntr
 import com.app.url_shortener.security.principal.UserPrincipal;
 import com.app.url_shortener.shared.idempotency.config.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
+import com.app.url_shortener.shared.config.ApplicationProperties;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.idempotency.port.IdempotencyPort;
@@ -49,6 +50,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpHeaders;
@@ -95,7 +98,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     GlobalExceptionHandler.class,
     JacksonConfig.class,
     ProblemDetailFactory.class,
-    ProblemDetailResponseWriter.class
+    ProblemDetailResponseWriter.class,
+    UrlControllerPropertiesTestConfig.class
 })
 @DisplayName("Slice Web MVC - UrlController")
 class UrlControllerTest extends BaseWebSliceTest {
@@ -909,3 +913,7 @@ class UrlControllerTest extends BaseWebSliceTest {
         .toList();
   }
 }
+
+@TestConfiguration
+@EnableConfigurationProperties(ApplicationProperties.class)
+class UrlControllerPropertiesTestConfig {}
