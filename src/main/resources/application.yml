@@ -8,6 +8,10 @@ spring:
       enabled: true
 
 app:
+  iam:
+    email-verification:
+      code-ttl: 10m
+      idempotency-ttl: 4d
   idempotency:
     protected-uris:
       - /api/v1/auth/register

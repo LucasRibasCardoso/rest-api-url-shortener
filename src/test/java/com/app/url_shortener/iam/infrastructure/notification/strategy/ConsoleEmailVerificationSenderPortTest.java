@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Estratégia de email em console")
-class ConsoleEmailSenderStrategyPortTest {
+class ConsoleEmailVerificationSenderPortTest {
 
   @Nested
   @DisplayName("Profiles permitidos")
@@ -20,7 +20,7 @@ class ConsoleEmailSenderStrategyPortTest {
     @DisplayName("Deve estar habilitada somente para dev, local e test")
     void shouldBeEnabledOnlyForDevLocalAndTestProfiles() {
       // 1. Arrange
-      var profile = ConsoleEmailSenderStrategy.class.getAnnotation(Profile.class);
+      var profile = ConsoleEmailVerificationSenderStrategy.class.getAnnotation(Profile.class);
 
       // 2. Act
       var profiles = profile.value();

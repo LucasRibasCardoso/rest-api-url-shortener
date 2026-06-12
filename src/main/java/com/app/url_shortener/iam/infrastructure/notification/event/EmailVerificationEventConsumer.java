@@ -3,17 +3,11 @@ package com.app.url_shortener.iam.infrastructure.notification.event;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
+import com.app.url_shortener.iam.application.policy.EmailVerificationPolicy;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationIdempotencyPort;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
-import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
-import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
-import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
-import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategyPort;
+import com.app.url_shortener.iam.application.service.EmailVerificationEventProcessorService;
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import io.awspring.cloud.sqs.annotation.SqsListener;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,27 +20,27 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class EmailVerificationEventConsumer {
 
-  private static final Duration IDEMPOTENCY_TTL = Duration.ofDays(4);
-  private static final Duration VERIFICATION_CODE_TTL = Duration.ofMinutes(10);
   private static final int SUPPORTED_SCHEMA_VERSION = 1;
 
-  private final EmailVerificationIdempotencyPort idempotencyPort;
-  private final UserAccountRepositoryPort userAccountRepositoryPort;
-  private final EmailVerificationTokenStorePort emailVerificationTokenStorePort;
-  private final EmailSenderStrategyPort emailSenderStrategy;
   private final ObjectMapper objectMapper;
+  private final EmailVerificationPolicy emailVerificationPolicy;
+  private final EmailVerificationIdempotencyPort idempotencyPort;
+  private final EmailVerificationEventProcessorService processorService;
 
   @SqsListener("${app.aws.sqs.email-verification-events-queue}")
   public void consume(OutboxMessageEnvelope envelope) {
     var event = toEvent(envelope);
 
-    if (!idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)) {
-      log.debug("Evento de verificação de email duplicado ignorado. eventId={}", event.eventId());
+    boolean idempotencyMarkedAsProcessed = idempotencyPort.tryMarkAsProcessed(
+            event.eventId(),
+            emailVerificationPolicy.idempotencyTtl());
+    if (!idempotencyMarkedAsProcessed) {
+      log.debug("Evento de verificação de e-mail duplicado ignorado. eventId={}", event.eventId());
       return;
     }
 
     try {
-      process(event);
+      processorService.process(event);
     } catch (RuntimeException exception) {
       removeProcessedMark(event, exception);
       throw exception;
@@ -67,52 +61,14 @@ public class EmailVerificationEventConsumer {
     try {
       var payload = objectMapper.treeToValue(envelope.payload(), EmailVerificationRequestedPayload.class);
       return new EmailVerificationRequestedEvent(
-          envelope.eventId(),
-          payload.userId(),
-          payload.email(),
-          payload.reason(),
-          envelope.occurredAt());
+              envelope.eventId(),
+              payload.userId(),
+              payload.email(),
+              payload.reason(),
+              envelope.occurredAt());
     } catch (JacksonException exception) {
       throw new IllegalArgumentException("Invalid email verification outbox payload", exception);
     }
-  }
-
-  private void process(EmailVerificationRequestedEvent event) {
-    var userAccountOptional = userAccountRepositoryPort.findById(event.userId());
-
-    if (userAccountOptional.isEmpty()) {
-      log.debug("Evento de verificação ignorado para usuário inexistente. eventId={}", event.eventId());
-      return;
-    }
-
-    var userAccount = userAccountOptional.get();
-    if (!userAccount.getEmail().equals(event.email())) {
-      log.warn(
-          "Evento de verificação ignorado por divergência de email. eventId={}, userId={}",
-          event.eventId(),
-          event.userId());
-      return;
-    }
-
-    if (userAccount.getStatus() != UserStatus.PENDING_EMAIL_VERIFICATION) {
-      log.debug(
-          "Evento de verificação ignorado para usuário não pendente. eventId={}, userId={}, status={}",
-          event.eventId(),
-          event.userId(),
-          userAccount.getStatus());
-      return;
-    }
-
-    VerificationCode verificationCode = VerificationCode.generate();
-    EmailVerificationToken token =
-        EmailVerificationToken.create(
-            userAccount.getId(),
-            userAccount.getEmail(),
-            verificationCode,
-            Instant.now().plus(VERIFICATION_CODE_TTL));
-
-    emailVerificationTokenStorePort.store(token, VERIFICATION_CODE_TTL);
-    emailSenderStrategy.sendEmailVerificationCode(userAccount.getEmail(), verificationCode.value());
   }
 
   private void removeProcessedMark(EmailVerificationRequestedEvent event, RuntimeException processingException) {
