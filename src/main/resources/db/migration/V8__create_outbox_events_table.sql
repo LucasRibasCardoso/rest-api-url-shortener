@@ -14,6 +14,7 @@ CREATE TABLE outbox_events
     next_attempt_at TIMESTAMPTZ,
     CONSTRAINT chk_outbox_events_schema_version CHECK (schema_version > 0),
     CONSTRAINT chk_outbox_events_attempts CHECK (attempts >= 0),
+    CONSTRAINT chk_outbox_events_payload_object CHECK (jsonb_typeof(payload) = 'object'),
     CONSTRAINT chk_outbox_events_last_error_length CHECK (
         last_error IS NULL OR char_length(last_error) <= 2000
         ),

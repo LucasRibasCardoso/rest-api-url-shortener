@@ -11,9 +11,10 @@ import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEventType;
 import com.app.url_shortener.shared.outbox.infrastructure.mapper.OutboxEventPersistenceMapper;
-import com.app.url_shortener.shared.outbox.infrastructure.model.OutboxEventEntity;
+import com.app.url_shortener.shared.outbox.infrastructure.entity.OutboxEventEntity;
 import com.app.url_shortener.shared.outbox.infrastructure.repository.OutboxEventJpaRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -86,6 +87,59 @@ class OutboxEventRepositoryAdapterUnitTest {
 
       verify(outboxEventPersistenceMapper).toEntity(event);
       verify(outboxEventJpaRepository).save(entity);
+      verifyNoMoreInteractions(outboxEventPersistenceMapper, outboxEventJpaRepository);
+    }
+
+    @Test
+    @DisplayName("Deve mapear e persistir todos os eventos do lote")
+    void shouldMapAndPersistAllBatchEvents() {
+      // 1. Arrange
+      var firstEvent = pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0005"));
+      var secondEvent = pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0006"));
+      var firstEntity = entity(firstEvent.getId());
+      var secondEntity = entity(secondEvent.getId());
+      var events = List.of(firstEvent, secondEvent);
+      given(outboxEventPersistenceMapper.toEntity(firstEvent)).willReturn(firstEntity);
+      given(outboxEventPersistenceMapper.toEntity(secondEvent)).willReturn(secondEntity);
+
+      // 2. Act
+      adapter.saveAll(events);
+
+      // 3. Assert
+      verify(outboxEventPersistenceMapper).toEntity(firstEvent);
+      verify(outboxEventPersistenceMapper).toEntity(secondEvent);
+      verify(outboxEventJpaRepository).saveAll(List.of(firstEntity, secondEntity));
+      verifyNoMoreInteractions(outboxEventPersistenceMapper, outboxEventJpaRepository);
+    }
+  }
+
+  @Nested
+  @DisplayName("Busca de eventos pendentes")
+  class FindPendingToPublishTests {
+
+    @Test
+    @DisplayName("Deve buscar eventos pendentes e mapear para domínio")
+    void shouldFindPendingEventsAndMapToDomain() {
+      // 1. Arrange
+      var now = Instant.parse("2026-06-11T20:00:00Z");
+      var firstEntity = entity(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0011"));
+      var secondEntity = entity(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0012"));
+      var firstEvent = pendingEvent(firstEntity.getId());
+      var secondEvent = pendingEvent(secondEntity.getId());
+
+      given(outboxEventJpaRepository.findPendingToPublish(now, 2))
+          .willReturn(List.of(firstEntity, secondEntity));
+      given(outboxEventPersistenceMapper.toDomain(firstEntity)).willReturn(firstEvent);
+      given(outboxEventPersistenceMapper.toDomain(secondEntity)).willReturn(secondEvent);
+
+      // 2. Act
+      var result = adapter.findPendingToPublish(now, 2);
+
+      // 3. Assert
+      assertThat(result).containsExactly(firstEvent, secondEvent);
+      verify(outboxEventJpaRepository).findPendingToPublish(now, 2);
+      verify(outboxEventPersistenceMapper).toDomain(firstEntity);
+      verify(outboxEventPersistenceMapper).toDomain(secondEntity);
       verifyNoMoreInteractions(outboxEventPersistenceMapper, outboxEventJpaRepository);
     }
   }

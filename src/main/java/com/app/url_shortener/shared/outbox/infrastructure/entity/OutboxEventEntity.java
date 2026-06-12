@@ -1,4 +1,4 @@
-package com.app.url_shortener.shared.outbox.infrastructure.model;
+package com.app.url_shortener.shared.outbox.infrastructure.entity;
 
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEventStatus;
 import jakarta.persistence.*;

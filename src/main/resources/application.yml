@@ -17,3 +17,11 @@ app:
       - /api/v1/auth/logout
       - /api/v1/auth/resend-verification
       - /api/v1/urls
+  outbox:
+    publisher:
+      enabled: true
+      batch-size: 20
+      fixed-delay: 5s
+      initial-delay: 5s
+      max-attempts: 5
+      retry-delay: 30s

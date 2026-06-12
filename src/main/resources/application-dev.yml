@@ -70,6 +70,10 @@ app:
         active: 15m
         deleted: 1h
         not-found: 5m
+  outbox:
+    sqs:
+      queues:
+        EMAIL_VERIFICATION_REQUESTED: email-verification-events-queue
   aws:
     sqs:
       url-redirect-events-queue: url-redirect-events-queue

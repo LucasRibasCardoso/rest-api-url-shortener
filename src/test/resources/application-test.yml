@@ -42,6 +42,12 @@ aws:
 
 app:
   base-url: "http://localhost:8080"
+  outbox:
+    publisher:
+      enabled: false
+    sqs:
+      queues:
+        EMAIL_VERIFICATION_REQUESTED: email-verification-events-queue
   hashids:
     salt: "6tqpVWWvusxiDnK0iHXD5xsNBTSkN/BV7ojsWkjBu10="
     min-length: 7
