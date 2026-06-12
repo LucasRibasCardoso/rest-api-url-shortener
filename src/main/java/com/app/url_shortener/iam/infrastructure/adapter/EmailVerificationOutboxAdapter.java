@@ -23,16 +23,16 @@ public class EmailVerificationOutboxAdapter implements EmailVerificationOutboxPo
 
   @Override
   public void publishEmailVerificationRequestedEvent(UUID userId, String email, EmailVerificationReason reason) {
-    var eventPayload = EmailVerificationRequestedEvent.create(userId, email, reason);
-    String payloadJson = outboxEventSerializerPort.serialize(eventPayload);
+    var event = EmailVerificationRequestedEvent.create(userId, email, reason);
+    String payloadJson = outboxEventSerializerPort.serialize(event.toPayload());
 
     var outboxEvent = OutboxEvent.createPending(
-            eventPayload.eventId(),
+            event.eventId(),
             OutboxAggregateType.of(IamOutboxEventTypes.AGGREGATE_USER),
             OutboxAggregateId.of(userId.toString()),
             OutboxEventType.of(IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED),
             payloadJson,
-            eventPayload.occurredAt());
+            event.occurredAt());
 
     outboxEventRepositoryPort.save(outboxEvent);
   }

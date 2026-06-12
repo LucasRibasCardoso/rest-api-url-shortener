@@ -1,6 +1,8 @@
 package com.app.url_shortener.iam.infrastructure.notification.event;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
+import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationEventIdempotencyPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -8,12 +10,16 @@ import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;
+import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
@@ -22,14 +28,18 @@ public class EmailVerificationEventConsumer {
 
   private static final Duration IDEMPOTENCY_TTL = Duration.ofDays(4);
   private static final Duration VERIFICATION_CODE_TTL = Duration.ofMinutes(10);
+  private static final int SUPPORTED_SCHEMA_VERSION = 1;
 
   private final EmailVerificationEventIdempotencyPort idempotencyPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationTokenStorePort emailVerificationTokenStorePort;
   private final EmailSenderStrategy emailSenderStrategy;
+  private final ObjectMapper objectMapper;
 
   @SqsListener("${app.aws.sqs.email-verification-events-queue}")
-  public void consume(EmailVerificationRequestedEvent event) {
+  public void consume(OutboxMessageEnvelope envelope) {
+    var event = toEvent(envelope);
+
     if (!idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)) {
       log.debug("Evento de verificação de email duplicado ignorado. eventId={}", event.eventId());
       return;
@@ -40,6 +50,30 @@ public class EmailVerificationEventConsumer {
     } catch (RuntimeException exception) {
       removeProcessedMark(event, exception);
       throw exception;
+    }
+  }
+
+  private EmailVerificationRequestedEvent toEvent(OutboxMessageEnvelope envelope) {
+    Objects.requireNonNull(envelope, "envelope must not be null");
+
+    if (!IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED.equals(envelope.eventType())) {
+      throw new IllegalArgumentException("Unsupported outbox event type: " + envelope.eventType());
+    }
+
+    if (envelope.schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
+      throw new IllegalArgumentException("Unsupported outbox schema version: " + envelope.schemaVersion());
+    }
+
+    try {
+      var payload = objectMapper.treeToValue(envelope.payload(), EmailVerificationRequestedPayload.class);
+      return new EmailVerificationRequestedEvent(
+          envelope.eventId(),
+          payload.userId(),
+          payload.email(),
+          payload.reason(),
+          envelope.occurredAt());
+    } catch (JacksonException exception) {
+      throw new IllegalArgumentException("Invalid email verification outbox payload", exception);
     }
   }
 

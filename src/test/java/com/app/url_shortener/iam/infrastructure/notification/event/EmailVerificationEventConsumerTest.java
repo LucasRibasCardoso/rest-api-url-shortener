@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
+import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationEventIdempotencyPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -20,20 +22,22 @@ import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;
+import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.ObjectMapper;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -55,8 +59,18 @@ class EmailVerificationEventConsumerTest {
   @Mock
   private EmailSenderStrategy emailSenderStrategy;
 
-  @InjectMocks
   private EmailVerificationEventConsumer consumer;
+
+  @BeforeEach
+  void setUp() {
+    consumer =
+        new EmailVerificationEventConsumer(
+            idempotencyPort,
+            userAccountRepositoryPort,
+            emailVerificationTokenStorePort,
+            emailSenderStrategy,
+            new ObjectMapper());
+  }
 
   @Nested
   @DisplayName("Consumo")
@@ -72,7 +86,7 @@ class EmailVerificationEventConsumerTest {
       given(userAccountRepositoryPort.findById(event.userId())).willReturn(Optional.of(user));
 
       // 2. Act
-      consumer.consume(event);
+      consumer.consume(envelope(event));
 
       // 3. Assert
       var tokenCaptor = ArgumentCaptor.forClass(EmailVerificationToken.class);
@@ -94,7 +108,7 @@ class EmailVerificationEventConsumerTest {
       given(idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)).willReturn(false);
 
       // 2. Act
-      consumer.consume(event);
+      consumer.consume(envelope(event));
 
       // 3. Assert
       verifyNoInteractions(userAccountRepositoryPort, emailVerificationTokenStorePort, emailSenderStrategy);
@@ -110,7 +124,7 @@ class EmailVerificationEventConsumerTest {
       given(userAccountRepositoryPort.findById(event.userId())).willReturn(Optional.empty());
 
       // 2. Act
-      consumer.consume(event);
+      consumer.consume(envelope(event));
 
       // 3. Assert
       verifyNoInteractions(emailVerificationTokenStorePort, emailSenderStrategy);
@@ -127,7 +141,7 @@ class EmailVerificationEventConsumerTest {
           .willReturn(Optional.of(user(UserStatus.PENDING_EMAIL_VERIFICATION, "other@email.com")));
 
       // 2. Act
-      consumer.consume(event);
+      consumer.consume(envelope(event));
 
       // 3. Assert
       verifyNoInteractions(emailVerificationTokenStorePort, emailSenderStrategy);
@@ -144,7 +158,7 @@ class EmailVerificationEventConsumerTest {
           .willReturn(Optional.of(user(UserStatus.ACTIVE, event.email())));
 
       // 2. Act
-      consumer.consume(event);
+      consumer.consume(envelope(event));
 
       // 3. Assert
       verifyNoInteractions(emailVerificationTokenStorePort, emailSenderStrategy);
@@ -163,13 +177,55 @@ class EmailVerificationEventConsumerTest {
       doThrow(failure).when(emailSenderStrategy).sendEmailVerificationCode(eq(event.email()), any());
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> consumer.consume(event));
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope(event)));
 
       // 3. Assert
       throwableAssert.isSameAs(failure);
       verify(emailVerificationTokenStorePort)
           .store(any(EmailVerificationToken.class), eq(VERIFICATION_CODE_TTL));
       verify(idempotencyPort).removeProcessedMark(event.eventId());
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar tipo de evento incompatível antes do processamento")
+    void shouldRejectUnsupportedEventTypeBeforeProcessing() {
+      // 1. Arrange
+      var event = event();
+      var envelope = envelope(event, "UNSUPPORTED_EVENT", 1);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Unsupported outbox event type: UNSUPPORTED_EVENT");
+      verifyNoInteractions(
+          idempotencyPort,
+          userAccountRepositoryPort,
+          emailVerificationTokenStorePort,
+          emailSenderStrategy);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar versão de schema incompatível antes do processamento")
+    void shouldRejectUnsupportedSchemaVersionBeforeProcessing() {
+      // 1. Arrange
+      var event = event();
+      var envelope = envelope(event, IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED, 2);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Unsupported outbox schema version: 2");
+      verifyNoInteractions(
+          idempotencyPort,
+          userAccountRepositoryPort,
+          emailVerificationTokenStorePort,
+          emailSenderStrategy);
     }
   }
 
@@ -180,6 +236,26 @@ class EmailVerificationEventConsumerTest {
         "user@email.com",
         EmailVerificationReason.REGISTER,
         Instant.parse("2026-06-09T12:00:00Z"));
+  }
+
+  private OutboxMessageEnvelope envelope(EmailVerificationRequestedEvent event) {
+    return envelope(event, IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED, 1);
+  }
+
+  private OutboxMessageEnvelope envelope(
+      EmailVerificationRequestedEvent event, String eventType, int schemaVersion) {
+    var payload =
+        new ObjectMapper()
+            .valueToTree(new EmailVerificationRequestedPayload(event.userId(), event.email(), event.reason()));
+
+    return new OutboxMessageEnvelope(
+        event.eventId(),
+        eventType,
+        schemaVersion,
+        IamOutboxEventTypes.AGGREGATE_USER,
+        event.userId().toString(),
+        event.occurredAt(),
+        payload);
   }
 
   private UserAccount user(UserStatus status, String email) {

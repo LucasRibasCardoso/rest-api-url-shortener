@@ -11,7 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.iam.application.event.EmailVerificationReason;
-import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventSerializerPort;
@@ -41,7 +41,7 @@ class EmailVerificationOutboxAdapterTest {
   private static final String EMAIL = "user@email.com";
   private static final String PAYLOAD_JSON =
       """
-      {"eventId":"019a1a4f-d0db-7f94-bd8d-63d831f40002","userId":"019a1a4f-d0db-7f94-bd8d-63d831f40001","email":"user@email.com","reason":"REGISTER","occurredAt":"2026-06-10T20:00:00Z"}
+      {"userId":"019a1a4f-d0db-7f94-bd8d-63d831f40001","email":"user@email.com","reason":"REGISTER"}
       """;
 
   @Mock
@@ -68,7 +68,7 @@ class EmailVerificationOutboxAdapterTest {
     void shouldSerializePayloadAndSaveExactlyOnePendingOutboxEvent() {
       // 1. Arrange
       var beforeExecution = Instant.now();
-      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedEvent.class)))
+      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedPayload.class)))
           .willReturn(PAYLOAD_JSON);
 
       // 2. Act
@@ -79,21 +79,18 @@ class EmailVerificationOutboxAdapterTest {
       verify(outboxEventSerializerPort).serialize(payloadCaptor.capture());
       verify(outboxEventRepositoryPort, times(1)).save(outboxEventCaptor.capture());
 
-      var payload = (EmailVerificationRequestedEvent) payloadCaptor.getValue();
+      var payload = (EmailVerificationRequestedPayload) payloadCaptor.getValue();
       var outboxEvent = outboxEventCaptor.getValue();
 
       assertAll(
-          () -> assertThat(payload.eventId()).isNotNull(),
           () -> assertThat(payload.userId()).isEqualTo(USER_ID),
           () -> assertThat(payload.email()).isEqualTo(EMAIL),
           () -> assertThat(payload.reason()).isEqualTo(EmailVerificationReason.REGISTER),
-          () -> assertThat(payload.occurredAt()).isAfterOrEqualTo(beforeExecution),
           () ->
               assertThat(payload.getClass().getRecordComponents())
                   .extracting(component -> component.getName())
-                  .containsExactly("eventId", "userId", "email", "reason", "occurredAt")
-                  .doesNotContain("otp"),
-          () -> assertThat(outboxEvent.getId()).isEqualTo(payload.eventId()),
+                  .containsExactly("userId", "email", "reason"),
+          () -> assertThat(outboxEvent.getId()).isNotNull(),
           () -> assertThat(outboxEvent.getAggregateType().value())
               .isEqualTo(IamOutboxEventTypes.AGGREGATE_USER),
           () -> assertThat(outboxEvent.getAggregateId().value()).isEqualTo(payload.userId().toString()),
@@ -104,7 +101,7 @@ class EmailVerificationOutboxAdapterTest {
           () -> assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING),
           () -> assertThat(outboxEvent.getAttempts()).isZero(),
           () -> assertThat(outboxEvent.getLastError()).isNull(),
-          () -> assertThat(outboxEvent.getCreatedAt()).isEqualTo(payload.occurredAt()),
+          () -> assertThat(outboxEvent.getCreatedAt()).isAfterOrEqualTo(beforeExecution),
           () -> assertThat(outboxEvent.getPublishedAt()).isNull(),
           () -> assertThat(outboxEvent.getNextAttemptAt()).isNull());
 
@@ -116,7 +113,7 @@ class EmailVerificationOutboxAdapterTest {
     void shouldNotSaveOutboxEventWhenPayloadSerializationFails() {
       // 1. Arrange
       var exception = new OutboxEventSerializationException();
-      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedEvent.class)))
+      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedPayload.class)))
           .willThrow(exception);
 
       // 2. Act
@@ -129,7 +126,7 @@ class EmailVerificationOutboxAdapterTest {
       // 3. Assert
       throwableAssert.isSameAs(exception);
 
-      verify(outboxEventSerializerPort).serialize(any(EmailVerificationRequestedEvent.class));
+      verify(outboxEventSerializerPort).serialize(any(EmailVerificationRequestedPayload.class));
       verifyNoInteractions(outboxEventRepositoryPort);
       verifyNoMoreInteractions(outboxEventSerializerPort);
     }
@@ -139,7 +136,7 @@ class EmailVerificationOutboxAdapterTest {
     void shouldPropagateExceptionWhenSavingOutboxEventFails() {
       // 1. Arrange
       var exception = new IllegalStateException("Falha ao salvar evento no Outbox.");
-      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedEvent.class)))
+      given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedPayload.class)))
           .willReturn(PAYLOAD_JSON);
       given(outboxEventRepositoryPort.save(any(OutboxEvent.class))).willThrow(exception);
 
@@ -153,7 +150,7 @@ class EmailVerificationOutboxAdapterTest {
       // 3. Assert
       throwableAssert.isSameAs(exception);
 
-      verify(outboxEventSerializerPort).serialize(any(EmailVerificationRequestedEvent.class));
+      verify(outboxEventSerializerPort).serialize(any(EmailVerificationRequestedPayload.class));
       verify(outboxEventRepositoryPort).save(any(OutboxEvent.class));
       verifyNoMoreInteractions(outboxEventSerializerPort, outboxEventRepositoryPort);
     }
