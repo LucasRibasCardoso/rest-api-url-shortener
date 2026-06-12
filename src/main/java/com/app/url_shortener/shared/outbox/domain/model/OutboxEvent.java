@@ -121,14 +121,15 @@ public class OutboxEvent {
     return status == OutboxEventStatus.FAILED;
   }
 
-  public boolean canBePublishedAt() {
-    Instant now = Instant.now();
+  public boolean canBePublishedAt(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
     return status == OutboxEventStatus.PENDING
         && (nextAttemptAt == null || !nextAttemptAt.isAfter(now));
   }
 
-  public void markAsPublished() {
-    Instant now = Instant.now();
+  public void markAsPublished(Instant now) {
+    Objects.requireNonNull(now, "now must not be null");
+
     if (status == OutboxEventStatus.PUBLISHED) {
       return;
     }
@@ -137,13 +138,18 @@ public class OutboxEvent {
       throw new IllegalStateException("FAILED outbox event cannot be marked as published");
     }
 
+    if (now.isBefore(createdAt)) {
+      throw new IllegalArgumentException("publishedAt must not be before createdAt");
+    }
+
     this.status = OutboxEventStatus.PUBLISHED;
     this.publishedAt = now;
     this.nextAttemptAt = null;
     this.lastError = null;
   }
 
-  public void registerFailure(String errorMessage, int maxAttempts, Duration nextAttemptDelay) {
+  public void registerFailure(String errorMessage, Instant now, int maxAttempts, Duration nextAttemptDelay) {
+    Objects.requireNonNull(now, "now must not be null");
     Objects.requireNonNull(nextAttemptDelay, "nextAttemptDelay must not be null");
 
     if (status != OutboxEventStatus.PENDING) {
@@ -174,7 +180,7 @@ public class OutboxEvent {
       return;
     }
 
-    Instant scheduledAt = Instant.now().plus(nextAttemptDelay);
+    Instant scheduledAt = now.plus(nextAttemptDelay);
 
     this.attempts = updatedAttempts;
     this.lastError = normalizedError;
