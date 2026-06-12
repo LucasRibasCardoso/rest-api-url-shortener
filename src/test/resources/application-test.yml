@@ -17,8 +17,8 @@ spring:
   cloud:
     aws:
       credentials:
-        access-key: test
-        secret-key: test
+        access-key: test-access-key
+        secret-key: test-secret-key
       region:
         static: us-east-1
       sqs:
@@ -31,17 +31,14 @@ aws:
   dynamodb:
     endpoint: http://localhost:4566
     region: us-east-1
-    access-key: test
-    secret-key: test
+    access-key: test-access-key
+    secret-key: test-secret-key
     tables:
       url: url
       url-counter: url_counter
-  cloud:
-    credentials:
-      use-default-aws-credentials-chain: false
 
 app:
-  base-url: "http://localhost:8080"
+  base-url: http://localhost:8080
   outbox:
     publisher:
       enabled: false
@@ -49,22 +46,10 @@ app:
       queues:
         EMAIL_VERIFICATION_REQUESTED: email-verification-events-queue
   hashids:
-    salt: "6tqpVWWvusxiDnK0iHXD5xsNBTSkN/BV7ojsWkjBu10="
-    min-length: 7
-  id-generator:
-    block-size: 10_000
-    counter-name: url_short_code
+    salt: test-hashids-salt
   security:
     jwt:
-      secret: "rTtcljj9j9k16M65zQOnxjc1ujxwmyrmAVOJZ1dlEws="
-      issuer: ${spring.application.name}
-      access-token-expiration-seconds: 900
-  url:
-    redirect-cache:
-      ttl:
-        active: 15m
-        deleted: 1h
-        not-found: 5m
+      secret: test-jwt-secret-with-at-least-32-bytes
   aws:
     sqs:
       url-redirect-events-queue: url-redirect-events-queue
@@ -72,42 +57,7 @@ app:
       email-verification-events-queue: email-verification-events-queue
       email-verification-events-dlq: email-verification-events-dlq
   rate-limit:
-    enabled: true
-    key-prefix: "rate-limit"
-    email-hash-secret: "DtyLwE6d9sMslJ4WKXxZmMtYqwXRMJKuR1KlOiWBQVA="
-
+    email-hash-secret: dGVzdC1yYXRlLWxpbWl0LWVtYWlsLWhhc2gtc2VjcmV0
     policies:
       auth-login:
-        enabled: true
-        capacity: 5
-        refill-tokens: 5
         refill-period: 15m
-        fail-open: false
-
-      auth-verify-email:
-        enabled: true
-        capacity: 5
-        refill-tokens: 5
-        refill-period: 15m
-        fail-open: false
-
-      auth-resend-verification:
-        enabled: true
-        capacity: 3
-        refill-tokens: 3
-        refill-period: 15m
-        fail-open: false
-
-      url-shorten-free:
-        enabled: true
-        capacity: 5
-        refill-tokens: 5
-        refill-period: 1h
-        fail-open: false
-
-      url-shorten-premium:
-        enabled: true
-        capacity: 1000
-        refill-tokens: 1000
-        refill-period: 1h
-        fail-open: false

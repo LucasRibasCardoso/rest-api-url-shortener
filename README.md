@@ -111,7 +111,18 @@ Também existem decisões de arquitetura orientadas a eventos internos. O regist
 - Maven Wrapper disponível no repositório (`./mvnw`)
 - Portas locais livres: `5432` para PostgreSQL, `6379` para Redis, `4566` para LocalStack e `8080` para a API
 
-### 1. Subir infraestrutura local
+### 1. Criar configuração local
+
+Crie a configuração local a partir do exemplo versionado:
+
+```bash
+cp .env.example .env
+```
+
+O `.env` é carregado apenas para desenvolvimento local e não deve ser versionado. Ajuste seus
+valores locais antes de iniciar a infraestrutura e a aplicação.
+
+### 2. Subir infraestrutura local
 
 ```bash
 docker compose up -d
@@ -125,19 +136,19 @@ Esse comando sobe:
 
 O script `localstack-init/create-table.sh` cria automaticamente a tabela DynamoDB `url` com chave primária `shortCode` e GSI `user-index`.
 
-### 2. Validar ou compilar o projeto
+### 3. Validar ou compilar o projeto
 
 ```bash
 ./mvnw clean compile
 ```
 
-### 3. Executar a aplicação
+### 4. Executar a aplicação
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-A aplicação usa o profile `dev` por padrão e ficará disponível em:
+Com `SPRING_PROFILES_ACTIVE=dev` no `.env`, a aplicação ficará disponível em:
 
 ```text
 http://localhost:8080
@@ -145,30 +156,9 @@ http://localhost:8080
 
 ### Variáveis de ambiente
 
-Para desenvolvimento local, `src/main/resources/application-dev.yml` já aponta para os serviços do `docker-compose.yml`. Em ambientes fora do desenvolvimento, configure valores equivalentes via variáveis de ambiente ou configuração externa do Spring Boot, sem versionar segredos reais:
-
-```bash
-export SPRING_PROFILES_ACTIVE=dev
-export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/url_shortener
-export SPRING_DATASOURCE_USERNAME=app_user
-export SPRING_DATASOURCE_PASSWORD=change-me
-export SPRING_DATA_REDIS_HOST=localhost
-export SPRING_DATA_REDIS_PORT=6379
-export AWS_DYNAMODB_ENDPOINT=http://localhost:4566
-export AWS_DYNAMODB_REGION=us-east-1
-export AWS_DYNAMODB_ACCESS_KEY=change-me
-export AWS_DYNAMODB_SECRET_KEY=change-me
-export AWS_DYNAMODB_TABLE_NAME=url
-export APP_BASE_URL=http://localhost:8080
-export APP_HASHIDS_SALT=change-me
-export APP_SECURITY_JWT_SECRET=change-me
-```
-
-O Docker Compose também aceita `POSTGRES_PORT` via `.env` para alterar a porta exposta do PostgreSQL:
-
-```bash
-POSTGRES_PORT=5432
-```
+O arquivo `.env.example` documenta todas as variáveis usadas pela aplicação, pelo Docker Compose e
+pelos scripts de inicialização do LocalStack. Em produção, forneça essas variáveis externamente e
+não use o `.env` local.
 
 ## Como Executar Testes
 
