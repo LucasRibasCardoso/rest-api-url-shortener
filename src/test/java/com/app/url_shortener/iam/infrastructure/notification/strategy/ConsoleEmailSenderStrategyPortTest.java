@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Estratégia de email em console")
-class ConsoleEmailSenderStrategyTest {
+class ConsoleEmailSenderStrategyPortTest {
 
   @Nested
   @DisplayName("Profiles permitidos")

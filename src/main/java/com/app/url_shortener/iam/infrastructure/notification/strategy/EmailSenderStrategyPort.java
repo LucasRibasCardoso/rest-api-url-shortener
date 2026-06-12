@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.notification.strategy;
 
-public interface EmailSenderStrategy {
+public interface EmailSenderStrategyPort {
 
   void sendEmailVerificationCode(String email, String code);
 }

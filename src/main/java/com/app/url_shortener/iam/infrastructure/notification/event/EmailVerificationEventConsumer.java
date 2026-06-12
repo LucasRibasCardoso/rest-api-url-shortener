@@ -9,7 +9,7 @@ import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPo
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
-import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;
+import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategyPort;
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import java.time.Duration;
@@ -33,7 +33,7 @@ public class EmailVerificationEventConsumer {
   private final EmailVerificationIdempotencyPort idempotencyPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationTokenStorePort emailVerificationTokenStorePort;
-  private final EmailSenderStrategy emailSenderStrategy;
+  private final EmailSenderStrategyPort emailSenderStrategy;
   private final ObjectMapper objectMapper;
 
   @SqsListener("${app.aws.sqs.email-verification-events-queue}")

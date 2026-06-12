@@ -21,7 +21,7 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
-import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategy;
+import com.app.url_shortener.iam.infrastructure.notification.strategy.EmailSenderStrategyPort;
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import java.time.Duration;
 import java.time.Instant;
@@ -57,7 +57,7 @@ class EmailVerificationEventConsumerTest {
   private EmailVerificationTokenStorePort emailVerificationTokenStorePort;
 
   @Mock
-  private EmailSenderStrategy emailSenderStrategy;
+  private EmailSenderStrategyPort emailSenderStrategy;
 
   private EmailVerificationEventConsumer consumer;
 

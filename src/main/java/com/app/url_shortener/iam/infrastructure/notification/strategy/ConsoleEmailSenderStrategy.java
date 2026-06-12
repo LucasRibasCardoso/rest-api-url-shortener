@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @Profile({"dev", "local", "test"})
-public class ConsoleEmailSenderStrategy implements EmailSenderStrategy {
+public class ConsoleEmailSenderStrategy implements EmailSenderStrategyPort {
 
   @Override
   public void sendEmailVerificationCode(String email, String code) {
