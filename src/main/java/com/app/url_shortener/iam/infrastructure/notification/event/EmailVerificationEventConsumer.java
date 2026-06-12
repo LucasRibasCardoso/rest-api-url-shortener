@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.infrastructure.notification.event;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventIdempotencyPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationIdempotencyPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
@@ -30,7 +30,7 @@ public class EmailVerificationEventConsumer {
   private static final Duration VERIFICATION_CODE_TTL = Duration.ofMinutes(10);
   private static final int SUPPORTED_SCHEMA_VERSION = 1;
 
-  private final EmailVerificationEventIdempotencyPort idempotencyPort;
+  private final EmailVerificationIdempotencyPort idempotencyPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationTokenStorePort emailVerificationTokenStorePort;
   private final EmailSenderStrategy emailSenderStrategy;

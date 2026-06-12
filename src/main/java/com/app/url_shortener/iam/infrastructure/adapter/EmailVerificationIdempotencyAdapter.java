@@ -1,6 +1,6 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventIdempotencyPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationIdempotencyPort;
 import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EmailVerificationEventIdempotencyAdapter implements EmailVerificationEventIdempotencyPort {
+public class EmailVerificationIdempotencyAdapter implements EmailVerificationIdempotencyPort {
 
   private static final String KEY_PREFIX = "iam:email-verification:event-idempotency:";
 

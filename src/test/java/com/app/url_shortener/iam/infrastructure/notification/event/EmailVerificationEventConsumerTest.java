@@ -14,7 +14,7 @@ import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationEventIdempotencyPort;
+import com.app.url_shortener.iam.application.port.output.EmailVerificationIdempotencyPort;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenStorePort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.domain.enums.PlanType;
@@ -48,7 +48,7 @@ class EmailVerificationEventConsumerTest {
   private static final Duration VERIFICATION_CODE_TTL = Duration.ofMinutes(10);
 
   @Mock
-  private EmailVerificationEventIdempotencyPort idempotencyPort;
+  private EmailVerificationIdempotencyPort idempotencyPort;
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;

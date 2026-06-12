@@ -3,7 +3,7 @@ package com.app.url_shortener.iam.application.port.output;
 import java.time.Duration;
 import java.util.UUID;
 
-public interface EmailVerificationEventIdempotencyPort {
+public interface EmailVerificationIdempotencyPort {
 
   boolean tryMarkAsProcessed(UUID eventId, Duration ttl);
 

@@ -33,7 +33,7 @@ class EmailVerificationEventIdempotencyAdapterTest {
   private ValueOperations<String, String> valueOperations;
 
   @InjectMocks
-  private EmailVerificationEventIdempotencyAdapter adapter;
+  private EmailVerificationIdempotencyAdapter adapter;
 
   @Nested
   @DisplayName("Marcação atômica")
