@@ -13,7 +13,10 @@ import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPay
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.iam.application.policy.EmailVerificationPolicy;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationIdempotencyPort;
+import com.app.url_shortener.iam.application.port.output.model.EmailVerificationProcessingLease;
 import com.app.url_shortener.iam.application.service.EmailVerificationEventProcessorService;
+import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationEventAlreadyProcessingException;
+import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationProcessingLeaseLostException;
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,6 +38,9 @@ class EmailVerificationEventConsumerTest {
 
   private static final Duration CODE_TTL = Duration.ofMinutes(10);
   private static final Duration IDEMPOTENCY_TTL = Duration.ofDays(4);
+  private static final Duration PROCESSING_LEASE_TTL = Duration.ofMinutes(2);
+  private static final UUID LEASE_ID =
+      UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac200");
 
   @Mock
   private EmailVerificationIdempotencyPort idempotencyPort;
@@ -48,8 +54,9 @@ class EmailVerificationEventConsumerTest {
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
-    var policy = new EmailVerificationPolicy(CODE_TTL, IDEMPOTENCY_TTL);
-    consumer = new EmailVerificationEventConsumer(objectMapper, policy, idempotencyPort, processorService);
+    var policy = new EmailVerificationPolicy(CODE_TTL, IDEMPOTENCY_TTL, PROCESSING_LEASE_TTL);
+    consumer =
+        new EmailVerificationEventConsumer(objectMapper, policy, idempotencyPort, processorService);
   }
 
   @Nested
@@ -57,44 +64,71 @@ class EmailVerificationEventConsumerTest {
   class ConsumeTests {
 
     @Test
-    @DisplayName("Deve marcar idempotência com TTL configurado e delegar evento válido")
-    void shouldMarkIdempotencyWithConfiguredTtlAndDelegateValidEvent() {
+    @DisplayName("Deve processar lease adquirido e marcar evento como concluído")
+    void shouldProcessAcquiredLeaseAndMarkEventAsCompleted() {
       // 1. Arrange
       var event = event();
-      given(idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)).willReturn(true);
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.acquired(LEASE_ID));
+      given(idempotencyPort.markAsCompleted(event.eventId(), LEASE_ID, IDEMPOTENCY_TTL))
+          .willReturn(true);
 
       // 2. Act
       consumer.consume(envelope(event));
 
       // 3. Assert
-      verify(idempotencyPort).tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL);
+      verify(idempotencyPort).acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL);
       verify(processorService).process(event);
+      verify(idempotencyPort).markAsCompleted(event.eventId(), LEASE_ID, IDEMPOTENCY_TTL);
       verifyNoMoreInteractions(idempotencyPort, processorService);
     }
 
     @Test
-    @DisplayName("Deve ignorar evento duplicado")
-    void shouldIgnoreDuplicateEvent() {
+    @DisplayName("Deve gerar retry quando outro consumer estiver processando")
+    void shouldThrowRetriableExceptionWhenEventIsProcessing() {
       // 1. Arrange
       var event = event();
-      given(idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)).willReturn(false);
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.processing());
 
       // 2. Act
-      consumer.consume(envelope(event));
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope(event)));
 
       // 3. Assert
-      verify(idempotencyPort).tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL);
+      throwableAssert
+          .isInstanceOf(EmailVerificationEventAlreadyProcessingException.class)
+          .hasMessage(
+              "Evento de verificação de e-mail já em processamento. eventId=" + event.eventId());
+      verify(idempotencyPort).acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL);
       verifyNoInteractions(processorService);
       verifyNoMoreInteractions(idempotencyPort);
     }
 
     @Test
-    @DisplayName("Deve remover marca e propagar falha técnica para permitir retry")
-    void shouldRemoveMarkAndPropagateTechnicalFailureToAllowRetry() {
+    @DisplayName("Deve ignorar evento já concluído")
+    void shouldIgnoreCompletedEvent() {
+      // 1. Arrange
+      var event = event();
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.completed());
+
+      // 2. Act
+      consumer.consume(envelope(event));
+
+      // 3. Assert
+      verify(idempotencyPort).acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL);
+      verifyNoInteractions(processorService);
+      verifyNoMoreInteractions(idempotencyPort);
+    }
+
+    @Test
+    @DisplayName("Deve liberar lease e propagar falha do processador")
+    void shouldReleaseLeaseAndPropagateProcessorFailure() {
       // 1. Arrange
       var event = event();
       var failure = new IllegalStateException("Email unavailable");
-      given(idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)).willReturn(true);
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.acquired(LEASE_ID));
       doThrow(failure).when(processorService).process(event);
 
       // 2. Act
@@ -102,26 +136,74 @@ class EmailVerificationEventConsumerTest {
 
       // 3. Assert
       throwableAssert.isSameAs(failure);
-      verify(idempotencyPort).removeProcessedMark(event.eventId());
+      verify(idempotencyPort).releaseProcessingLease(event.eventId(), LEASE_ID);
       verifyNoMoreInteractions(idempotencyPort, processorService);
     }
 
     @Test
-    @DisplayName("Deve preservar falha de limpeza como exceção suprimida")
-    void shouldPreserveCleanupFailureAsSuppressedException() {
+    @DisplayName("Deve preservar falha de liberação como exceção suprimida")
+    void shouldPreserveReleaseFailureAsSuppressedException() {
       // 1. Arrange
       var event = event();
       var processingFailure = new IllegalStateException("Email unavailable");
-      var cleanupFailure = new IllegalStateException("Redis unavailable");
-      given(idempotencyPort.tryMarkAsProcessed(event.eventId(), IDEMPOTENCY_TTL)).willReturn(true);
+      var releaseFailure = new IllegalStateException("Redis unavailable");
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.acquired(LEASE_ID));
       doThrow(processingFailure).when(processorService).process(event);
-      doThrow(cleanupFailure).when(idempotencyPort).removeProcessedMark(event.eventId());
+      doThrow(releaseFailure)
+          .when(idempotencyPort)
+          .releaseProcessingLease(event.eventId(), LEASE_ID);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope(event)));
 
       // 3. Assert
-      throwableAssert.isSameAs(processingFailure).hasSuppressedException(cleanupFailure);
+      throwableAssert.isSameAs(processingFailure).hasSuppressedException(releaseFailure);
+      verifyNoMoreInteractions(idempotencyPort, processorService);
+    }
+
+    @Test
+    @DisplayName("Deve liberar lease quando marcação de conclusão falhar")
+    void shouldReleaseLeaseWhenMarkAsCompletedFails() {
+      // 1. Arrange
+      var event = event();
+      var failure = new IllegalStateException("Redis unavailable");
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.acquired(LEASE_ID));
+      doThrow(failure)
+          .when(idempotencyPort)
+          .markAsCompleted(event.eventId(), LEASE_ID, IDEMPOTENCY_TTL);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope(event)));
+
+      // 3. Assert
+      throwableAssert.isSameAs(failure);
+      verify(processorService).process(event);
+      verify(idempotencyPort).releaseProcessingLease(event.eventId(), LEASE_ID);
+      verifyNoMoreInteractions(idempotencyPort, processorService);
+    }
+
+    @Test
+    @DisplayName("Deve gerar retry quando perder o lease antes da conclusão")
+    void shouldThrowRetriableExceptionWhenLeaseIsLostBeforeCompletion() {
+      // 1. Arrange
+      var event = event();
+      given(idempotencyPort.acquireProcessingLease(event.eventId(), PROCESSING_LEASE_TTL))
+          .willReturn(EmailVerificationProcessingLease.acquired(LEASE_ID));
+      given(idempotencyPort.markAsCompleted(event.eventId(), LEASE_ID, IDEMPOTENCY_TTL))
+          .willReturn(false);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> consumer.consume(envelope(event)));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(EmailVerificationProcessingLeaseLostException.class)
+          .hasMessage("Lease de processamento de verificação de e-mail perdido. eventId=" + event.eventId());
+      verify(processorService).process(event);
+      verify(idempotencyPort).releaseProcessingLease(event.eventId(), LEASE_ID);
+      verifyNoMoreInteractions(idempotencyPort, processorService);
     }
 
     @Test

@@ -2,12 +2,14 @@ package com.app.url_shortener.shared.outbox.infrastructure.adapter;
 
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventPublisherPort;
+import com.app.url_shortener.shared.outbox.domain.exception.OutboxPublishException;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
 import com.app.url_shortener.shared.outbox.infrastructure.resolver.OutboxEventQueueResolver;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
@@ -20,16 +22,23 @@ public class OutboxEventPublisherAdapter implements OutboxEventPublisherPort {
 
   @Override
   public void publish(OutboxEvent event) {
-    String queueName = queueResolver.resolve(event.getEventType());
-    sqsTemplate.send(queueName, toEnvelope(event));
+    try {
+      String queueName = queueResolver.resolve(event.getEventType());
+      var outboxMessageEnvelope = toMessageEnvelope(event);
+      sqsTemplate.send(queueName, outboxMessageEnvelope);
+    } catch (OutboxPublishException exception) {
+      throw exception;
+    } catch (RuntimeException exception) {
+      throw new OutboxPublishException(exception);
+    }
   }
 
-  private OutboxMessageEnvelope toEnvelope(OutboxEvent event) {
+  private OutboxMessageEnvelope toMessageEnvelope(OutboxEvent event) {
     try {
-      var payload = objectMapper.readTree(event.getPayload());
+      JsonNode payload = objectMapper.readTree(event.getPayload());
 
       if (!payload.isObject()) {
-        throw new IllegalArgumentException("Persisted outbox event payload must be a JSON object");
+        throw new OutboxPublishException(new IllegalArgumentException("Persisted outbox event payload must be a JSON object"));
       }
 
       return new OutboxMessageEnvelope(
@@ -41,7 +50,7 @@ public class OutboxEventPublisherAdapter implements OutboxEventPublisherPort {
           event.getCreatedAt(),
           payload);
     } catch (JacksonException exception) {
-      throw new IllegalArgumentException("Invalid persisted outbox event payload", exception);
+      throw new OutboxPublishException(exception);
     }
   }
 }

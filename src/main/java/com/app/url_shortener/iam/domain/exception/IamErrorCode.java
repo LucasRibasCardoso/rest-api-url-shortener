@@ -14,7 +14,9 @@ public enum IamErrorCode implements ErrorCode {
   AUTH_INVALID_VERIFICATION_CODE("Código de verificação inválido."),
   AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE("Código de verificação inválido ou expirado."),
   AUTH_USER_NOT_FOUND("Usuário não encontrado."),
-  USER_ACCOUNT_DISABLED("Conta desabilitada.");
+  USER_ACCOUNT_DISABLED("Conta desabilitada."),
+  EMAIL_VERIFICATION_EVENT_ALREADY_PROCESSING("Evento de verificação de e-mail já em processamento."),
+  EMAIL_VERIFICATION_PROCESSING_LEASE_LOST("Lease de processamento de verificação de e-mail perdido.");
 
   private final String message;
 

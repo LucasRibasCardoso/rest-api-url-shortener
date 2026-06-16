@@ -1,6 +1,7 @@
 package com.app.url_shortener.shared.outbox.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventPublisherPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
 import com.app.url_shortener.shared.outbox.application.policy.OutboxPublisherPolicy;
+import com.app.url_shortener.shared.outbox.domain.exception.OutboxPublishException;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
@@ -94,7 +96,7 @@ class OutboxPublisherServiceTest {
       var events = List.of(event);
       given(outboxEventRepositoryPort.findPendingToPublish(any(Instant.class), eq(BATCH_SIZE)))
           .willReturn(events);
-      doThrow(new IllegalStateException("SQS unavailable"))
+      doThrow(new OutboxPublishException(new IllegalStateException("SQS unavailable")))
           .when(outboxEventPublisherPort)
           .publish(event);
 
@@ -109,7 +111,7 @@ class OutboxPublisherServiceTest {
 
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
       assertThat(event.getAttempts()).isEqualTo(1);
-      assertThat(event.getLastError()).isEqualTo("SQS unavailable");
+      assertThat(event.getLastError()).isEqualTo("Ocorreu um erro ao publicar o evento de outbox.");
       assertThat(event.getNextAttemptAt()).isEqualTo(nowCaptor.getValue().plus(RETRY_DELAY));
       assertThat(event.getPublishedAt()).isNull();
       verifyNoMoreInteractions(outboxEventRepositoryPort, outboxEventPublisherPort);
@@ -124,7 +126,7 @@ class OutboxPublisherServiceTest {
       var events = List.of(event);
       given(outboxEventRepositoryPort.findPendingToPublish(any(Instant.class), eq(BATCH_SIZE)))
           .willReturn(events);
-      doThrow(new IllegalStateException("Permanent failure"))
+      doThrow(new OutboxPublishException(new IllegalStateException("Permanent failure")))
           .when(outboxEventPublisherPort)
           .publish(event);
 
@@ -136,7 +138,7 @@ class OutboxPublisherServiceTest {
       verify(outboxEventRepositoryPort).saveAll(same(events));
       assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
       assertThat(event.getAttempts()).isEqualTo(1);
-      assertThat(event.getLastError()).isEqualTo("Permanent failure");
+      assertThat(event.getLastError()).isEqualTo("Ocorreu um erro ao publicar o evento de outbox.");
       assertThat(event.getNextAttemptAt()).isNull();
     }
 
@@ -149,7 +151,7 @@ class OutboxPublisherServiceTest {
       var events = List.of(failedEvent, publishedEvent);
       given(outboxEventRepositoryPort.findPendingToPublish(any(Instant.class), eq(BATCH_SIZE)))
           .willReturn(events);
-      doThrow(new IllegalStateException("Temporary failure"))
+      doThrow(new OutboxPublishException(new IllegalStateException("Temporary failure")))
           .when(outboxEventPublisherPort)
           .publish(failedEvent);
 
@@ -163,6 +165,29 @@ class OutboxPublisherServiceTest {
       inOrder.verify(outboxEventRepositoryPort).saveAll(same(events));
       assertThat(failedEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
       assertThat(publishedEvent.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
+    }
+
+    @Test
+    @DisplayName("Deve propagar falha inesperada não traduzida pelo port")
+    void shouldPropagateUnexpectedFailureNotTranslatedByPort() {
+      // 1. Arrange
+      var event = event("019a1a60-8e31-73b0-bc44-238e6aea0006");
+      var events = List.of(event);
+      var exception = new IllegalStateException("Unexpected failure");
+      given(outboxEventRepositoryPort.findPendingToPublish(any(Instant.class), eq(BATCH_SIZE)))
+          .willReturn(events);
+      doThrow(exception)
+          .when(outboxEventPublisherPort)
+          .publish(event);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> service.publishPendingEvents());
+
+      // 3. Assert
+      throwableAssert.isSameAs(exception);
+      verify(outboxEventRepositoryPort).findPendingToPublish(any(Instant.class), eq(BATCH_SIZE));
+      verify(outboxEventPublisherPort).publish(event);
+      verifyNoMoreInteractions(outboxEventRepositoryPort, outboxEventPublisherPort);
     }
 
     @Test

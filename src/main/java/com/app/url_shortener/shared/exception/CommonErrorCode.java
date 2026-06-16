@@ -11,7 +11,8 @@ public enum CommonErrorCode implements ErrorCode {
   AUTH_UNAUTHORIZED("Autenticação necessária ou token inválido."),
   TOO_MANY_REQUESTS("Muitas requisições. Por favor, tente novamente mais tarde."),
   RATE_LIMIT_INFRASTRUCTURE_ERROR("Ocorreu um erro na infraestrutura do rate limit."),
-  OUTBOX_EVENT_SERIALIZER_ERROR_EXCEPTION("Ocorreu um erro ao serializar o evento de outbox.")
+  OUTBOX_EVENT_SERIALIZER_ERROR_EXCEPTION("Ocorreu um erro ao serializar o evento de outbox."),
+  OUTBOX_EVENT_PUBLISH_ERROR_EXCEPTION("Ocorreu um erro ao publicar o evento de outbox.")
   ;
 
   private final String message;

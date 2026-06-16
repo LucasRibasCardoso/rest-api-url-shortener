@@ -4,9 +4,10 @@ set -euo pipefail
 REGION="${AWS_REGION:-us-east-1}"
 ENDPOINT_URL="${LOCALSTACK_ENDPOINT_URL:-http://localhost:4566}"
 
-VISIBILITY_TIMEOUT="${SQS_VISIBILITY_TIMEOUT:-30}"
+VISIBILITY_TIMEOUT="${SQS_VISIBILITY_TIMEOUT:-60}"
 RECEIVE_WAIT_TIME="${SQS_RECEIVE_WAIT_TIME:-20}"
 MESSAGE_RETENTION_PERIOD="${SQS_MESSAGE_RETENTION_PERIOD:-345600}"
+DLQ_MESSAGE_RETENTION_PERIOD="${SQS_DLQ_MESSAGE_RETENTION_PERIOD:-604800}"
 MAX_RECEIVE_COUNT="${SQS_MAX_RECEIVE_COUNT:-5}"
 
 if command -v awslocal >/dev/null 2>&1; then
@@ -47,13 +48,8 @@ get_queue_arn() {
         --output text
 }
 
-create_dlq_if_absent() {
+create_or_update_dlq() {
     local dlq_name="$1"
-
-    if queue_exists "$dlq_name"; then
-        echo "SQS DLQ '$dlq_name' already exists. Skipping creation."
-        return
-    fi
 
     local dlq_attributes
     dlq_attributes="$(
@@ -61,10 +57,25 @@ cat <<EOF
 {
   "VisibilityTimeout": "$VISIBILITY_TIMEOUT",
   "ReceiveMessageWaitTimeSeconds": "$RECEIVE_WAIT_TIME",
-  "MessageRetentionPeriod": "$MESSAGE_RETENTION_PERIOD"
+  "MessageRetentionPeriod": "$DLQ_MESSAGE_RETENTION_PERIOD"
 }
 EOF
 )"
+
+    if queue_exists "$dlq_name"; then
+        echo "SQS DLQ '$dlq_name' already exists. Updating attributes."
+
+        local dlq_url
+        dlq_url="$(get_queue_url "$dlq_name")"
+
+        "${SQS_CMD[@]}" set-queue-attributes \
+            --queue-url "$dlq_url" \
+            --region "$REGION" \
+            --attributes "$dlq_attributes" >/dev/null
+
+        echo "SQS DLQ '$dlq_name' attributes updated."
+        return
+    fi
 
     "${SQS_CMD[@]}" create-queue \
         --queue-name "$dlq_name" \
@@ -125,7 +136,7 @@ create_queue_pair() {
     local queue_name="$1"
     local dlq_name="$2"
 
-    create_dlq_if_absent "$dlq_name"
+    create_or_update_dlq "$dlq_name"
     create_or_update_main_queue "$queue_name" "$dlq_name"
 }
 

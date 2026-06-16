@@ -1,11 +1,15 @@
 package com.app.url_shortener.iam.application.port.output;
 
+import com.app.url_shortener.iam.application.port.output.model.EmailVerificationProcessingLease;
 import java.time.Duration;
 import java.util.UUID;
 
 public interface EmailVerificationIdempotencyPort {
 
-  boolean tryMarkAsProcessed(UUID eventId, Duration ttl);
+  EmailVerificationProcessingLease acquireProcessingLease(
+      UUID eventId, Duration processingLeaseTtl);
 
-  void removeProcessedMark(UUID eventId);
+  boolean markAsCompleted(UUID eventId, UUID leaseId, Duration idempotencyTtl);
+
+  boolean releaseProcessingLease(UUID eventId, UUID leaseId);
 }

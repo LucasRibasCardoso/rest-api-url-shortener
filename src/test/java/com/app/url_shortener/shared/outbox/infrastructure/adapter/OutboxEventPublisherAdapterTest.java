@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
+import com.app.url_shortener.shared.outbox.domain.exception.OutboxPublishException;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
@@ -32,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Tag("unit")
@@ -101,8 +103,9 @@ class OutboxEventPublisherAdapterTest {
 
       // 3. Assert
       throwableAssert
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("Invalid persisted outbox event payload");
+          .isInstanceOf(OutboxPublishException.class)
+          .hasMessage("Ocorreu um erro ao publicar o evento de outbox.")
+          .hasCauseInstanceOf(JacksonException.class);
 
       verify(queueResolver).resolve(event.getEventType());
       verifyNoInteractions(sqsTemplate);
@@ -122,16 +125,17 @@ class OutboxEventPublisherAdapterTest {
 
       // 3. Assert
       throwableAssert
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage("Persisted outbox event payload must be a JSON object");
+          .isInstanceOf(OutboxPublishException.class)
+          .hasMessage("Ocorreu um erro ao publicar o evento de outbox.")
+          .hasCauseInstanceOf(IllegalArgumentException.class);
       verify(queueResolver).resolve(event.getEventType());
       verifyNoInteractions(sqsTemplate);
       verifyNoMoreInteractions(queueResolver);
     }
 
     @Test
-    @DisplayName("Deve propagar falha do SQS para permitir retry")
-    void shouldPropagateSqsFailureToAllowRetry() {
+    @DisplayName("Deve traduzir falha do SQS para permitir retry")
+    void shouldTranslateSqsFailureToAllowRetry() {
       // 1. Arrange
       var event = event(validPayload());
       var exception = new IllegalStateException("SQS unavailable");
@@ -144,10 +148,34 @@ class OutboxEventPublisherAdapterTest {
       var throwableAssert = assertThatThrownBy(() -> adapter.publish(event));
 
       // 3. Assert
-      throwableAssert.isSameAs(exception);
+      throwableAssert
+          .isInstanceOf(OutboxPublishException.class)
+          .hasMessage("Ocorreu um erro ao publicar o evento de outbox.")
+          .hasCause(exception);
       verify(queueResolver).resolve(event.getEventType());
       verify(sqsTemplate).send(eq(QUEUE_NAME), any(OutboxMessageEnvelope.class));
       verifyNoMoreInteractions(queueResolver, sqsTemplate);
+    }
+
+    @Test
+    @DisplayName("Deve traduzir falha ao resolver fila sem enviar mensagem")
+    void shouldTranslateQueueResolutionFailureWithoutSendingMessage() {
+      // 1. Arrange
+      var event = event(validPayload());
+      var exception = new IllegalStateException("No SQS queue configured");
+      given(queueResolver.resolve(event.getEventType())).willThrow(exception);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> adapter.publish(event));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(OutboxPublishException.class)
+          .hasMessage("Ocorreu um erro ao publicar o evento de outbox.")
+          .hasCause(exception);
+      verify(queueResolver).resolve(event.getEventType());
+      verifyNoInteractions(sqsTemplate);
+      verifyNoMoreInteractions(queueResolver);
     }
   }
 
