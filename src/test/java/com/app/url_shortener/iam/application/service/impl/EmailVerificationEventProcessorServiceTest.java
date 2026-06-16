@@ -39,8 +39,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class EmailVerificationEventProcessorServiceTest {
 
   private static final Duration CODE_TTL = Duration.ofMinutes(10);
-  private static final Duration IDEMPOTENCY_TTL = Duration.ofDays(4);
-  private static final Duration PROCESSING_LEASE_TTL = Duration.ofMinutes(2);
 
   @Mock
   private UserAccountRepositoryPort userAccountRepositoryPort;
@@ -55,7 +53,7 @@ class EmailVerificationEventProcessorServiceTest {
 
   @BeforeEach
   void setUp() {
-    var policy = new EmailVerificationPolicy(CODE_TTL, IDEMPOTENCY_TTL, PROCESSING_LEASE_TTL);
+    var policy = new EmailVerificationPolicy(CODE_TTL);
     processorService =
         new EmailVerificationEventProcessorServiceImpl(
             userAccountRepositoryPort,

@@ -43,8 +43,8 @@ public class EmailVerificationEventProcessorServiceImpl implements EmailVerifica
 
   private void sendVerificationEmail(UserAccount userAccount) {
     var ttl = emailVerificationPolicy.codeTtl();
-    var verificationCode = VerificationCode.generate();
     var expiresAt = Instant.now().plus(ttl);
+    var verificationCode = VerificationCode.generate();
 
     var emailVerificationToken = EmailVerificationToken.create(
             userAccount.getId(),

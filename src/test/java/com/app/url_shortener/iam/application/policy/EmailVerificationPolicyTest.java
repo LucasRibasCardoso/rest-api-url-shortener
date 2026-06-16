@@ -18,24 +18,18 @@ class EmailVerificationPolicyTest {
   @ParameterizedTest
   @MethodSource("invalidPolicies")
   @DisplayName("Deve rejeitar durações nulas ou não positivas")
-  void shouldRejectNullOrNonPositiveDurations(
-      Duration codeTtl, Duration idempotencyTtl, Duration processingLeaseTtl, String message) {
+  void shouldRejectNullOrNonPositiveDurations(Duration codeTtl, String message) {
     // 1. Arrange
 
     // 2. Act & 3. Assert
-    assertThatThrownBy(
-            () -> new EmailVerificationPolicy(codeTtl, idempotencyTtl, processingLeaseTtl))
+    assertThatThrownBy(() -> new EmailVerificationPolicy(codeTtl))
         .hasMessage(message);
   }
 
   private static java.util.stream.Stream<Arguments> invalidPolicies() {
     return java.util.stream.Stream.of(
-        Arguments.of(null, VALID_TTL, VALID_TTL, "codeTtl must not be null"),
-        Arguments.of(VALID_TTL, null, VALID_TTL, "idempotencyTtl must not be null"),
-        Arguments.of(VALID_TTL, VALID_TTL, null, "processingLeaseTtl must not be null"),
-        Arguments.of(Duration.ZERO, VALID_TTL, VALID_TTL, "codeTtl must be positive"),
-        Arguments.of(VALID_TTL, Duration.ofSeconds(-1), VALID_TTL, "idempotencyTtl must be positive"),
-        Arguments.of(
-            VALID_TTL, VALID_TTL, Duration.ZERO, "processingLeaseTtl must be positive"));
+        Arguments.of(null, "codeTtl must not be null"),
+        Arguments.of(Duration.ZERO, "codeTtl must be positive"),
+        Arguments.of(Duration.ofSeconds(-1), "codeTtl must be positive"));
   }
 }

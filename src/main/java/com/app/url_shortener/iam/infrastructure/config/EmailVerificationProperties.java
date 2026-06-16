@@ -9,6 +9,4 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.iam.email-verification")
 public record EmailVerificationProperties(
-    @NotNull @DurationMin(nanos = 1) Duration codeTtl,
-    @NotNull @DurationMin(nanos = 1) Duration idempotencyTtl,
-    @NotNull @DurationMin(nanos = 1) Duration processingLeaseTtl) {}
+    @NotNull @DurationMin(nanos = 1) Duration codeTtl) {}

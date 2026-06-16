@@ -13,8 +13,6 @@ app:
   iam:
     email-verification:
       code-ttl: 10m
-      idempotency-ttl: 4d
-      processing-lease-ttl: 2m
   idempotency:
     protected-uris:
       - /api/v1/auth/register

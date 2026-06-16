@@ -17,8 +17,7 @@ class EmailVerificationPropertiesTest {
   void shouldAcceptValidConfiguration() {
     // 1. Arrange
     var properties =
-        new EmailVerificationProperties(
-            Duration.ofMinutes(10), Duration.ofDays(4), Duration.ofMinutes(2));
+        new EmailVerificationProperties(Duration.ofMinutes(10));
 
     // 2. Act
     var violations = validate(properties);
@@ -31,7 +30,7 @@ class EmailVerificationPropertiesTest {
   @DisplayName("Deve rejeitar durações ausentes ou não positivas")
   void shouldRejectMissingOrNonPositiveDurations() {
     // 1. Arrange
-    var properties = new EmailVerificationProperties(null, Duration.ZERO, Duration.ofSeconds(-1));
+    var properties = new EmailVerificationProperties(null);
 
     // 2. Act
     var violations = validate(properties);
@@ -39,7 +38,7 @@ class EmailVerificationPropertiesTest {
     // 3. Assert
     assertThat(violations)
         .extracting(violation -> violation.getPropertyPath().toString())
-        .containsExactlyInAnyOrder("codeTtl", "idempotencyTtl", "processingLeaseTtl");
+        .containsExactlyInAnyOrder("codeTtl");
   }
 
   private static java.util.Set<jakarta.validation.ConstraintViolation<EmailVerificationProperties>>

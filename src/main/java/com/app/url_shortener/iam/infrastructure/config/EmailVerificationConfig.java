@@ -11,7 +11,6 @@ public class EmailVerificationConfig {
 
   @Bean
   public EmailVerificationPolicy emailVerificationPolicy(EmailVerificationProperties properties) {
-    return new EmailVerificationPolicy(
-        properties.codeTtl(), properties.idempotencyTtl(), properties.processingLeaseTtl());
+    return new EmailVerificationPolicy(properties.codeTtl());
   }
 }
