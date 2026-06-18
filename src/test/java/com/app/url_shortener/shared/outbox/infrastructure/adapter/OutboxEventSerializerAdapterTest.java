@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.app.url_shortener.iam.application.event.EmailVerificationReason;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.shared.outbox.domain.exception.OutboxEventSerializationException;
 import java.time.Instant;
@@ -78,7 +78,7 @@ class OutboxEventSerializerAdapterTest {
         UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0002"),
         UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0003"),
         "user@email.com",
-        EmailVerificationReason.REGISTER,
+        EmailDispatchReason.REGISTER,
         Instant.parse("2026-06-10T20:00:00Z"));
   }
 }
