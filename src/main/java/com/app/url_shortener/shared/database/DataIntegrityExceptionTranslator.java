@@ -1,5 +1,7 @@
 package com.app.url_shortener.shared.database;
 
+import com.app.url_shortener.iam.domain.exception.auth.DuplicateEmailDispatchEventException;
+import com.app.url_shortener.iam.domain.exception.auth.DuplicateOpenEmailVerificationTokenException;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.shared.exception.conflict.DataIntegrityConflictException;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ public class DataIntegrityExceptionTranslator {
   private RuntimeException mapConstraintToException(DatabaseConstraints constraint) {
     return switch (constraint) {
       case UK_USERS_EMAIL -> new EmailAlreadyRegisteredException();
+      case UK_EMAIL_DISPATCHES_EVENT_ID -> new DuplicateEmailDispatchEventException();
+      case UK_EMAIL_VERIFICATION_TOKENS_OPEN_USER_EMAIL -> new DuplicateOpenEmailVerificationTokenException();
     };
   }
 }

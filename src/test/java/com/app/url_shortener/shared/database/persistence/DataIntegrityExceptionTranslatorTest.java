@@ -1,6 +1,8 @@
 package com.app.url_shortener.shared.database.persistence;
 
 import com.app.url_shortener.iam.domain.exception.IamErrorCode;
+import com.app.url_shortener.iam.domain.exception.auth.DuplicateEmailDispatchEventException;
+import com.app.url_shortener.iam.domain.exception.auth.DuplicateOpenEmailVerificationTokenException;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
 import com.app.url_shortener.shared.database.DatabaseConstraints;
@@ -58,6 +60,52 @@ class DataIntegrityExceptionTranslatorTest {
               .hasMessage("Email já cadastrado.");
       assertThat(((EmailAlreadyRegisteredException) result).getErrorCode())
               .isEqualTo(IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
+
+      verify(postgresConstraintExtractor).extractUniqueConstraintName(exception);
+      verifyNoMoreInteractions(postgresConstraintExtractor);
+    }
+
+    @Test
+    @DisplayName("Deve traduzir constraint de evento de dispatch duplicado para exceção de domínio")
+    void shouldTranslateDuplicateEmailDispatchEventConstraintToDomainException() {
+      // 1. Arrange
+      var exception = dataIntegrityViolationException();
+
+      given(postgresConstraintExtractor.extractUniqueConstraintName(exception))
+          .willReturn(Optional.of(DatabaseConstraints.UK_EMAIL_DISPATCHES_EVENT_ID.value()));
+
+      // 2. Act
+      var result = translator.translate(exception);
+
+      // 3. Assert
+      assertThat(result)
+          .isInstanceOf(DuplicateEmailDispatchEventException.class)
+          .hasMessage("Evento de disparo de e-mail já processado.");
+      assertThat(((DuplicateEmailDispatchEventException) result).getErrorCode())
+          .isEqualTo(IamErrorCode.AUTH_DUPLICATE_EMAIL_DISPATCH_EVENT);
+
+      verify(postgresConstraintExtractor).extractUniqueConstraintName(exception);
+      verifyNoMoreInteractions(postgresConstraintExtractor);
+    }
+
+    @Test
+    @DisplayName("Deve traduzir constraint de token aberto duplicado para exceção de domínio")
+    void shouldTranslateDuplicateOpenEmailVerificationTokenConstraintToDomainException() {
+      // 1. Arrange
+      var exception = dataIntegrityViolationException();
+
+      given(postgresConstraintExtractor.extractUniqueConstraintName(exception))
+          .willReturn(Optional.of(DatabaseConstraints.UK_EMAIL_VERIFICATION_TOKENS_OPEN_USER_EMAIL.value()));
+
+      // 2. Act
+      var result = translator.translate(exception);
+
+      // 3. Assert
+      assertThat(result)
+          .isInstanceOf(DuplicateOpenEmailVerificationTokenException.class)
+          .hasMessage("Já existe um token de verificação de e-mail aberto para este usuário.");
+      assertThat(((DuplicateOpenEmailVerificationTokenException) result).getErrorCode())
+          .isEqualTo(IamErrorCode.AUTH_DUPLICATE_OPEN_EMAIL_VERIFICATION_TOKEN);
 
       verify(postgresConstraintExtractor).extractUniqueConstraintName(exception);
       verifyNoMoreInteractions(postgresConstraintExtractor);
