@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.app.url_shortener.iam.application.event.EmailVerificationReason;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
@@ -73,7 +73,7 @@ class EmailVerificationOutboxAdapterTest {
 
       // 2. Act
       adapter.publishEmailVerificationRequestedEvent(
-          USER_ID, " USER@EMAIL.COM ", EmailVerificationReason.REGISTER);
+          USER_ID, " USER@EMAIL.COM ", EmailDispatchReason.REGISTER);
 
       // 3. Assert
       verify(outboxEventSerializerPort).serialize(payloadCaptor.capture());
@@ -85,7 +85,7 @@ class EmailVerificationOutboxAdapterTest {
       assertAll(
           () -> assertThat(payload.userId()).isEqualTo(USER_ID),
           () -> assertThat(payload.email()).isEqualTo(EMAIL),
-          () -> assertThat(payload.reason()).isEqualTo(EmailVerificationReason.REGISTER),
+          () -> assertThat(payload.reason()).isEqualTo(EmailDispatchReason.REGISTER),
           () ->
               assertThat(payload.getClass().getRecordComponents())
                   .extracting(component -> component.getName())
@@ -121,7 +121,7 @@ class EmailVerificationOutboxAdapterTest {
           assertThatThrownBy(
               () ->
                   adapter.publishEmailVerificationRequestedEvent(
-                      USER_ID, EMAIL, EmailVerificationReason.REGISTER));
+                      USER_ID, EMAIL, EmailDispatchReason.REGISTER));
 
       // 3. Assert
       throwableAssert.isSameAs(exception);
@@ -145,7 +145,7 @@ class EmailVerificationOutboxAdapterTest {
           assertThatThrownBy(
               () ->
                   adapter.publishEmailVerificationRequestedEvent(
-                      USER_ID, EMAIL, EmailVerificationReason.REGISTER));
+                      USER_ID, EMAIL, EmailDispatchReason.REGISTER));
 
       // 3. Assert
       throwableAssert.isSameAs(exception);
