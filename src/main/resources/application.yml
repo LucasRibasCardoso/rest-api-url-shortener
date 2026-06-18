@@ -13,6 +13,12 @@ app:
   iam:
     email-verification:
       code-ttl: 10m
+      sending-timeout: 1m
+      resend-cooldown: 60s
+      code-protection:
+        encryption-password: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_PASSWORD}
+        encryption-salt: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_SALT}
+        hmac-secret: ${EMAIL_VERIFICATION_CODE_HMAC_SECRET}
   idempotency:
     protected-uris:
       - /api/v1/auth/register
