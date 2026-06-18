@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -32,13 +33,13 @@ class EmailVerificationRequestedEventTest {
       // 2. Act
       var event =
           EmailVerificationRequestedEvent.create(
-              userId, "  USUARIO@EMAIL.COM ", EmailVerificationReason.REGISTER);
+              userId, "  USUARIO@EMAIL.COM ", EmailDispatchReason.REGISTER);
 
       // 3. Assert
       assertThat(event.eventId()).isNotNull();
       assertThat(event.userId()).isEqualTo(userId);
       assertThat(event.email()).isEqualTo("usuario@email.com");
-      assertThat(event.reason()).isEqualTo(EmailVerificationReason.REGISTER);
+      assertThat(event.reason()).isEqualTo(EmailDispatchReason.REGISTER);
       assertThat(event.occurredAt()).isNotNull();
     }
 
@@ -88,7 +89,7 @@ class EmailVerificationRequestedEventTest {
                       UUID.randomUUID(),
                       UUID.randomUUID(),
                       null,
-                      EmailVerificationReason.REGISTER,
+                      EmailDispatchReason.REGISTER,
                       Instant.now()));
 
       // 3. Assert
@@ -109,13 +110,66 @@ class EmailVerificationRequestedEventTest {
                       UUID.randomUUID(),
                       UUID.randomUUID(),
                       blankEmail,
-                      EmailVerificationReason.REGISTER,
+                      EmailDispatchReason.REGISTER,
                       Instant.now()));
 
       // 3. Assert
       throwableAssert
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("email must not be blank");
+    }
+
+    @Test
+    @DisplayName("Deve validar e normalizar payload de verificação")
+    void shouldValidateAndNormalizeVerificationPayload() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var payload =
+          new EmailVerificationRequestedPayload(
+              userId, "  USUARIO@EMAIL.COM ", EmailDispatchReason.RESEND);
+
+      // 3. Assert
+      assertThat(payload.userId()).isEqualTo(userId);
+      assertThat(payload.email()).isEqualTo("usuario@email.com");
+      assertThat(payload.reason()).isEqualTo(EmailDispatchReason.RESEND);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar payload sem usuário")
+    void shouldRejectPayloadWithoutUserId() {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  new EmailVerificationRequestedPayload(
+                      null, "user@email.com", EmailDispatchReason.REGISTER));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("userId must not be null");
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar payload sem razão")
+    void shouldRejectPayloadWithoutReason() {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  new EmailVerificationRequestedPayload(
+                      UUID.randomUUID(), "user@email.com", null));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("reason must not be null");
     }
   }
 
@@ -124,7 +178,7 @@ class EmailVerificationRequestedEventTest {
         UUID.fromString("019a1a4f-d0db-7f94-bd8d-63d831f40002"),
         UUID.fromString("019a1a4f-d0db-7f94-bd8d-63d831f40001"),
         "user@email.com",
-        EmailVerificationReason.REGISTER,
+        EmailDispatchReason.REGISTER,
         Instant.parse("2026-06-10T20:00:00Z"));
   }
 }
