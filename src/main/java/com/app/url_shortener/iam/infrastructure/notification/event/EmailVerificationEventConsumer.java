@@ -10,7 +10,6 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
@@ -19,19 +18,23 @@ import tools.jackson.databind.ObjectMapper;
 public class EmailVerificationEventConsumer {
 
   private static final int SUPPORTED_SCHEMA_VERSION = 1;
-  private static final String SUPPORTED_EVENT_TYPE =
-      IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED;
 
   private final ObjectMapper objectMapper;
-  private final EmailVerificationEventProcessorService processorService;
+  private final EmailVerificationEventProcessorService emailVerificationEventProcessorService;
 
   @SqsListener("${app.aws.sqs.email-verification-events-queue}")
   public void consume(OutboxMessageEnvelope envelope) {
+    validateEnvelope(envelope);
+    EmailVerificationRequestedEvent event = parseToEvent(envelope);
+    emailVerificationEventProcessorService.process(event);
+  }
+
+  private void validateEnvelope(OutboxMessageEnvelope envelope) {
     if (envelope == null) {
       throw new InvalidEmailVerificationEventException("envelope must not be null");
     }
 
-    if (!SUPPORTED_EVENT_TYPE.equals(envelope.eventType())) {
+    if (!IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED.equals(envelope.eventType())) {
       throw new InvalidEmailVerificationEventException("Unsupported outbox event type: " + envelope.eventType());
     }
 
@@ -39,11 +42,20 @@ public class EmailVerificationEventConsumer {
       throw new InvalidEmailVerificationEventException("Unsupported outbox schema version: " + envelope.schemaVersion());
     }
 
-    EmailVerificationRequestedEvent event = toEvent(envelope);
-    processorService.process(event);
+    if (envelope.eventId() == null) {
+      throw new InvalidEmailVerificationEventException("eventId must not be null");
+    }
+
+    if (envelope.occurredAt() == null) {
+      throw new InvalidEmailVerificationEventException("occurredAt must not be null");
+    }
+
+    if (envelope.payload() == null || envelope.payload().isNull()) {
+      throw new InvalidEmailVerificationEventException("payload must not be null");
+    }
   }
 
-  private EmailVerificationRequestedEvent toEvent(OutboxMessageEnvelope envelope) {
+  private EmailVerificationRequestedEvent parseToEvent(OutboxMessageEnvelope envelope) {
     try {
       var payload =
           objectMapper.treeToValue(envelope.payload(), EmailVerificationRequestedPayload.class);
@@ -53,7 +65,7 @@ public class EmailVerificationEventConsumer {
           payload.email(),
           payload.reason(),
           envelope.occurredAt());
-    } catch (JacksonException exception) {
+    } catch (Exception exception) {
       throw new InvalidEmailVerificationEventException("Invalid email verification outbox payload");
     }
   }

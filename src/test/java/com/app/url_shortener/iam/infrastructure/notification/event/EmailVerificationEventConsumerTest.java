@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.app.url_shortener.iam.application.event.EmailVerificationReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.iam.application.service.EmailVerificationEventProcessorService;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidEmailVerificationEventException;
 import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnvelope;
 import java.time.Instant;
@@ -118,6 +118,100 @@ class EmailVerificationEventConsumerTest {
           .hasMessage("Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
       verifyNoInteractions(processorService);
     }
+
+    @Test
+    @DisplayName("Deve rejeitar envelope sem eventId com exceção específica")
+    void shouldRejectEnvelopeWithoutEventIdWithSpecificException() {
+      // 1. Arrange
+      var event = event();
+      var envelope =
+          new OutboxMessageEnvelope(
+              null,
+              IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED,
+              1,
+              IamOutboxEventTypes.AGGREGATE_USER,
+              event.userId().toString(),
+              event.occurredAt(),
+              objectMapper.valueToTree(
+                  new EmailVerificationRequestedPayload(
+                      event.userId(), event.email(), event.reason())));
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> consumer.consume(envelope))
+          .isInstanceOf(InvalidEmailVerificationEventException.class)
+          .hasMessage("Evento de verificação de e-mail inválido. eventId must not be null");
+      verifyNoInteractions(processorService);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar envelope sem occurredAt com exceção específica")
+    void shouldRejectEnvelopeWithoutOccurredAtWithSpecificException() {
+      // 1. Arrange
+      var event = event();
+      var envelope =
+          new OutboxMessageEnvelope(
+              event.eventId(),
+              IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED,
+              1,
+              IamOutboxEventTypes.AGGREGATE_USER,
+              event.userId().toString(),
+              null,
+              objectMapper.valueToTree(
+                  new EmailVerificationRequestedPayload(
+                      event.userId(), event.email(), event.reason())));
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> consumer.consume(envelope))
+          .isInstanceOf(InvalidEmailVerificationEventException.class)
+          .hasMessage("Evento de verificação de e-mail inválido. occurredAt must not be null");
+      verifyNoInteractions(processorService);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar envelope sem payload com exceção específica")
+    void shouldRejectEnvelopeWithoutPayloadWithSpecificException() {
+      // 1. Arrange
+      var event = event();
+      var envelope =
+          new OutboxMessageEnvelope(
+              event.eventId(),
+              IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED,
+              1,
+              IamOutboxEventTypes.AGGREGATE_USER,
+              event.userId().toString(),
+              event.occurredAt(),
+              null);
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> consumer.consume(envelope))
+          .isInstanceOf(InvalidEmailVerificationEventException.class)
+          .hasMessage("Evento de verificação de e-mail inválido. payload must not be null");
+      verifyNoInteractions(processorService);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar payload semanticamente inválido com exceção específica")
+    void shouldRejectSemanticallyInvalidPayloadWithSpecificException() {
+      // 1. Arrange
+      var event = event();
+      var envelope =
+          new OutboxMessageEnvelope(
+              event.eventId(),
+              IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED,
+              1,
+              IamOutboxEventTypes.AGGREGATE_USER,
+              event.userId().toString(),
+              event.occurredAt(),
+              objectMapper.valueToTree(
+                  new InvalidEmailVerificationRequestedPayload(
+                      event.userId(), "   ", EmailDispatchReason.REGISTER)));
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> consumer.consume(envelope))
+          .isInstanceOf(InvalidEmailVerificationEventException.class)
+          .hasMessage("Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
+      verifyNoInteractions(processorService);
+    }
   }
 
   private EmailVerificationRequestedEvent event() {
@@ -125,7 +219,7 @@ class EmailVerificationEventConsumerTest {
         UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac100"),
         UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac101"),
         "user@email.com",
-        EmailVerificationReason.REGISTER,
+        EmailDispatchReason.REGISTER,
         Instant.parse("2026-06-09T12:00:00Z"));
   }
 
@@ -148,4 +242,7 @@ class EmailVerificationEventConsumerTest {
         event.occurredAt(),
         payload);
   }
+
+  private record InvalidEmailVerificationRequestedPayload(
+      UUID userId, String email, EmailDispatchReason reason) {}
 }
