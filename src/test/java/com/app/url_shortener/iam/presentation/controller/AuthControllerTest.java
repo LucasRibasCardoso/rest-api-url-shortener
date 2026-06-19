@@ -412,26 +412,8 @@ class AuthControllerTest extends BaseWebSliceTest {
   class ResendTests {
 
     @Test
-    @DisplayName("Deve exigir autenticação para reenviar verificação")
-    void shouldRequireAuthenticationForResendVerification() throws Exception {
-      // 1. Arrange
-      var request = new ResendVerificationRequestDto("user@email.com");
-
-      // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request));
-
-      // 3. Assert
-      resultActions
-              .andExpect(status().isUnauthorized())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
-
-      verifyNoInteractions(iamWebMapper, resendVerificationUseCase);
-    }
-
-    @Test
-    @DisplayName("Deve retornar 200 e delegar reenvio quando autenticado")
-    void shouldReturnOkAndDelegateResendVerificationWhenAuthenticated() throws Exception {
+    @DisplayName("Deve retornar 200 e delegar reenvio sem autenticação")
+    void shouldReturnOkAndDelegateResendVerificationWithoutAuthentication() throws Exception {
       // 1. Arrange
       var request = new ResendVerificationRequestDto("user@email.com");
       var command = new ResendVerificationCommand(request.email());
@@ -443,7 +425,7 @@ class AuthControllerTest extends BaseWebSliceTest {
       given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request).with(jwt()));
+      ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request));
 
       // 3. Assert
       resultActions
