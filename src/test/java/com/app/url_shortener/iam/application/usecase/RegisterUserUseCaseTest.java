@@ -1,7 +1,7 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
-import com.app.url_shortener.iam.application.event.EmailVerificationReason;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -93,7 +93,7 @@ class RegisterUserUseCaseTest {
       inOrder.verify(emailVerificationEventPort).publishEmailVerificationRequestedEvent(
               savedUser.getId(),
               savedUser.getEmail(),
-              EmailVerificationReason.REGISTER
+              EmailDispatchReason.REGISTER
       );
 
       verifyNoMoreInteractions(
@@ -191,7 +191,7 @@ class RegisterUserUseCaseTest {
           .publishEmailVerificationRequestedEvent(
                   savedUser.getId(),
                   savedUser.getEmail(),
-                  EmailVerificationReason.REGISTER
+                  EmailDispatchReason.REGISTER
           );
 
       // 2. Act
@@ -211,7 +211,7 @@ class RegisterUserUseCaseTest {
           .publishEmailVerificationRequestedEvent(
               savedUser.getId(),
                   savedUser.getEmail(),
-                  EmailVerificationReason.REGISTER
+                  EmailDispatchReason.REGISTER
           );
       verifyNoMoreInteractions(
           passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);

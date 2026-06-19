@@ -1,7 +1,7 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
-import com.app.url_shortener.iam.application.event.EmailVerificationReason;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
@@ -37,8 +37,7 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
     emailVerificationEventPort.publishEmailVerificationRequestedEvent(
             savedUserAccount.getId(),
             savedUserAccount.getEmail(),
-            EmailVerificationReason.REGISTER
-    );
+            EmailDispatchReason.REGISTER);
 
     return new RegisterUserResult(SUCCESS_MESSAGE);
   }

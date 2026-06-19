@@ -20,8 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Tag("jpa-slice")
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -40,6 +42,8 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
   @Autowired private EmailVerificationTokenRepositoryAdapter adapter;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private PlatformTransactionManager transactionManager;
 
   @Nested
   @DisplayName("Persistência")
@@ -123,6 +127,30 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 3. Assert
       assertThat(registered).isTrue();
+      assertThat(integerColumn(tokenId, "failed_attempts")).isOne();
+      assertThat(timestampColumn(tokenId, "last_attempt_at")).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Deve manter tentativa falha quando transação externa fizer rollback")
+    void shouldKeepFailedAttemptWhenOuterTransactionRollsBack() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50105");
+      var tokenId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50206");
+      var email = "failed-attempt-rollback-token-adapter@email.com";
+      var now = CREATED_AT.plusSeconds(60);
+      var transactionTemplate = new TransactionTemplate(transactionManager);
+      insertUser(userId, email);
+      insertToken(tokenId, userId, email, CREATED_AT.plusSeconds(600), null, null);
+
+      // 2. Act
+      transactionTemplate.executeWithoutResult(
+          status -> {
+            adapter.registerFailedAttempt(tokenId, now);
+            status.setRollbackOnly();
+          });
+
+      // 3. Assert
       assertThat(integerColumn(tokenId, "failed_attempts")).isOne();
       assertThat(timestampColumn(tokenId, "last_attempt_at")).isEqualTo(now);
     }

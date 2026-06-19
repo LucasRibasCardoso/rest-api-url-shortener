@@ -12,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
@@ -65,7 +66,7 @@ public class EmailVerificationTokenRepositoryAdapter implements EmailVerificatio
   }
 
   @Override
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public boolean registerFailedAttempt(UUID tokenId, Instant now) {
     return verificationTokenJpaRepository.registerFailedAttempt(tokenId, now) == 1;
   }
