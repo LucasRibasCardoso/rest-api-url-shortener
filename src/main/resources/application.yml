@@ -12,9 +12,15 @@ spring:
 app:
   iam:
     email-verification:
+      sender: ${EMAIL_VERIFICATION_SENDER:ses}
       code-ttl: 10m
       sending-timeout: 1m
       resend-cooldown: 60s
+      ses:
+        endpoint: ${SES_ENDPOINT:}
+        from-email: ${SES_FROM_EMAIL}
+        subject: ${SES_EMAIL_VERIFICATION_SUBJECT:Confirme seu e-mail}
+        api-call-timeout: ${SES_API_CALL_TIMEOUT:10s}
       code-protection:
         encryption-password: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_PASSWORD}
         encryption-salt: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_SALT}

@@ -77,14 +77,14 @@ Também existem decisões de arquitetura orientadas a eventos internos. O regist
 - Spring Data JPA / Hibernate
 - Redis 7.2 Alpine para cache, idempotência, tokens de verificação e contador de IDs
 - DynamoDB via AWS SDK 2.42.29 e DynamoDB Enhanced Client
-- LocalStack 3.0.0 para DynamoDB em ambiente local
+- LocalStack 3.0.0 para DynamoDB, SQS e SES em ambiente local
 
 ### Mensageria/Cloud
 
-- LocalStack com serviço DynamoDB para desenvolvimento local
+- LocalStack com DynamoDB, SQS e SES para desenvolvimento local
 - AWS DynamoDB como armazenamento de URLs
-- Eventos internos do Spring (`ApplicationEventPublisher`) para fluxo de verificação de e-mail
-- Não há broker externo de mensageria configurado no projeto
+- AWS SQS para publicação e consumo assíncrono de eventos
+- AWS SES para envio de e-mails de verificação
 
 ### Testes & Qualidade
 
@@ -132,9 +132,11 @@ Esse comando sobe:
 
 - PostgreSQL com banco `url_shortener`
 - Redis
-- LocalStack com DynamoDB
+- LocalStack com DynamoDB, SQS e SES
 
-O script `localstack-init/create-table.sh` cria automaticamente a tabela DynamoDB `url` com chave primária `shortCode` e GSI `user-index`.
+Os scripts em `localstack-init` criam automaticamente as tabelas DynamoDB, as filas SQS e a
+identidade SES definida por `SES_FROM_EMAIL`. Os e-mails enviados localmente ficam disponíveis em
+`http://localhost:4566/_aws/ses` para inspeção.
 
 ### 3. Validar ou compilar o projeto
 
@@ -159,6 +161,24 @@ http://localhost:8080
 O arquivo `.env.example` documenta todas as variáveis usadas pela aplicação, pelo Docker Compose e
 pelos scripts de inicialização do LocalStack. Em produção, forneça essas variáveis externamente e
 não use o `.env` local.
+
+### Envio de e-mails com SES
+
+No profile `dev`, a aplicação usa o AWS SES do LocalStack. O script
+`localstack-init/create-ses-identities.sh` verifica previamente a identidade configurada em
+`SES_FROM_EMAIL`; a aplicação somente consome essa identidade e não provisiona recursos SES em
+runtime. As mensagens locais podem ser inspecionadas em `http://localhost:4566/_aws/ses`.
+
+Em homologação e produção, não configure endpoint customizado. A região e as credenciais são
+resolvidas pelo Spring Cloud AWS, preferencialmente por IAM Role. O domínio do endereço definido em
+`SES_FROM_EMAIL` deve estar verificado na mesma região e a aplicação precisa da permissão
+`ses:SendEmail`. Para enviar a destinatários não verificados, a conta da região precisa estar fora
+do sandbox do SES.
+
+O status `ACCEPTED` e o `providerMessageId` persistido representam o aceite síncrono da mensagem
+pelo SES, não sua entrega ao destinatário. O fluxo possui semântica de pelo menos uma vez; se o SES
+aceitar a mensagem e a resposta não chegar à aplicação, uma retentativa do SQS pode gerar envio
+duplicado. Eventos de entrega, bounce e complaint não fazem parte desta integração.
 
 ## Como Executar Testes
 

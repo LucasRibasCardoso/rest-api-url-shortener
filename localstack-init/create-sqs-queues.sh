@@ -2,7 +2,6 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-ENDPOINT_URL="${LOCALSTACK_ENDPOINT_URL:-http://localhost:4566}"
 
 VISIBILITY_TIMEOUT="${SQS_VISIBILITY_TIMEOUT:-60}"
 RECEIVE_WAIT_TIME="${SQS_RECEIVE_WAIT_TIME:-20}"
@@ -10,15 +9,13 @@ MESSAGE_RETENTION_PERIOD="${SQS_MESSAGE_RETENTION_PERIOD:-345600}"
 DLQ_MESSAGE_RETENTION_PERIOD="${SQS_DLQ_MESSAGE_RETENTION_PERIOD:-604800}"
 MAX_RECEIVE_COUNT="${SQS_MAX_RECEIVE_COUNT:-5}"
 
-if command -v awslocal >/dev/null 2>&1; then
-    SQS_CMD=(awslocal sqs)
-elif command -v aws >/dev/null 2>&1; then
-    SQS_CMD=(aws --endpoint-url "$ENDPOINT_URL" sqs)
-else
-    echo "Error: neither 'awslocal' nor 'aws' CLI was found." >&2
+# Verifica se o awslocal está instalado
+if ! command -v awslocal >/dev/null 2>&1; then
+    echo "Erro: O comando 'awslocal' não foi encontrado." >&2
+    echo "Para este projeto, é obrigatório o uso do wrapper do LocalStack." >&2
+    echo "Instale executando: pip install awscli-local" >&2
     exit 1
 fi
-
 queue_exists() {
     local queue_name="$1"
 

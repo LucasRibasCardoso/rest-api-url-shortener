@@ -6,6 +6,7 @@ import com.app.url_shortener.iam.domain.exception.auth.DuplicateEmailDispatchEve
 import com.app.url_shortener.iam.domain.exception.auth.DuplicateOpenEmailVerificationTokenException;
 import com.app.url_shortener.iam.domain.exception.auth.EmailDispatchAlreadyProcessingException;
 import com.app.url_shortener.iam.domain.exception.auth.EmailDispatchStateConflictException;
+import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationSendException;
 import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationTokenNotFoundException;
 import com.app.url_shortener.iam.domain.exception.auth.VerificationCodeProtectionException;
 import com.app.url_shortener.shared.exception.conflict.ConflictException;
@@ -142,6 +143,20 @@ class IamErrorCodeTest {
       // 3. Assert
       assertThat(exception).isInstanceOf(InternalServerErrorException.class);
       assertThat(exception.getErrorCode()).isEqualTo(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
+    }
+
+    @Test
+    @DisplayName("Deve mapear falha de envio para erro interno")
+    void shouldMapEmailSendFailureToInternalServerError() {
+      // 1. Arrange
+      var exception = new EmailVerificationSendException();
+
+      // 2. Act
+
+      // 3. Assert
+      assertThat(exception).isInstanceOf(InternalServerErrorException.class);
+      assertThat(exception.getErrorCode())
+          .isEqualTo(IamErrorCode.AUTH_EMAIL_VERIFICATION_SEND_FAILED);
     }
   }
 }

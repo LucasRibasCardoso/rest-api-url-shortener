@@ -3,6 +3,9 @@ package com.app.url_shortener.config;
 import static org.testcontainers.utility.DockerImageName.parse;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -19,6 +22,8 @@ import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
 import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.VerifyEmailIdentityRequest;
 
 public final class LocalStackContainerSupport {
 
@@ -29,6 +34,7 @@ public final class LocalStackContainerSupport {
   private static final String URL_REDIRECT_EVENTS_DLQ = "url-redirect-events-dlq";
   private static final String EMAIL_VERIFICATION_EVENTS_QUEUE = "email-verification-events-queue";
   private static final String EMAIL_VERIFICATION_EVENTS_DLQ = "email-verification-events-dlq";
+  private static final String SES_FROM_EMAIL = "no-reply@url-shortener.local";
   private static final String MESSAGE_RETENTION_PERIOD = "345600";
   private static final String RECEIVE_MESSAGE_WAIT_TIME_SECONDS = "20";
   private static final String VISIBILITY_TIMEOUT = "30";
@@ -36,7 +42,10 @@ public final class LocalStackContainerSupport {
 
   private static final LocalStackContainer LOCALSTACK_CONTAINER =
       new LocalStackContainer(LOCALSTACK_IMAGE)
-          .withServices(LocalStackContainer.Service.DYNAMODB, LocalStackContainer.Service.SQS);
+          .withServices(
+              LocalStackContainer.Service.DYNAMODB,
+              LocalStackContainer.Service.SQS,
+              LocalStackContainer.Service.SES);
 
   static {
     LOCALSTACK_CONTAINER.start();
@@ -65,6 +74,15 @@ public final class LocalStackContainerSupport {
     registry.add("app.aws.sqs.url-redirect-events-dlq", () -> URL_REDIRECT_EVENTS_DLQ);
     registry.add("app.aws.sqs.email-verification-events-queue", () -> EMAIL_VERIFICATION_EVENTS_QUEUE);
     registry.add("app.aws.sqs.email-verification-events-dlq", () -> EMAIL_VERIFICATION_EVENTS_DLQ);
+  }
+
+  public static void registerSesProperties(DynamicPropertyRegistry registry) {
+    URI endpoint = sesEndpoint();
+
+    registry.add("app.iam.email-verification.ses.endpoint", endpoint::toString);
+    registry.add("app.iam.email-verification.ses.from-email", () -> SES_FROM_EMAIL);
+    registry.add("app.iam.email-verification.ses.subject", () -> "Confirme seu e-mail");
+    registry.add("app.iam.email-verification.ses.api-call-timeout", () -> "10s");
   }
 
   public static void setupDynamoDbTable() {
@@ -151,6 +169,13 @@ public final class LocalStackContainerSupport {
     }
   }
 
+  public static void setupSesIdentity() {
+    try (SesClient sesClient = createSesClient()) {
+      sesClient.verifyEmailIdentity(
+          VerifyEmailIdentityRequest.builder().emailAddress(SES_FROM_EMAIL).build());
+    }
+  }
+
   public static void resetSqsQueues() {
     try (SqsClient sqsClient = createSqsClient()) {
       purgeQueue(sqsClient, URL_REDIRECT_EVENTS_QUEUE);
@@ -158,6 +183,30 @@ public final class LocalStackContainerSupport {
       purgeQueue(sqsClient, EMAIL_VERIFICATION_EVENTS_QUEUE);
       purgeQueue(sqsClient, EMAIL_VERIFICATION_EVENTS_DLQ);
     }
+  }
+
+  public static void resetSesMessages() {
+    try (var httpClient = HttpClient.newHttpClient()) {
+      var request =
+          HttpRequest.newBuilder(sesEndpoint().resolve("/_aws/ses"))
+              .DELETE()
+              .build();
+      var response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+
+      if (response.statusCode() >= 400) {
+        throw new IllegalStateException(
+            "Failed to clear LocalStack SES messages. statusCode=" + response.statusCode());
+      }
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while clearing LocalStack SES messages", exception);
+    } catch (Exception exception) {
+      throw new IllegalStateException("Failed to clear LocalStack SES messages", exception);
+    }
+  }
+
+  public static URI sesEndpoint() {
+    return LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.SES);
   }
 
   private static void setupQueuePair(SqsClient sqsClient, String queueName, String dlqName) {
@@ -190,6 +239,15 @@ public final class LocalStackContainerSupport {
   static SqsClient createSqsClient() {
     return SqsClient.builder()
         .endpointOverride(LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.SQS))
+        .region(Region.of(LOCALSTACK_CONTAINER.getRegion()))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+        .build();
+  }
+
+  private static SesClient createSesClient() {
+    return SesClient.builder()
+        .endpointOverride(sesEndpoint())
         .region(Region.of(LOCALSTACK_CONTAINER.getRegion()))
         .credentialsProvider(
             StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))

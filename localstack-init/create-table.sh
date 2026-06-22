@@ -2,27 +2,21 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-ENDPOINT_URL="${LOCALSTACK_ENDPOINT_URL:-http://localhost:4566}"
 
 URL_TABLE_NAME="${URL_TABLE_NAME:-url}"
 COUNTER_TABLE_NAME="${COUNTER_TABLE_NAME:-url_counter}"
 URL_COUNTER_NAME="${URL_COUNTER_NAME:-url_short_code}"
 
-# Determina qual CLI usar para interagir com o DynamoDB
-if command -v awslocal >/dev/null 2>&1; then
-    DDB_CMD=(awslocal dynamodb)
-elif command -v aws >/dev/null 2>&1; then
-    DDB_CMD=(aws --endpoint-url "$ENDPOINT_URL" dynamodb)
-else
-    echo "Error: neither 'awslocal' nor 'aws' CLI was found in PATH." >&2
+if ! command -v awslocal >/dev/null 2>&1; then
+    echo "Erro: O comando 'awslocal' não foi encontrado." >&2
+    echo "Para este projeto, é obrigatório o uso do wrapper do LocalStack." >&2
+    echo "Instale executando: pip install awscli-local" >&2
     exit 1
 fi
 
-# Informa o usuário sobre o processo de criação das tabelas
 echo "===================================="
 echo "Starting DynamoDB table creation..."
 echo "Region: $REGION"
-echo "Endpoint: $ENDPOINT_URL"
 echo "===================================="
 
 # Cria a tabela de URLs, se ela ainda não existir

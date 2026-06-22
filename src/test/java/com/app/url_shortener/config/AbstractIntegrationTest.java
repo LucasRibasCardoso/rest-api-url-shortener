@@ -22,6 +22,7 @@ public abstract class AbstractIntegrationTest {
   @BeforeEach
   void setupTest() {
     LocalStackContainerSupport.resetSqsQueues();
+    LocalStackContainerSupport.resetSesMessages();
     RestAssured.port = this.port;
     RestAssured.config = RestAssuredConfig.config().redirect(redirectConfig().followRedirects(false));
   }
@@ -32,11 +33,13 @@ public abstract class AbstractIntegrationTest {
     RedisContainerSupport.registerRedisProperties(registry);
     LocalStackContainerSupport.registerDynamoDbProperties(registry);
     LocalStackContainerSupport.registerSQSProperties(registry);
+    LocalStackContainerSupport.registerSesProperties(registry);
   }
 
   @BeforeAll
   static void setupLocalStackResources() {
     LocalStackContainerSupport.setupDynamoDbTable();
     LocalStackContainerSupport.setupSqsQueues();
+    LocalStackContainerSupport.setupSesIdentity();
   }
 }
