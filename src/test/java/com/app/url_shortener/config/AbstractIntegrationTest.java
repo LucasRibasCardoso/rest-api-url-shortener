@@ -22,6 +22,7 @@ public abstract class AbstractIntegrationTest {
   @BeforeEach
   void setupTest() {
     PostgresContainerSupport.resetDatabase();
+    RedisContainerSupport.resetRedis();
     LocalStackContainerSupport.resetDynamoDbTables();
     LocalStackContainerSupport.resetSqsQueues();
     LocalStackContainerSupport.resetSesMessages();
