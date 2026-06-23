@@ -19,7 +19,7 @@ fi
 queue_exists() {
     local queue_name="$1"
 
-    "${SQS_CMD[@]}" get-queue-url \
+    awslocal sqs get-queue-url \
         --queue-name "$queue_name" \
         --region "$REGION" >/dev/null 2>&1
 }
@@ -27,7 +27,7 @@ queue_exists() {
 get_queue_url() {
     local queue_name="$1"
 
-    "${SQS_CMD[@]}" get-queue-url \
+    awslocal sqs get-queue-url \
         --queue-name "$queue_name" \
         --region "$REGION" \
         --query "QueueUrl" \
@@ -37,7 +37,7 @@ get_queue_url() {
 get_queue_arn() {
     local queue_url="$1"
 
-    "${SQS_CMD[@]}" get-queue-attributes \
+    awslocal sqs get-queue-attributes \
         --queue-url "$queue_url" \
         --attribute-names QueueArn \
         --region "$REGION" \
@@ -65,7 +65,7 @@ EOF
         local dlq_url
         dlq_url="$(get_queue_url "$dlq_name")"
 
-        "${SQS_CMD[@]}" set-queue-attributes \
+        awslocal sqs set-queue-attributes \
             --queue-url "$dlq_url" \
             --region "$REGION" \
             --attributes "$dlq_attributes" >/dev/null
@@ -74,7 +74,7 @@ EOF
         return
     fi
 
-    "${SQS_CMD[@]}" create-queue \
+    awslocal sqs create-queue \
         --queue-name "$dlq_name" \
         --region "$REGION" \
         --attributes "$dlq_attributes" >/dev/null
@@ -112,7 +112,7 @@ EOF
         local queue_url
         queue_url="$(get_queue_url "$queue_name")"
 
-        "${SQS_CMD[@]}" set-queue-attributes \
+        awslocal sqs set-queue-attributes \
             --queue-url "$queue_url" \
             --region "$REGION" \
             --attributes "$queue_attributes" >/dev/null
@@ -121,7 +121,7 @@ EOF
         return
     fi
 
-    "${SQS_CMD[@]}" create-queue \
+    awslocal sqs create-queue \
         --queue-name "$queue_name" \
         --region "$REGION" \
         --attributes "$queue_attributes" >/dev/null

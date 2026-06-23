@@ -27,17 +27,23 @@ import software.amazon.awssdk.services.ses.model.VerifyEmailIdentityRequest;
 
 public final class LocalStackContainerSupport {
 
-  private static final DockerImageName LOCALSTACK_IMAGE = parse("localstack/localstack:3.0");
+  private static final DockerImageName LOCALSTACK_IMAGE = parse("localstack/localstack:3.0.0");
   private static final String ACCESS_KEY = "test";
   private static final String SECRET_KEY = "test";
+  private static final String URL_TABLE_NAME = "url";
+  private static final String COUNTER_TABLE_NAME = "url_counter";
+  private static final String URL_COUNTER_NAME = "url_short_code";
+  private static final String URL_PRIMARY_KEY = "shortCode";
+  private static final String COUNTER_PRIMARY_KEY = "counterName";
   private static final String URL_REDIRECT_EVENTS_QUEUE = "url-redirect-events-queue";
   private static final String URL_REDIRECT_EVENTS_DLQ = "url-redirect-events-dlq";
   private static final String EMAIL_VERIFICATION_EVENTS_QUEUE = "email-verification-events-queue";
   private static final String EMAIL_VERIFICATION_EVENTS_DLQ = "email-verification-events-dlq";
   private static final String SES_FROM_EMAIL = "no-reply@url-shortener.local";
   private static final String MESSAGE_RETENTION_PERIOD = "345600";
+  private static final String DLQ_MESSAGE_RETENTION_PERIOD = "604800";
   private static final String RECEIVE_MESSAGE_WAIT_TIME_SECONDS = "20";
-  private static final String VISIBILITY_TIMEOUT = "30";
+  private static final String VISIBILITY_TIMEOUT = "60";
   private static final String MAX_RECEIVE_COUNT = "5";
 
   private static final LocalStackContainer LOCALSTACK_CONTAINER =
@@ -51,8 +57,7 @@ public final class LocalStackContainerSupport {
     LOCALSTACK_CONTAINER.start();
   }
 
-  private LocalStackContainerSupport() {
-  }
+  private LocalStackContainerSupport() {}
 
   public static void registerDynamoDbProperties(DynamicPropertyRegistry registry) {
     URI endpoint = LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.DYNAMODB);
@@ -61,6 +66,8 @@ public final class LocalStackContainerSupport {
     registry.add("aws.dynamodb.region", LOCALSTACK_CONTAINER::getRegion);
     registry.add("aws.dynamodb.access-key", () -> ACCESS_KEY);
     registry.add("aws.dynamodb.secret-key", () -> SECRET_KEY);
+    registry.add("aws.dynamodb.tables.url", () -> URL_TABLE_NAME);
+    registry.add("aws.dynamodb.tables.url-counter", () -> COUNTER_TABLE_NAME);
   }
 
   public static void registerSQSProperties(DynamicPropertyRegistry registry) {
@@ -85,80 +92,19 @@ public final class LocalStackContainerSupport {
     registry.add("app.iam.email-verification.ses.api-call-timeout", () -> "10s");
   }
 
-  public static void setupDynamoDbTable() {
-    URI endpoint = LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.DYNAMODB);
-    String region = LOCALSTACK_CONTAINER.getRegion();
+  public static void setupDynamoDbTables() {
+    try (DynamoDbClient dynamoDbClient = createDynamoDbClient()) {
+      createUrlTableIfAbsent(dynamoDbClient);
+      createCounterTableIfAbsent(dynamoDbClient);
+      seedUrlCounterIfAbsent(dynamoDbClient);
+    }
+  }
 
-    DynamoDbClient dynamoDbClient =
-            DynamoDbClient.builder()
-                    .endpointOverride(endpoint)
-                    .region(Region.of(region))
-                    .credentialsProvider(
-                            StaticCredentialsProvider.create(
-                                    AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
-                    .build();
-
-    try {
-      dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName("url").build());
-    } catch (ResourceNotFoundException e) {
-      CreateTableRequest createRequest =
-          CreateTableRequest.builder()
-              .tableName("url")
-              .attributeDefinitions(
-                  AttributeDefinition.builder()
-                      .attributeName("shortCode")
-                      .attributeType(ScalarAttributeType.S)
-                      .build(),
-                  AttributeDefinition.builder()
-                      .attributeName("userId")
-                      .attributeType(ScalarAttributeType.S)
-                      .build(),
-                  AttributeDefinition.builder()
-                      .attributeName("createdAtShortCodeGsi")
-                      .attributeType(ScalarAttributeType.S)
-                      .build(),
-                  AttributeDefinition.builder()
-                      .attributeName("statusCreatedAtShortCodeGsi")
-                      .attributeType(ScalarAttributeType.S)
-                      .build())
-              .keySchema(
-                  KeySchemaElement.builder()
-                      .attributeName("shortCode")
-                      .keyType(KeyType.HASH)
-                      .build())
-              .globalSecondaryIndexes(
-                  GlobalSecondaryIndex.builder()
-                      .indexName("user-index")
-                      .keySchema(
-                          KeySchemaElement.builder()
-                              .attributeName("userId")
-                              .keyType(KeyType.HASH)
-                              .build(),
-                          KeySchemaElement.builder()
-                              .attributeName("createdAtShortCodeGsi")
-                              .keyType(KeyType.RANGE)
-                              .build())
-                      .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
-                      .build(),
-                  GlobalSecondaryIndex.builder()
-                      .indexName("user-status-index")
-                      .keySchema(
-                          KeySchemaElement.builder()
-                              .attributeName("userId")
-                              .keyType(KeyType.HASH)
-                              .build(),
-                          KeySchemaElement.builder()
-                              .attributeName("statusCreatedAtShortCodeGsi")
-                              .keyType(KeyType.RANGE)
-                              .build())
-                      .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
-                      .build())
-              .billingMode(BillingMode.PAY_PER_REQUEST)
-              .build();
-
-      dynamoDbClient.createTable(createRequest);
-    } finally {
-      dynamoDbClient.close();
+  public static void resetDynamoDbTables() {
+    try (DynamoDbClient dynamoDbClient = createDynamoDbClient()) {
+      clearTable(dynamoDbClient, URL_TABLE_NAME, URL_PRIMARY_KEY);
+      clearTable(dynamoDbClient, COUNTER_TABLE_NAME, COUNTER_PRIMARY_KEY);
+      seedUrlCounter(dynamoDbClient);
     }
   }
 
@@ -210,7 +156,7 @@ public final class LocalStackContainerSupport {
   }
 
   private static void setupQueuePair(SqsClient sqsClient, String queueName, String dlqName) {
-    String dlqUrl = createQueueIfAbsent(sqsClient, dlqName, defaultQueueAttributes());
+    String dlqUrl = createQueueIfAbsent(sqsClient, dlqName, dlqQueueAttributes());
     String dlqArn =
         sqsClient
             .getQueueAttributes(
@@ -245,6 +191,14 @@ public final class LocalStackContainerSupport {
         .build();
   }
 
+  private static DynamoDbClient createDynamoDbClient() {
+    return DynamoDbClient.builder()
+        .endpointOverride(LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.DYNAMODB))
+        .region(Region.of(LOCALSTACK_CONTAINER.getRegion()))
+        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+        .build();
+  }
+
   private static SesClient createSesClient() {
     return SesClient.builder()
         .endpointOverride(sesEndpoint())
@@ -252,6 +206,154 @@ public final class LocalStackContainerSupport {
         .credentialsProvider(
             StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
         .build();
+  }
+
+  private static void createUrlTableIfAbsent(DynamoDbClient dynamoDbClient) {
+    if (tableExists(dynamoDbClient, URL_TABLE_NAME)) {
+      return;
+    }
+
+    dynamoDbClient.createTable(
+        CreateTableRequest.builder()
+            .tableName(URL_TABLE_NAME)
+            .attributeDefinitions(
+                attributeDefinition(URL_PRIMARY_KEY, ScalarAttributeType.S),
+                attributeDefinition("userId", ScalarAttributeType.S),
+                attributeDefinition("createdAtShortCodeGsi", ScalarAttributeType.S),
+                attributeDefinition("statusCreatedAtShortCodeGsi", ScalarAttributeType.S),
+                attributeDefinition("activeRankingUserIdGsi", ScalarAttributeType.S),
+                attributeDefinition("accessCount", ScalarAttributeType.N))
+            .keySchema(keySchemaElement(URL_PRIMARY_KEY, KeyType.HASH))
+            .globalSecondaryIndexes(
+                GlobalSecondaryIndex.builder()
+                    .indexName("user-index")
+                    .keySchema(
+                        keySchemaElement("userId", KeyType.HASH),
+                        keySchemaElement("createdAtShortCodeGsi", KeyType.RANGE))
+                    .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                    .build(),
+                GlobalSecondaryIndex.builder()
+                    .indexName("user-status-index")
+                    .keySchema(
+                        keySchemaElement("userId", KeyType.HASH),
+                        keySchemaElement("statusCreatedAtShortCodeGsi", KeyType.RANGE))
+                    .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                    .build(),
+                GlobalSecondaryIndex.builder()
+                    .indexName("user-active-ranking-index")
+                    .keySchema(
+                        keySchemaElement("activeRankingUserIdGsi", KeyType.HASH),
+                        keySchemaElement("accessCount", KeyType.RANGE))
+                    .projection(
+                        Projection.builder()
+                            .projectionType(ProjectionType.INCLUDE)
+                            .nonKeyAttributes(
+                                "userId",
+                                "originalUrl",
+                                "createdAt",
+                                "updatedAt",
+                                "status",
+                                "lastAccessedAt")
+                            .build())
+                    .build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .build());
+  }
+
+  private static void createCounterTableIfAbsent(DynamoDbClient dynamoDbClient) {
+    if (tableExists(dynamoDbClient, COUNTER_TABLE_NAME)) {
+      return;
+    }
+
+    dynamoDbClient.createTable(
+        CreateTableRequest.builder()
+            .tableName(COUNTER_TABLE_NAME)
+            .attributeDefinitions(attributeDefinition(COUNTER_PRIMARY_KEY, ScalarAttributeType.S))
+            .keySchema(keySchemaElement(COUNTER_PRIMARY_KEY, KeyType.HASH))
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .build());
+  }
+
+  private static boolean tableExists(DynamoDbClient dynamoDbClient, String tableName) {
+    try {
+      dynamoDbClient.describeTable(
+          DescribeTableRequest.builder().tableName(tableName).build());
+      return true;
+    } catch (ResourceNotFoundException exception) {
+      return false;
+    }
+  }
+
+  private static void seedUrlCounterIfAbsent(DynamoDbClient dynamoDbClient) {
+    try {
+      dynamoDbClient.putItem(
+          PutItemRequest.builder()
+              .tableName(COUNTER_TABLE_NAME)
+              .item(urlCounterItem())
+              .conditionExpression("attribute_not_exists(#counterName)")
+              .expressionAttributeNames(Map.of("#counterName", COUNTER_PRIMARY_KEY))
+              .build());
+    } catch (ConditionalCheckFailedException exception) {
+      // The counter was already initialized.
+    }
+  }
+
+  private static void seedUrlCounter(DynamoDbClient dynamoDbClient) {
+    dynamoDbClient.putItem(
+        PutItemRequest.builder().tableName(COUNTER_TABLE_NAME).item(urlCounterItem()).build());
+  }
+
+  private static Map<String, AttributeValue> urlCounterItem() {
+    return Map.of(
+        COUNTER_PRIMARY_KEY, stringAttribute(URL_COUNTER_NAME),
+        "currentValue", numberAttribute(0),
+        "description",
+            stringAttribute("Global counter used to allocate URL short code ID blocks"));
+  }
+
+  private static void clearTable(
+      DynamoDbClient dynamoDbClient, String tableName, String primaryKeyName) {
+    Map<String, AttributeValue> lastEvaluatedKey = Map.of();
+
+    do {
+      var requestBuilder =
+          ScanRequest.builder()
+              .tableName(tableName)
+              .consistentRead(true)
+              .projectionExpression("#primaryKey")
+              .expressionAttributeNames(Map.of("#primaryKey", primaryKeyName));
+
+      if (!lastEvaluatedKey.isEmpty()) {
+        requestBuilder.exclusiveStartKey(lastEvaluatedKey);
+      }
+
+      ScanResponse response = dynamoDbClient.scan(requestBuilder.build());
+      for (Map<String, AttributeValue> item : response.items()) {
+        dynamoDbClient.deleteItem(
+            DeleteItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of(primaryKeyName, item.get(primaryKeyName)))
+                .build());
+      }
+      lastEvaluatedKey = response.lastEvaluatedKey();
+    } while (lastEvaluatedKey != null && !lastEvaluatedKey.isEmpty());
+  }
+
+  private static AttributeDefinition attributeDefinition(
+      String name, ScalarAttributeType attributeType) {
+    return AttributeDefinition.builder().attributeName(name).attributeType(attributeType).build();
+  }
+
+  private static KeySchemaElement keySchemaElement(String name, KeyType keyType) {
+    return KeySchemaElement.builder().attributeName(name).keyType(keyType).build();
+  }
+
+  private static AttributeValue stringAttribute(String value) {
+    return AttributeValue.builder().s(value).build();
+  }
+
+  private static AttributeValue numberAttribute(long value) {
+    return AttributeValue.builder().n(Long.toString(value)).build();
   }
 
   private static String createQueueIfAbsent(
@@ -271,6 +373,13 @@ public final class LocalStackContainerSupport {
         QueueAttributeName.VISIBILITY_TIMEOUT, VISIBILITY_TIMEOUT,
         QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS, RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
         QueueAttributeName.MESSAGE_RETENTION_PERIOD, MESSAGE_RETENTION_PERIOD);
+  }
+
+  private static Map<QueueAttributeName, String> dlqQueueAttributes() {
+    return Map.of(
+        QueueAttributeName.VISIBILITY_TIMEOUT, VISIBILITY_TIMEOUT,
+        QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS, RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
+        QueueAttributeName.MESSAGE_RETENTION_PERIOD, DLQ_MESSAGE_RETENTION_PERIOD);
   }
 
   private static void purgeQueue(SqsClient sqsClient, String queueName) {

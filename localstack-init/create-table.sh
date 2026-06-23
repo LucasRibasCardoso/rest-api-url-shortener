@@ -21,7 +21,7 @@ echo "===================================="
 
 # Cria a tabela de URLs, se ela ainda não existir
 create_url_table() {
-    if "${DDB_CMD[@]}" describe-table \
+    if awslocal dynamodb describe-table \
         --table-name "$URL_TABLE_NAME" \
         --region "$REGION" >/dev/null 2>&1; then
 
@@ -29,7 +29,7 @@ create_url_table() {
         return
     fi
 
-    "${DDB_CMD[@]}" create-table \
+    awslocal dynamodb create-table \
         --table-name "$URL_TABLE_NAME" \
         --attribute-definitions \
             AttributeName=shortCode,AttributeType=S \
@@ -83,7 +83,7 @@ create_url_table() {
 
 # Cria a tabela de contadores, se ela ainda não existir
 create_counter_table() {
-    if "${DDB_CMD[@]}" describe-table \
+    if awslocal dynamodb describe-table \
         --table-name "$COUNTER_TABLE_NAME" \
         --region "$REGION" >/dev/null 2>&1; then
 
@@ -91,7 +91,7 @@ create_counter_table() {
         return
     fi
 
-    "${DDB_CMD[@]}" create-table \
+    awslocal dynamodb create-table \
         --table-name "$COUNTER_TABLE_NAME" \
         --attribute-definitions AttributeName=counterName,AttributeType=S \
         --key-schema AttributeName=counterName,KeyType=HASH \
@@ -105,7 +105,7 @@ create_counter_table() {
 seed_url_counter() {
     echo "Creating initial counter item '$URL_COUNTER_NAME' if it does not exist..."
 
-    "${DDB_CMD[@]}" put-item \
+    awslocal dynamodb put-item \
         --table-name "$COUNTER_TABLE_NAME" \
         --item "{
             \"counterName\": {\"S\": \"$URL_COUNTER_NAME\"},

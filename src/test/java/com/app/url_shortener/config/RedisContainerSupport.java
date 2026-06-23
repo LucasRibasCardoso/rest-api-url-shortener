@@ -8,7 +8,7 @@ import static org.testcontainers.utility.DockerImageName.parse;
 
 public final class RedisContainerSupport {
 
-  private static final DockerImageName REDIS_IMAGE = parse("redis:7-alpine");
+  private static final DockerImageName REDIS_IMAGE = parse("redis:7.2-alpine");
 
   private static final GenericContainer<?> REDIS_CONTAINER = new GenericContainer<>(REDIS_IMAGE).withExposedPorts(6379);
 

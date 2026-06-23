@@ -21,6 +21,8 @@ public abstract class AbstractIntegrationTest {
 
   @BeforeEach
   void setupTest() {
+    PostgresContainerSupport.resetDatabase();
+    LocalStackContainerSupport.resetDynamoDbTables();
     LocalStackContainerSupport.resetSqsQueues();
     LocalStackContainerSupport.resetSesMessages();
     RestAssured.port = this.port;
@@ -38,7 +40,7 @@ public abstract class AbstractIntegrationTest {
 
   @BeforeAll
   static void setupLocalStackResources() {
-    LocalStackContainerSupport.setupDynamoDbTable();
+    LocalStackContainerSupport.setupDynamoDbTables();
     LocalStackContainerSupport.setupSqsQueues();
     LocalStackContainerSupport.setupSesIdentity();
   }
