@@ -42,15 +42,17 @@ class IamWebMapperTest {
               "  MARIA@EMAIL.COM  ",
               "secure-password"
       );
+      var clientIp = "203.0.113.10";
 
       // 2. Act
-      var command = mapper.toRegisterUserCommand(request);
+      var command = mapper.toRegisterUserCommand(request, clientIp);
 
       // 3. Assert
       assertAll(
               () -> assertThat(command.name()).isEqualTo("Maria Silva"),
               () -> assertThat(command.email()).isEqualTo("maria@email.com"),
-              () -> assertThat(command.password()).isEqualTo("secure-password")
+              () -> assertThat(command.password()).isEqualTo("secure-password"),
+              () -> assertThat(command.clientIp()).isEqualTo(clientIp)
       );
     }
 

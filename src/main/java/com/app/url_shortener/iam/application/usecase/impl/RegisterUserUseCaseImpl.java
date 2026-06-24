@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
@@ -19,12 +20,15 @@ public class RegisterUserUseCaseImpl implements RegisterUserUseCase {
   private static final String SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
 
   private final PasswordEncoderPort passwordEncoderPort;
+  private final CheckAuthRateLimitPort checkAuthRateLimitPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
   private final EmailVerificationOutboxPort emailVerificationEventPort;
 
   @Override
   @Transactional
   public RegisterUserResult execute(RegisterUserCommand command) {
+    checkAuthRateLimitPort.checkRegister(command.clientIp(), command.email());
+
     String passwordHash = passwordEncoderPort.encode(command.password());
 
     var userAccount = UserAccount.createPendingRegistration(

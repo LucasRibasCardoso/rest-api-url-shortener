@@ -12,6 +12,11 @@ public class AuthRateLimitAdapter implements CheckAuthRateLimitPort {
   private final RateLimitService rateLimitService;
 
   @Override
+  public void checkRegister(String clientIp, String email) {
+    rateLimitService.checkRegister(clientIp, email);
+  }
+
+  @Override
   public void checkLogin(String clientIp, String email) {
     rateLimitService.checkLogin(clientIp, email);
   }

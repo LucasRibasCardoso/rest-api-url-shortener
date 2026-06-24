@@ -41,8 +41,10 @@ public class AuthController {
   private final ResendVerificationUseCase resendVerificationUseCase;
 
   @PostMapping("/register")
-  public ResponseEntity<GenericMessageResponseDto> register(@Valid @RequestBody RegisterRequestDto request) {
-    RegisterUserCommand command = iamWebMapper.toRegisterUserCommand(request);
+  public ResponseEntity<GenericMessageResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto, HttpServletRequest request) {
+    String clientIp = clientIpResolver.resolve(request);
+
+    RegisterUserCommand command = iamWebMapper.toRegisterUserCommand(requestDto, clientIp);
     RegisterUserResult result = registerUserUseCase.execute(command);
     GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

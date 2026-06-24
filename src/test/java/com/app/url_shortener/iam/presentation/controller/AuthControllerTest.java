@@ -120,11 +120,15 @@ class AuthControllerTest extends BaseWebSliceTest {
     void shouldReturnCreatedAndSerializeResponseWhenRegisteringUser() throws Exception {
       // 1. Arrange
       var request = new RegisterRequestDto("User Name", "user@email.com", "secure-password");
-      var command = new RegisterUserCommand(request.name(), request.email(), request.password());
+      var clientIp = "203.0.113.10";
+      var command =
+          new RegisterUserCommand(
+              clientIp, request.name(), request.email(), request.password());
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
       var response = new GenericMessageResponseDto(result.message());
 
-      given(iamWebMapper.toRegisterUserCommand(request)).willReturn(command);
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toRegisterUserCommand(request, clientIp)).willReturn(command);
       given(registerUserUseCase.execute(command)).willReturn(result);
       given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
@@ -137,10 +141,11 @@ class AuthControllerTest extends BaseWebSliceTest {
               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
               .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toRegisterUserCommand(request);
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toRegisterUserCommand(request, clientIp);
       verify(registerUserUseCase).execute(command);
       verify(iamWebMapper).toGenericMessageResponse(result);
-      verifyNoMoreInteractions(iamWebMapper, registerUserUseCase);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, registerUserUseCase);
     }
   }
 

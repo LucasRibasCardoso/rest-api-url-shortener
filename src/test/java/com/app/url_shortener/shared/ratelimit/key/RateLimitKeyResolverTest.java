@@ -37,6 +37,22 @@ class RateLimitKeyResolverTest {
   class EmailKeyTests {
 
     @Test
+    @DisplayName("Deve criar chave de cadastro somente com hash de email")
+    void shouldCreateRegisterKeyOnlyWithEmailHash() {
+      // 1. Arrange
+      var email = "user@example.com";
+      given(emailRateLimitKeyHasher.hash(email)).willReturn("hashed-email");
+
+      // 2. Act
+      var key = resolver.registerByEmail(email);
+
+      // 3. Assert
+      assertThat(key.getValue()).isEqualTo("auth-register-email:email:hashed-email");
+      verify(emailRateLimitKeyHasher).hash(email);
+      verifyNoMoreInteractions(emailRateLimitKeyHasher);
+    }
+
+    @Test
     @DisplayName("Deve criar chave de login somente com hash de email")
     void shouldCreateLoginKeyOnlyWithEmailHash() {
       // 1. Arrange
@@ -101,6 +117,20 @@ class RateLimitKeyResolverTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t"})
+    @DisplayName("Deve rejeitar email em branco para chave de cadastro")
+    void shouldRejectBlankEmailForRegisterKey(String email) {
+      // 1. Arrange
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> resolver.registerByEmail(email))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("email must not be blank");
+      verifyNoInteractions(emailRateLimitKeyHasher);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
     @DisplayName("Deve rejeitar email em branco para chave de verificação")
     void shouldRejectBlankEmailForVerifyEmailKey(String email) {
       // 1. Arrange
@@ -130,6 +160,34 @@ class RateLimitKeyResolverTest {
   @Nested
   @DisplayName("Chaves Compostas")
   class CompositeKeyTests {
+
+    @Test
+    @DisplayName("Deve criar chave de cadastro somente com IP")
+    void shouldCreateRegisterKeyOnlyWithIp() {
+      // 1. Arrange
+      var clientIp = "203.0.113.10";
+
+      // 2. Act
+      var key = resolver.registerByIp(clientIp);
+
+      // 3. Assert
+      assertThat(key.getValue()).isEqualTo("auth-register-ip:ip:203.0.113.10");
+      verifyNoInteractions(emailRateLimitKeyHasher);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t"})
+    @DisplayName("Deve rejeitar IP em branco para chave de cadastro")
+    void shouldRejectBlankClientIpForRegisterKey(String clientIp) {
+      // 1. Arrange
+
+      // 2. Act & 3. Assert
+      assertThatThrownBy(() -> resolver.registerByIp(clientIp))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("clientIp must not be blank");
+      verifyNoInteractions(emailRateLimitKeyHasher);
+    }
 
     @Test
     @DisplayName("Deve criar chave de login com IP e hash de email")

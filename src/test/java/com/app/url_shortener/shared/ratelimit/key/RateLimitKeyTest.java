@@ -21,6 +21,57 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RateLimitKeyTest {
 
   @Nested
+  @DisplayName("Chave por IP")
+  class IpKeyTests {
+
+    @Test
+    @DisplayName("Deve criar chave com policy e IP")
+    void shouldCreateKeyWithPolicyAndIp() {
+      // 1. Arrange
+
+      // 2. Act
+      var key =
+          RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, "203.0.113.10");
+
+      // 3. Assert
+      assertThat(key.getValue()).isEqualTo("auth-register-ip:ip:203.0.113.10");
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar policy nula para chave por IP")
+    void shouldRejectNullPolicyForIpKey() {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(() -> RateLimitKey.createForIp(null, "203.0.113.10"));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("policy must not be null");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t", "\n"})
+    @DisplayName("Deve rejeitar IP nulo, vazio ou em branco")
+    void shouldRejectNullEmptyOrBlankIp(String clientIp) {
+      // 1. Arrange
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, clientIp));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("clientIp must not be blank");
+    }
+  }
+
+  @Nested
   @DisplayName("Chave por IP e Email")
   class IpAndEmailKeyTests {
 

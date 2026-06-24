@@ -4,6 +4,8 @@ import lombok.Getter;
 
 @Getter
 public enum RateLimitPolicy {
+  AUTH_REGISTER_EMAIL("auth-register-email"),
+  AUTH_REGISTER_IP("auth-register-ip"),
   AUTH_LOGIN("auth-login"),
   AUTH_VERIFY_EMAIL("auth-verify-email"),
   AUTH_RESEND_VERIFICATION("auth-resend-verification"),

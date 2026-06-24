@@ -39,13 +39,18 @@ class IamCommandToStringTest {
     void shouldNotExposePasswordInRegisterUserCommand() {
       // 1. Arrange
       var password = "plain-secret-password";
-      var command = new RegisterUserCommand("User Name", "user@email.com", password);
+      var clientIp = "203.0.113.10";
+      var command =
+          new RegisterUserCommand(clientIp, "User Name", "user@email.com", password);
 
       // 2. Act
       var text = command.toString();
 
       // 3. Assert
-      assertThat(text).doesNotContain(password).contains("[REDACTED]");
+      assertThat(text)
+          .doesNotContain(password)
+          .doesNotContain(clientIp)
+          .contains("[REDACTED]");
     }
 
     @Test

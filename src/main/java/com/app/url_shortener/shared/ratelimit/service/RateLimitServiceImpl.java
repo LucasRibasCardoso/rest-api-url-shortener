@@ -26,6 +26,15 @@ public class RateLimitServiceImpl implements RateLimitService {
   private final RateLimitKeyResolver keyResolver;
 
   @Override
+  public void checkRegister(String clientIp, String email) {
+    Objects.requireNonNull(clientIp, "clientIp must not be null");
+    Objects.requireNonNull(email, "email must not be null");
+
+    check(RateLimitPolicy.AUTH_REGISTER_EMAIL, keyResolver.registerByEmail(email));
+    check(RateLimitPolicy.AUTH_REGISTER_IP, keyResolver.registerByIp(clientIp));
+  }
+
+  @Override
   public void checkLogin(String clientIp, String email) {
     Objects.requireNonNull(clientIp, "clientIp must not be null");
     Objects.requireNonNull(email, "email must not be null");

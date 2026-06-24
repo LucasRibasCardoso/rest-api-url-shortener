@@ -3,10 +3,7 @@ package com.app.url_shortener.iam.application.command;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-public record RegisterUserCommand(
-    String name,
-    String email,
-    String password) {
+public record RegisterUserCommand(String clientIp, String name, String email, String password) {
 
   private static final Pattern MULTIPLE_SPACES = Pattern.compile("\\s+");
 
@@ -25,6 +22,7 @@ public record RegisterUserCommand(
         + email
         + '\''
         + ", password='[REDACTED]'"
+        + ", clientIp='[REDACTED]'"
         + '}';
   }
 }

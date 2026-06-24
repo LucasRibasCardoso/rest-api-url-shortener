@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.usecase;
 
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
+import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
@@ -10,6 +11,8 @@ import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
 import com.app.url_shortener.iam.domain.model.UserAccount;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -36,9 +39,13 @@ import static org.mockito.Mockito.*;
 class RegisterUserUseCaseTest {
 
   private static final String SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
+  private static final String CLIENT_IP = "203.0.113.10";
 
   @Mock
   private PasswordEncoderPort passwordEncoderPort;
+
+  @Mock
+  private CheckAuthRateLimitPort checkAuthRateLimitPort;
 
   @Mock
   private EmailVerificationOutboxPort emailVerificationEventPort;
@@ -60,7 +67,9 @@ class RegisterUserUseCaseTest {
     @DisplayName("Deve salvar usuário pendente e solicitar evento de verificação com sucesso")
     void shouldCreatePendingUserAndPublishRegisterEventSuccessfully() {
       // 1. Arrange
-      var command = new RegisterUserCommand("  User   Name  ", " USER@EMAIL.COM ", "raw-password");
+      var command =
+          new RegisterUserCommand(
+              CLIENT_IP, "  User   Name  ", " USER@EMAIL.COM ", "raw-password");
       var passwordHash = "encoded-password";
       var savedUser = savedPendingUser();
 
@@ -74,7 +83,12 @@ class RegisterUserUseCaseTest {
       assertThat(result.message()).isEqualTo(SUCCESS_MESSAGE);
 
       InOrder inOrder =
-          inOrder(passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
+          inOrder(
+              checkAuthRateLimitPort,
+              passwordEncoderPort,
+              userAccountRepositoryPort,
+              emailVerificationEventPort);
+      inOrder.verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, "user@email.com");
       inOrder.verify(passwordEncoderPort).encode(command.password());
       inOrder.verify(userAccountRepositoryPort).create(userAccountCaptor.capture());
       var userToPersist = userAccountCaptor.getValue();
@@ -98,6 +112,7 @@ class RegisterUserUseCaseTest {
 
       verifyNoMoreInteractions(
               passwordEncoderPort,
+              checkAuthRateLimitPort,
               emailVerificationEventPort,
               userAccountRepositoryPort
       );
@@ -107,7 +122,8 @@ class RegisterUserUseCaseTest {
     @DisplayName("Deve propagar exceção e não persistir usuário quando a criptografia da senha falhar")
     void shouldPropagateExceptionAndNotPersistUserWhenPasswordEncodingFails() {
       // 1. Arrange
-      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var command =
+          new RegisterUserCommand(CLIENT_IP, "User Name", "user@email.com", "raw-password");
       var exception = new IllegalStateException("Falha ao criptografar senha.");
 
       given(passwordEncoderPort.encode(command.password())).willThrow(exception);
@@ -120,18 +136,20 @@ class RegisterUserUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao criptografar senha.");
 
+      verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       verify(passwordEncoderPort).encode(command.password());
       verifyNoInteractions(
               userAccountRepositoryPort,
               emailVerificationEventPort);
-      verifyNoMoreInteractions(passwordEncoderPort);
+      verifyNoMoreInteractions(passwordEncoderPort, checkAuthRateLimitPort);
     }
 
     @Test
     @DisplayName("Deve propagar exceção e não solicitar evento quando a persistência do usuário falhar")
     void shouldPropagateExceptionAndNotPublishEventWhenUserPersistenceFails() {
       // 1. Arrange
-      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var command =
+          new RegisterUserCommand(CLIENT_IP, "User Name", "user@email.com", "raw-password");
       var passwordHash = "encoded-password";
       var exception = new IllegalStateException("Falha ao salvar usuário.");
 
@@ -146,17 +164,20 @@ class RegisterUserUseCaseTest {
               .isInstanceOf(IllegalStateException.class)
               .hasMessage("Falha ao salvar usuário.");
 
+      verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       verify(passwordEncoderPort).encode(command.password());
       verify(userAccountRepositoryPort).create(any(UserAccount.class));
       verifyNoInteractions(emailVerificationEventPort);
-      verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(
+          checkAuthRateLimitPort, passwordEncoderPort, userAccountRepositoryPort);
     }
 
     @Test
     @DisplayName("Não deve solicitar evento quando o e-mail já estiver registrado")
     void shouldNotPublishEventWhenEmailIsAlreadyRegistered() {
       // 1. Arrange
-      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var command =
+          new RegisterUserCommand(CLIENT_IP, "User Name", "user@email.com", "raw-password");
       var passwordHash = "encoded-password";
       var exception = new EmailAlreadyRegisteredException();
 
@@ -169,17 +190,20 @@ class RegisterUserUseCaseTest {
       // 3. Assert
       throwableAssert.isSameAs(exception);
 
+      verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       verify(passwordEncoderPort).encode(command.password());
       verify(userAccountRepositoryPort).create(any(UserAccount.class));
       verifyNoInteractions(emailVerificationEventPort);
-      verifyNoMoreInteractions(passwordEncoderPort, userAccountRepositoryPort);
+      verifyNoMoreInteractions(
+          checkAuthRateLimitPort, passwordEncoderPort, userAccountRepositoryPort);
     }
 
     @Test
     @DisplayName("Deve propagar exceção quando a solicitação do evento de verificação falhar")
     void shouldPropagateExceptionWhenEmailVerificationEventRequestFails() {
       // 1. Arrange
-      var command = new RegisterUserCommand("User Name", "user@email.com", "raw-password");
+      var command =
+          new RegisterUserCommand(CLIENT_IP, "User Name", "user@email.com", "raw-password");
       var passwordHash = "encoded-password";
       var savedUser = savedPendingUser();
       var exception = new IllegalStateException("Falha ao salvar evento no Outbox.");
@@ -203,7 +227,12 @@ class RegisterUserUseCaseTest {
           .hasMessage("Falha ao salvar evento no Outbox.");
 
       InOrder inOrder =
-          inOrder(passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
+          inOrder(
+              checkAuthRateLimitPort,
+              passwordEncoderPort,
+              userAccountRepositoryPort,
+              emailVerificationEventPort);
+      inOrder.verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       inOrder.verify(passwordEncoderPort).encode(command.password());
       inOrder.verify(userAccountRepositoryPort).create(any(UserAccount.class));
       inOrder
@@ -214,7 +243,32 @@ class RegisterUserUseCaseTest {
                   EmailDispatchReason.REGISTER
           );
       verifyNoMoreInteractions(
+          checkAuthRateLimitPort,
+          passwordEncoderPort,
+          userAccountRepositoryPort,
+          emailVerificationEventPort);
+    }
+
+    @Test
+    @DisplayName("Deve interromper registro antes do BCrypt quando o rate limit for excedido")
+    void shouldStopBeforePasswordEncodingWhenRateLimitIsExceeded() {
+      // 1. Arrange
+      var command =
+          new RegisterUserCommand(CLIENT_IP, "User Name", "user@email.com", "raw-password");
+      var exception = new TooManyRequestsException(Duration.ofMinutes(15));
+      doThrow(exception)
+          .when(checkAuthRateLimitPort)
+          .checkRegister(command.clientIp(), command.email());
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
+
+      // 3. Assert
+      throwableAssert.isSameAs(exception);
+      verify(checkAuthRateLimitPort).checkRegister(command.clientIp(), command.email());
+      verifyNoInteractions(
           passwordEncoderPort, userAccountRepositoryPort, emailVerificationEventPort);
+      verifyNoMoreInteractions(checkAuthRateLimitPort);
     }
   }
 

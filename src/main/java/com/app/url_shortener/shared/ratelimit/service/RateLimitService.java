@@ -5,6 +5,8 @@ import java.util.UUID;
 
 public interface RateLimitService {
 
+  void checkRegister(String clientIp, String email);
+
   void checkLogin(String clientIp, String email);
 
   void checkShorten(UUID userId, PlanType plan);

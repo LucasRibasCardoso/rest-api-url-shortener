@@ -55,6 +55,96 @@ class RateLimitServiceImplTest {
   private RateLimitServiceImpl service;
 
   @Nested
+  @DisplayName("Cadastro")
+  class RegisterTests {
+
+    @Test
+    @DisplayName("Deve consultar separadamente as chaves de email e IP")
+    void shouldCheckRegisterUsingSeparateEmailAndIpKeys() {
+      // 1. Arrange
+      var email = "user@example.com";
+      var clientIp = "203.0.113.10";
+      var emailKey =
+          RateLimitKey.createForEmail(RateLimitPolicy.AUTH_REGISTER_EMAIL, "hashed-email");
+      var ipKey = RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, clientIp);
+
+      givenPolicyEnabled(RateLimitPolicy.AUTH_REGISTER_EMAIL);
+      givenPolicyEnabled(RateLimitPolicy.AUTH_REGISTER_IP);
+      given(keyResolver.registerByEmail(email)).willReturn(emailKey);
+      given(keyResolver.registerByIp(clientIp)).willReturn(ipKey);
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey))
+          .willReturn(RateLimitDecision.allowed(2));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_REGISTER_IP, ipKey))
+          .willReturn(RateLimitDecision.allowed(19));
+
+      // 2. Act & 3. Assert
+      assertThatCode(() -> service.checkRegister(clientIp, email)).doesNotThrowAnyException();
+      verify(keyResolver).registerByEmail(email);
+      verify(keyResolver).registerByIp(clientIp);
+      verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey);
+      verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_REGISTER_IP, ipKey);
+      verifyNoMoreInteractions(keyResolver, rateLimiterPort);
+    }
+
+    @Test
+    @DisplayName("Deve interromper antes da chave de IP quando o limite por email for excedido")
+    void shouldStopBeforeIpCheckWhenEmailLimitIsExceeded() {
+      // 1. Arrange
+      var email = "user@example.com";
+      var clientIp = "203.0.113.10";
+      var emailKey =
+          RateLimitKey.createForEmail(RateLimitPolicy.AUTH_REGISTER_EMAIL, "hashed-email");
+
+      givenPolicyEnabled(RateLimitPolicy.AUTH_REGISTER_EMAIL);
+      given(keyResolver.registerByEmail(email)).willReturn(emailKey);
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey))
+          .willReturn(RateLimitDecision.denied(0, Duration.ofMinutes(15).toNanos()));
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(() -> service.checkRegister(clientIp, email));
+
+      // 3. Assert
+      throwableAssert.isInstanceOf(TooManyRequestsException.class);
+      verify(keyResolver).registerByEmail(email);
+      verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey);
+      verifyNoMoreInteractions(keyResolver, rateLimiterPort);
+    }
+
+    @Test
+    @DisplayName("Deve bloquear quando o limite por IP for excedido após permitir o email")
+    void shouldBlockWhenIpLimitIsExceededAfterEmailIsAllowed() {
+      // 1. Arrange
+      var email = "user@example.com";
+      var clientIp = "203.0.113.10";
+      var emailKey =
+          RateLimitKey.createForEmail(RateLimitPolicy.AUTH_REGISTER_EMAIL, "hashed-email");
+      var ipKey = RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, clientIp);
+
+      givenPolicyEnabled(RateLimitPolicy.AUTH_REGISTER_EMAIL);
+      givenPolicyEnabled(RateLimitPolicy.AUTH_REGISTER_IP);
+      given(keyResolver.registerByEmail(email)).willReturn(emailKey);
+      given(keyResolver.registerByIp(clientIp)).willReturn(ipKey);
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey))
+          .willReturn(RateLimitDecision.allowed(2));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_REGISTER_IP, ipKey))
+          .willReturn(RateLimitDecision.denied(0, Duration.ofMinutes(15).toNanos()));
+
+      // 2. Act
+      var throwableAssert =
+          assertThatThrownBy(() -> service.checkRegister(clientIp, email));
+
+      // 3. Assert
+      throwableAssert.isInstanceOf(TooManyRequestsException.class);
+      verify(keyResolver).registerByEmail(email);
+      verify(keyResolver).registerByIp(clientIp);
+      verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailKey);
+      verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_REGISTER_IP, ipKey);
+      verifyNoMoreInteractions(keyResolver, rateLimiterPort);
+    }
+  }
+
+  @Nested
   @DisplayName("Login")
   class LoginTests {
 

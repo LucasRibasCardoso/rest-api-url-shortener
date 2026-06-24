@@ -32,6 +32,13 @@ public final class RateLimitKey {
     return new RateLimitKey(String.format("%s:email:%s", policy.getConfigKey(), emailHash));
   }
 
+  // Format: {configKey}:ip:{clientIp}
+  public static RateLimitKey createForIp(RateLimitPolicy policy, String clientIp) {
+    Objects.requireNonNull(policy, "policy must not be null");
+    requireNotBlank(clientIp, "clientIp");
+    return new RateLimitKey(String.format("%s:ip:%s", policy.getConfigKey(), clientIp));
+  }
+
   // Format: {configKey}:user:{userId}
   public static RateLimitKey createForUserId(RateLimitPolicy policy, UUID userId) {
     Objects.requireNonNull(policy, "policy must not be null");

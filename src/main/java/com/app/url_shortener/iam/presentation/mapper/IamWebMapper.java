@@ -16,7 +16,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface IamWebMapper {
 
-  RegisterUserCommand toRegisterUserCommand(RegisterRequestDto request);
+  RegisterUserCommand toRegisterUserCommand(RegisterRequestDto request, String clientIp);
 
   GenericMessageResponseDto toGenericMessageResponse(RegisterUserResult result);
 

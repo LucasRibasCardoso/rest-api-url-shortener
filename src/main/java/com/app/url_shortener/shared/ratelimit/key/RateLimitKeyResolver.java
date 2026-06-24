@@ -12,6 +12,17 @@ public class RateLimitKeyResolver {
 
   private final EmailRateLimitKeyHasher emailRateLimitKeyHasher;
 
+  public RateLimitKey registerByEmail(String email) {
+    requireNotBlank(email, "email");
+    String emailHash = emailRateLimitKeyHasher.hash(email);
+    return RateLimitKey.createForEmail(RateLimitPolicy.AUTH_REGISTER_EMAIL, emailHash);
+  }
+
+  public RateLimitKey registerByIp(String clientIp) {
+    requireNotBlank(clientIp, "clientIp");
+    return RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, clientIp);
+  }
+
   public RateLimitKey loginByEmail(String email) {
     requireNotBlank(email, "email");
     String emailHash = emailRateLimitKeyHasher.hash(email);
