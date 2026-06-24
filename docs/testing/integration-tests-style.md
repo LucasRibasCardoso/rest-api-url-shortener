@@ -76,6 +76,38 @@ test container, so every integration test starts with an empty current Redis dat
 Concrete integration tests must not call `FLUSHDB`, `FLUSHALL`, or delete broad key patterns. Arrange
 only the Redis state required by the scenario and rely on the base-class reset for isolation.
 
+### User Test Data
+
+Use `src/test/java/com/app/url_shortener/config/UserTestDataFactory.java` when an integration test
+needs a persisted user as Arrange data. Inject the factory through the test constructor instead of
+duplicating `UserEntity`, role-repository, password-encoding, or user-repository setup in concrete
+test classes.
+
+The factory currently provides:
+
+- `createActiveUser(email, rawPassword)`: creates an active, verified user with the default role;
+- `createPendingUser(email, rawPassword)`: creates a user pending email verification without roles.
+
+Example:
+
+```java
+private final UserTestDataFactory userTestDataFactory;
+
+@Autowired
+TargetIntegrationTest(UserTestDataFactory userTestDataFactory) {
+  this.userTestDataFactory = userTestDataFactory;
+}
+
+// Arrange
+UserEntity user =
+    userTestDataFactory.createActiveUser(
+        "user.integration@example.com", "secure-password");
+```
+
+Use this factory only when user creation is test setup. When registration itself is the behavior
+under test, create the user through the real registration endpoint and assert its persisted state.
+The base-class PostgreSQL reset remains responsible for removing users created by the factory.
+
 ## State Isolation
 
 - Every test must be independently executable and must not depend on method or class order.
@@ -220,6 +252,9 @@ context caching.
 ## Naming and Organization
 
 - Name classes after the behavior or entrypoint, ending in `IntegrationTest`.
+- In HTTP tests, include the expected HTTP status code in `@DisplayName`, for example:
+  `@DisplayName("Deve retornar 201 ao cadastrar usuário")`. Infrastructure-flow tests without an
+  HTTP response do not need a status code in the display name.
 - Use `@Nested` only when a class covers multiple related operations or endpoint branches.
 - Keep Arrange helpers private and focused on test data or infrastructure inspection.
 - Do not build a second application architecture inside test helpers.

@@ -28,7 +28,9 @@ public interface IamWebMapper {
 
   LoginResponseDto toLoginResponse(LoginResult result);
 
-  LogoutCommand toLogoutCommand(String refreshToken);
+  default LogoutCommand toLogoutCommand(String refreshToken) {
+    return new LogoutCommand(refreshToken);
+  }
 
   ResendVerificationCommand toResendVerificationCommand(ResendVerificationRequestDto request);
 

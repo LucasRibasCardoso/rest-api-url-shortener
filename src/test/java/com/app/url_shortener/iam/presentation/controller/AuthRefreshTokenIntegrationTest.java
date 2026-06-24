@@ -1,0 +1,202 @@
+package com.app.url_shortener.iam.presentation.controller;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.blankOrNullString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+
+import com.app.url_shortener.config.AbstractIntegrationTest;
+import com.app.url_shortener.config.UserTestDataFactory;
+import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
+import com.app.url_shortener.iam.domain.enums.PlanType;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
+import com.app.url_shortener.iam.infrastructure.entity.RefreshTokenEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
+import com.app.url_shortener.shared.error.ProblemType;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import java.net.HttpCookie;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
+
+  private static final String REFRESH_ENDPOINT = "/api/v1/auth/refresh";
+  private static final String PASSWORD = "secure-password";
+
+  private final UserTestDataFactory userTestDataFactory;
+  private final RefreshTokenJpaRepository refreshTokenJpaRepository;
+  private final SecureTokenGeneratorPort secureTokenGeneratorPort;
+  private final JwtDecoder jwtDecoder;
+
+  @Autowired
+  AuthRefreshTokenIntegrationTest(
+      UserTestDataFactory userTestDataFactory,
+      RefreshTokenJpaRepository refreshTokenJpaRepository,
+      SecureTokenGeneratorPort secureTokenGeneratorPort,
+      JwtDecoder jwtDecoder) {
+    this.userTestDataFactory = userTestDataFactory;
+    this.refreshTokenJpaRepository = refreshTokenJpaRepository;
+    this.secureTokenGeneratorPort = secureTokenGeneratorPort;
+    this.jwtDecoder = jwtDecoder;
+  }
+
+  @Test
+  @DisplayName("Deve retornar 200, rotacionar o refresh token e emitir novo access token")
+  void shouldRotateRefreshTokenAndIssueNewAccessToken() {
+    // Arrange
+    UserEntity user =
+        userTestDataFactory.createActiveUser(
+            "refresh-success.integration@example.com", PASSWORD);
+    String currentRawRefreshToken = login(user.getEmail(), PASSWORD, "login-before-refresh").refreshToken();
+    String currentTokenHash = secureTokenGeneratorPort.hashToken(currentRawRefreshToken);
+
+    // Act
+    Response response = refresh(currentRawRefreshToken, "refresh-active-token", 200);
+
+    // Assert
+    String replacementRawRefreshToken = response.cookie("refreshToken");
+    String replacementAccessToken = response.path("newAccessToken");
+    String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
+    HttpCookie replacementCookie = HttpCookie.parse(setCookieHeader).getFirst();
+    var cookieAttributes =
+        Arrays.stream(setCookieHeader.split(";"))
+            .skip(1)
+            .map(String::trim)
+            .toList();
+
+    assertThat(replacementRawRefreshToken).isNotBlank();
+    assertThat(replacementCookie.getName()).isEqualTo("refreshToken");
+    assertThat(replacementCookie.isHttpOnly()).isTrue();
+    assertThat(replacementCookie.getSecure()).isTrue();
+    assertThat(replacementCookie.getPath()).isEqualTo("/api/v1/auth");
+    assertThat(replacementCookie.getMaxAge()).isEqualTo(Duration.ofDays(7).toSeconds());
+    assertThat(cookieAttributes).contains("SameSite=Strict");
+
+    Jwt jwt = jwtDecoder.decode(replacementAccessToken);
+    assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
+    assertThat(jwt.getClaimAsString("plan")).isEqualTo(PlanType.FREE.name());
+    assertThat(jwt.getClaimAsStringList("authorities"))
+        .contains("url:create", "url:read:own");
+    assertThat(jwt.getExpiresAt()).isAfter(Instant.now());
+
+    String replacementTokenHash =
+        secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
+    RefreshTokenEntity currentToken =
+        refreshTokenJpaRepository.findByTokenHash(currentTokenHash).orElseThrow();
+    RefreshTokenEntity replacementToken =
+        refreshTokenJpaRepository.findByTokenHash(replacementTokenHash).orElseThrow();
+
+    assertThat(refreshTokenJpaRepository.count()).isEqualTo(2);
+    assertThat(currentToken.getRevokedAt()).isNotNull();
+    assertThat(currentToken.getReplacedByToken().getId()).isEqualTo(replacementToken.getId());
+    assertThat(replacementToken.getUser().getId()).isEqualTo(user.getId());
+    assertThat(replacementToken.getRevokedAt()).isNull();
+    assertThat(replacementToken.getReplacedByToken()).isNull();
+    assertThat(replacementToken.getExpiresAt()).isAfter(replacementToken.getCreatedAt());
+  }
+
+  @Test
+  @DisplayName("Deve retornar 401 quando o cookie de refresh token estiver ausente")
+  void shouldRejectRequestWithoutRefreshTokenCookie() {
+    // Arrange
+
+    // Act
+    given()
+        .header("Idempotency-Key", "refresh-without-cookie")
+        .when()
+        .post(REFRESH_ENDPOINT)
+        .then()
+        .statusCode(401)
+        .contentType("application/problem+json")
+        .header(HttpHeaders.SET_COOKIE, blankOrNullString())
+        .body("title", is("Não autorizado"))
+        .body("type", is(ProblemType.UNAUTHORIZED))
+        .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
+        .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
+
+    // Assert
+    assertThat(refreshTokenJpaRepository.count()).isZero();
+  }
+
+  @Test
+  @DisplayName("Deve retornar 401 quando o refresh token não estiver armazenado")
+  void shouldRejectUnknownRefreshToken() {
+    // Arrange
+    String unknownRefreshToken = "unknown-refresh-token";
+
+    // Act
+    given()
+        .header("Idempotency-Key", "refresh-unknown-token")
+        .cookie("refreshToken", unknownRefreshToken)
+        .when()
+        .post(REFRESH_ENDPOINT)
+        .then()
+        .statusCode(401)
+        .contentType("application/problem+json")
+        .header(HttpHeaders.SET_COOKIE, blankOrNullString())
+        .body("title", is("Não autorizado"))
+        .body("type", is(ProblemType.UNAUTHORIZED))
+        .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getMessage()))
+        .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getCode()));
+
+    // Assert
+    assertThat(refreshTokenJpaRepository.count()).isZero();
+  }
+
+  @Test
+  @DisplayName("Deve retornar 401 e revogar todos os tokens ao detectar replay")
+  void shouldRevokeAllUserTokensWhenRotatedRefreshTokenIsReused() {
+    // Arrange
+    UserEntity user =
+        userTestDataFactory.createActiveUser(
+            "refresh-replay.integration@example.com", PASSWORD);
+    String originalRawRefreshToken =
+        login(user.getEmail(), PASSWORD, "login-before-replay").refreshToken();
+    refresh(originalRawRefreshToken, "refresh-before-replay", 200);
+
+    // Act
+    given()
+        .header("Idempotency-Key", "refresh-replayed-token")
+        .cookie("refreshToken", originalRawRefreshToken)
+        .when()
+        .post(REFRESH_ENDPOINT)
+        .then()
+        .statusCode(401)
+        .contentType("application/problem+json")
+        .header(HttpHeaders.SET_COOKIE, blankOrNullString())
+        .body("title", is("Não autorizado"))
+        .body("type", is(ProblemType.UNAUTHORIZED))
+        .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_COMPROMISED.getMessage()))
+        .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_COMPROMISED.getCode()));
+
+    // Assert
+    assertThat(refreshTokenJpaRepository.findAll())
+        .hasSize(2)
+        .allSatisfy(token -> assertThat(token.getRevokedAt()).isNotNull());
+  }
+
+  private Response refresh(String rawRefreshToken, String idempotencyKey, int expectedStatus) {
+    return given()
+        .header("Idempotency-Key", idempotencyKey)
+        .cookie("refreshToken", rawRefreshToken)
+        .when()
+        .post(REFRESH_ENDPOINT)
+        .then()
+        .statusCode(expectedStatus)
+        .contentType(ContentType.JSON)
+        .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()))
+        .body("newAccessToken", not(blankOrNullString()))
+        .extract()
+        .response();
+  }
+}

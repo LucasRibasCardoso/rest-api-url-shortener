@@ -89,6 +89,20 @@ class IamWebMapperTest {
     }
 
     @Test
+    @DisplayName("Deve criar comando de logout quando o refresh token for nulo")
+    void shouldCreateLogoutCommandWhenRefreshTokenIsNull() {
+      // 1. Arrange
+      String refreshToken = null;
+
+      // 2. Act
+      var command = mapper.toLogoutCommand(refreshToken);
+
+      // 3. Assert
+      assertThat(command).isNotNull();
+      assertThat(command.refreshToken()).isNull();
+    }
+
+    @Test
     @DisplayName("Deve mapear request de reenvio de verificação para comando")
     void shouldMapResendVerificationRequestToCommand() {
       // 1. Arrange
