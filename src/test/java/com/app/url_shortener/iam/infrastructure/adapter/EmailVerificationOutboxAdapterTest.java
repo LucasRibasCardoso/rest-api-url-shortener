@@ -112,7 +112,7 @@ class EmailVerificationOutboxAdapterTest {
     @DisplayName("Não deve salvar evento quando a serialização do payload falhar")
     void shouldNotSaveOutboxEventWhenPayloadSerializationFails() {
       // 1. Arrange
-      var exception = new OutboxEventSerializationException();
+      var exception = new OutboxEventSerializationException(new IllegalStateException("Jackson failure"));
       given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedPayload.class)))
           .willThrow(exception);
 

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
 import com.app.url_shortener.shared.outbox.domain.exception.OutboxEventSerializationException;
 import java.time.Instant;
 import java.util.UUID;
@@ -67,7 +68,10 @@ class OutboxEventSerializerAdapterTest {
       var throwableAssert = assertThatThrownBy(() -> adapter.serialize(event));
 
       // 3. Assert
-      throwableAssert.isInstanceOf(OutboxEventSerializationException.class);
+      throwableAssert
+          .isInstanceOf(OutboxEventSerializationException.class)
+          .isInstanceOf(InternalServerErrorException.class)
+          .hasCause(jacksonException);
       verify(objectMapper).writeValueAsString(event);
       verifyNoMoreInteractions(objectMapper);
     }

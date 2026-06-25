@@ -168,7 +168,8 @@ class IdempotencyFilterTest {
       var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
       var response = new MockHttpServletResponse();
       var filterChain = new MockFilterChain();
-      var cachedResponse = new CachedResponse(HttpServletResponse.SC_CREATED, "{\"shortCode\":\"abc123\"}");
+      var cachedResponse =
+          new CachedResponse(HttpServletResponse.SC_CREATED, "{\"message\":\"código criado\"}");
       var entry = new IdempotencyEntry(IdempotencyStatus.COMPLETED, FINGERPRINT, cachedResponse, Instant.now());
 
       given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
@@ -182,7 +183,8 @@ class IdempotencyFilterTest {
       // 3. Assert
       assertAll(
               () -> assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_CREATED),
-              () -> assertThat(response.getContentType()).isEqualTo("application/json"),
+              () -> assertThat(response.getContentType()).isEqualTo("application/json;charset=UTF-8"),
+              () -> assertThat(response.getCharacterEncoding()).isEqualTo("UTF-8"),
               () -> assertThat(response.getContentAsString()).isEqualTo(cachedResponse.body()),
               () -> assertThat(filterChain.getRequest()).isNull()
       );
@@ -271,6 +273,29 @@ class IdempotencyFilterTest {
     }
 
     @Test
+    @DisplayName("Deve armazenar resposta JSON UTF-8 sem corromper caracteres acentuados")
+    void shouldCacheUtf8JsonResponseWithoutCorruptingAccentedCharacters() throws Exception {
+      // 1. Arrange
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
+      var response = new MockHttpServletResponse();
+      var responseBody = "{\"message\":\"código de verificação\"}";
+      var filterChain = filterChainReturningUtf8Json(HttpServletResponse.SC_CREATED, responseBody);
+
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(true);
+
+      // 2. Act
+      filter.doFilterInternal(request, response, filterChain);
+
+      // 3. Assert
+      verify(idempotencyPort)
+          .saveCompleted(
+              eq(GENERATED_KEY), cachedResponseCaptor.capture(), eq(Duration.ofHours(24)));
+      assertThat(cachedResponseCaptor.getValue().body()).isEqualTo(responseBody);
+    }
+
+    @Test
     @DisplayName("Deve excluir chave de idempotência quando resposta tiver erro 5xx")
     void shouldDeleteIdempotencyKeyWhenResponseHasServerError() throws Exception {
       // 1. Arrange
@@ -317,6 +342,19 @@ class IdempotencyFilterTest {
       protected void service(HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
         response.setStatus(status);
         response.getWriter().write(body);
+      }
+    });
+  }
+
+  private static MockFilterChain filterChainReturningUtf8Json(int status, String body) {
+    return new MockFilterChain(new HttpServlet() {
+
+      @Override
+      protected void service(HttpServletRequest request, HttpServletResponse response)
+          throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
       }
     });
   }

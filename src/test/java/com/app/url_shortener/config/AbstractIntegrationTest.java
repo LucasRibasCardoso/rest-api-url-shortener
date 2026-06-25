@@ -16,8 +16,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.annotation.DirtiesContext;
 
 @Tag("integration")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
@@ -32,6 +34,7 @@ public abstract class AbstractIntegrationTest {
     RedisContainerSupport.resetRedis();
     LocalStackContainerSupport.resetDynamoDbTables();
     LocalStackContainerSupport.resetSqsQueues();
+    LocalStackContainerSupport.setupSesIdentity();
     LocalStackContainerSupport.resetSesMessages();
     RestAssured.port = this.port;
     RestAssured.config = RestAssuredConfig.config().redirect(redirectConfig().followRedirects(false));
