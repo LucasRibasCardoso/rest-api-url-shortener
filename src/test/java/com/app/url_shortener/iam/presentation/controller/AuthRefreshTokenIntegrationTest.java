@@ -28,6 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
+@DisplayName("Testes de Integração - Endpoint de refresh token")
 class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
 
   private static final String REFRESH_ENDPOINT = "/api/v1/auth/refresh";

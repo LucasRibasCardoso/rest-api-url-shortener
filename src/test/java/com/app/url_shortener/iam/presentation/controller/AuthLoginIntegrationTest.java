@@ -29,6 +29,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
+@DisplayName("Testes de Integração - Endpoint de login")
 class AuthLoginIntegrationTest extends AbstractIntegrationTest {
 
   private static final String LOGIN_ENDPOINT = "/api/v1/auth/login";

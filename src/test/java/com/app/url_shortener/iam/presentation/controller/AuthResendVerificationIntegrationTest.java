@@ -17,6 +17,10 @@ import com.app.url_shortener.shared.outbox.domain.model.OutboxEventStatus;
 import com.app.url_shortener.shared.outbox.infrastructure.entity.OutboxEventEntity;
 import com.app.url_shortener.shared.outbox.infrastructure.repository.OutboxEventJpaRepository;
 import io.restassured.http.ContentType;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +28,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import tools.jackson.databind.ObjectMapper;
 
+@DisplayName("Testes de Integração - Endpoint de reenvio de verificação")
 class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
 
   private static final String RESEND_ENDPOINT = "/api/v1/auth/resend-verification";
@@ -238,6 +243,70 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
     assertThat(stringRedisTemplate.hasKey(cooldownKey(email))).isFalse();
   }
 
+  @Test
+  @DisplayName("Deve aceitar apenas um reenvio concorrente e reverter o evento rejeitado")
+  void shouldAcceptOnlyOneConcurrentResendAndRollbackRejectedEvent() throws Exception {
+    // Arrange
+    String email = "concurrent-resend.integration@example.com";
+    UserEntity user = userTestDataFactory.createPendingUser(email, PASSWORD);
+    var requestBody = requestBody(email);
+    var workersReady = new CountDownLatch(2);
+    var startSignal = new CountDownLatch(1);
+
+    // Act
+    List<ResendHttpResult> results;
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var firstRequest =
+          executor.submit(
+              () ->
+                  resendAfterSignal(
+                      requestBody,
+                      "concurrent-resend-first",
+                      workersReady,
+                      startSignal));
+      var secondRequest =
+          executor.submit(
+              () ->
+                  resendAfterSignal(
+                      requestBody,
+                      "concurrent-resend-second",
+                      workersReady,
+                      startSignal));
+
+      if (!workersReady.await(5, TimeUnit.SECONDS)) {
+        throw new IllegalStateException("Concurrent resend requests did not become ready");
+      }
+      startSignal.countDown();
+      results =
+          List.of(
+              firstRequest.get(10, TimeUnit.SECONDS),
+              secondRequest.get(10, TimeUnit.SECONDS));
+    }
+
+    // Assert
+    OutboxEventEntity outboxEvent = outboxEventJpaRepository.findAll().getFirst();
+    var payload = objectMapper.readTree(outboxEvent.getPayload());
+    Long cooldownTtl = stringRedisTemplate.getExpire(cooldownKey(email));
+
+    assertThat(results).extracting(ResendHttpResult::statusCode).containsExactlyInAnyOrder(200, 429);
+    assertThat(results)
+        .filteredOn(result -> result.statusCode() == 429)
+        .singleElement()
+        .satisfies(
+            result -> {
+              assertThat(result.errorCode()).isEqualTo(CommonErrorCode.TOO_MANY_REQUESTS.getCode());
+              assertThat(result.retryAfter())
+                  .isEqualTo(String.valueOf(emailVerificationPolicy.resendCooldown().toSeconds()));
+            });
+    assertThat(outboxEventJpaRepository.count()).isEqualTo(1);
+    assertThat(outboxEvent.getAggregateId()).isEqualTo(user.getId().toString());
+    assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
+    assertThat(payload.path("reason").asString()).isEqualTo(EmailDispatchReason.RESEND.name());
+    assertThat(cooldownTtl)
+        .isPositive()
+        .isLessThanOrEqualTo(emailVerificationPolicy.resendCooldown().toSeconds());
+  }
+
   private String requestBody(String email) {
     return """
         {
@@ -250,4 +319,30 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
   private String cooldownKey(String email) {
     return COOLDOWN_KEY_PREFIX + email;
   }
+
+  private ResendHttpResult resendAfterSignal(
+      String requestBody,
+      String idempotencyKey,
+      CountDownLatch workersReady,
+      CountDownLatch startSignal)
+      throws InterruptedException {
+    workersReady.countDown();
+    if (!startSignal.await(5, TimeUnit.SECONDS)) {
+      throw new IllegalStateException("Concurrent resend start signal was not received");
+    }
+
+    var response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Idempotency-Key", idempotencyKey)
+            .body(requestBody)
+            .when()
+            .post(RESEND_ENDPOINT);
+    return new ResendHttpResult(
+        response.statusCode(),
+        response.jsonPath().getString("errorCode"),
+        response.header(HttpHeaders.RETRY_AFTER));
+  }
+
+  private record ResendHttpResult(int statusCode, String errorCode, String retryAfter) {}
 }

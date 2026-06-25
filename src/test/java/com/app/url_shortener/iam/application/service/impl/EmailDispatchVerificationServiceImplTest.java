@@ -1,6 +1,7 @@
 package com.app.url_shortener.iam.application.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -15,7 +16,9 @@ import com.app.url_shortener.iam.application.port.output.VerificationCodeProtect
 import com.app.url_shortener.iam.domain.enums.EmailDispatchPurpose;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchStatus;
+import com.app.url_shortener.iam.domain.exception.auth.DuplicateEmailDispatchEventException;
 import com.app.url_shortener.iam.domain.exception.auth.DuplicateOpenEmailVerificationTokenException;
+import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationTokenNotFoundException;
 import com.app.url_shortener.iam.domain.model.EmailDispatch;
 import com.app.url_shortener.iam.domain.model.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
@@ -174,6 +177,112 @@ class EmailDispatchVerificationServiceImplTest {
       assertThat(result.token()).isSameAs(token);
 
       verify(emailDispatchRepositoryPort, never()).findLatestByVerificationTokenId(any());
+    }
+
+    @Test
+    @DisplayName("Deve falhar quando o token referenciado pelo dispatch não existir")
+    void shouldFailWhenExistingDispatchTokenDoesNotExist() {
+      // 1. Arrange
+      var event = event(EmailDispatchReason.REGISTER);
+      var tokenId = UUID.fromString("019a22c5-0987-7af5-88d6-2df3aeb30203");
+      var dispatch = dispatch(event, tokenId);
+
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.of(dispatch));
+      given(verificationTokenRepositoryPort.findById(tokenId)).willReturn(Optional.empty());
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> service.findOrCreate(event));
+
+      // 3. Assert
+      throwableAssert.isInstanceOf(EmailVerificationTokenNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Deve recuperar dispatch criado concorrentemente para o mesmo eventId")
+    void shouldRecoverDispatchCreatedConcurrentlyForSameEventId() {
+      // 1. Arrange
+      var event = event(EmailDispatchReason.REGISTER);
+      var token = token(UUID.fromString("019a22c5-0987-7af5-88d6-2df3aeb30204"));
+      var concurrentDispatch = dispatch(event, token.getId());
+
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty(), Optional.of(concurrentDispatch));
+      given(transactionTemplate.execute(any()))
+          .willThrow(new DuplicateEmailDispatchEventException());
+      given(verificationTokenRepositoryPort.findById(token.getId())).willReturn(Optional.of(token));
+
+      // 2. Act
+      var result = service.findOrCreate(event);
+
+      // 3. Assert
+      assertThat(result.dispatch()).isSameAs(concurrentDispatch);
+      assertThat(result.token()).isSameAs(token);
+    }
+
+    @Test
+    @DisplayName("Deve relançar colisão de eventId quando o dispatch concorrente não for encontrado")
+    void shouldRethrowDuplicateEventWhenConcurrentDispatchCannotBeFound() {
+      // 1. Arrange
+      var event = event(EmailDispatchReason.REGISTER);
+      var duplicateException = new DuplicateEmailDispatchEventException();
+
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty());
+      given(transactionTemplate.execute(any())).willThrow(duplicateException);
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> service.findOrCreate(event));
+
+      // 3. Assert
+      throwableAssert.isSameAs(duplicateException);
+    }
+
+    @Test
+    @DisplayName("Deve relançar colisão de token aberto quando o token concorrente não for encontrado")
+    void shouldRethrowDuplicateOpenTokenWhenConcurrentTokenCannotBeFound() {
+      // 1. Arrange
+      var event = event(EmailDispatchReason.RESEND);
+      var duplicateException = new DuplicateOpenEmailVerificationTokenException();
+
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty());
+      given(transactionTemplate.execute(any())).willThrow(duplicateException);
+      given(verificationTokenRepositoryPort.findOpenByUserIdAndEmail(event.userId(), event.email()))
+          .willReturn(Optional.empty());
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> service.findOrCreate(event));
+
+      // 3. Assert
+      throwableAssert.isSameAs(duplicateException);
+    }
+
+    @Test
+    @DisplayName("Deve recuperar dispatch quando houver colisão após recuperar token aberto")
+    void shouldRecoverDispatchAfterCollisionWhileUsingConcurrentOpenToken() {
+      // 1. Arrange
+      var event = event(EmailDispatchReason.RESEND);
+      var token = token(UUID.fromString("019a22c5-0987-7af5-88d6-2df3aeb30205"));
+      var concurrentDispatch = dispatch(event, token.getId());
+
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty(), Optional.of(concurrentDispatch));
+      given(transactionTemplate.execute(any()))
+          .willThrow(new DuplicateOpenEmailVerificationTokenException())
+          .willAnswer(invocation -> executeTransaction(invocation.getArgument(0)));
+      given(verificationTokenRepositoryPort.findOpenByUserIdAndEmail(event.userId(), event.email()))
+          .willReturn(Optional.of(token));
+      given(emailDispatchRepositoryPort.save(any(EmailDispatch.class)))
+          .willThrow(new DuplicateEmailDispatchEventException());
+      given(verificationTokenRepositoryPort.findById(token.getId())).willReturn(Optional.of(token));
+
+      // 2. Act
+      var result = service.findOrCreate(event);
+
+      // 3. Assert
+      assertThat(result.dispatch()).isSameAs(concurrentDispatch);
+      assertThat(result.token()).isSameAs(token);
     }
   }
 

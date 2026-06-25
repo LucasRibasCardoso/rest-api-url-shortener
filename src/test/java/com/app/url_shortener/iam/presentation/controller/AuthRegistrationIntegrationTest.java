@@ -43,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
       "app.rate-limit.policies.auth-register-ip.capacity=4",
       "app.rate-limit.policies.auth-register-ip.refill-tokens=4"
     })
+@DisplayName("Testes de Integração - Endpoint de cadastro")
 class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";

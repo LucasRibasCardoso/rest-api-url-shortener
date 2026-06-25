@@ -23,12 +23,17 @@ import io.restassured.http.ContentType;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+@DisplayName("Testes de Integração - Endpoint de verificação de e-mail")
 class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
 
   private static final String VERIFY_EMAIL_ENDPOINT = "/api/v1/auth/verify-email";
@@ -245,6 +250,72 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
     assertThat(savedToken.getFailedAttempts()).isEqualTo(5);
   }
 
+  @Test
+  @DisplayName("Deve consumir o OTP apenas uma vez em verificações concorrentes")
+  void shouldConsumeOtpOnlyOnceForConcurrentVerificationRequests() throws Exception {
+    // Arrange
+    String email = "concurrent-verification.integration@example.com";
+    UserEntity user = userTestDataFactory.createPendingUser(email, PASSWORD);
+    EmailVerificationToken token = createToken(user, Instant.now().plus(Duration.ofMinutes(10)));
+    var requestBody =
+        """
+        {
+          "email": "concurrent-verification.integration@example.com",
+          "code": "123456"
+        }
+        """;
+    var workersReady = new CountDownLatch(2);
+    var startSignal = new CountDownLatch(1);
+
+    // Act
+    List<VerificationHttpResult> results;
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var firstRequest =
+          executor.submit(
+              () ->
+                  verifyAfterSignal(
+                      requestBody,
+                      "verify-email-concurrent-first",
+                      workersReady,
+                      startSignal));
+      var secondRequest =
+          executor.submit(
+              () ->
+                  verifyAfterSignal(
+                      requestBody,
+                      "verify-email-concurrent-second",
+                      workersReady,
+                      startSignal));
+
+      if (!workersReady.await(5, TimeUnit.SECONDS)) {
+        throw new IllegalStateException("Concurrent verification requests did not become ready");
+      }
+      startSignal.countDown();
+      results =
+          List.of(
+              firstRequest.get(10, TimeUnit.SECONDS),
+              secondRequest.get(10, TimeUnit.SECONDS));
+    }
+
+    // Assert
+    UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
+    EmailVerificationTokenEntity savedToken =
+        emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
+
+    assertThat(results).extracting(VerificationHttpResult::statusCode).containsExactlyInAnyOrder(200, 400);
+    assertThat(results)
+        .filteredOn(result -> result.statusCode() == 400)
+        .singleElement()
+        .extracting(VerificationHttpResult::errorCode)
+        .isEqualTo(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode());
+    assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    assertThat(savedUser.isEmailVerified()).isTrue();
+    assertThat(savedUser.getRoles()).singleElement().satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
+    assertThat(savedToken.getConsumedAt()).isNotNull();
+    assertThat(savedToken.getRevokedAt()).isNull();
+    assertThat(savedToken.getFailedAttempts()).isZero();
+  }
+
   private EmailVerificationToken createToken(UserEntity user, Instant expiresAt) {
     VerificationCode code = VerificationCode.of(VALID_CODE);
     Instant issuedAt = Instant.now();
@@ -282,4 +353,28 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         """
         .formatted(email, INVALID_CODE);
   }
+
+  private VerificationHttpResult verifyAfterSignal(
+      String requestBody,
+      String idempotencyKey,
+      CountDownLatch workersReady,
+      CountDownLatch startSignal)
+      throws InterruptedException {
+    workersReady.countDown();
+    if (!startSignal.await(5, TimeUnit.SECONDS)) {
+      throw new IllegalStateException("Concurrent verification start signal was not received");
+    }
+
+    var response =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Idempotency-Key", idempotencyKey)
+            .body(requestBody)
+            .when()
+            .post(VERIFY_EMAIL_ENDPOINT);
+    return new VerificationHttpResult(
+        response.statusCode(), response.jsonPath().getString("errorCode"));
+  }
+
+  private record VerificationHttpResult(int statusCode, String errorCode) {}
 }

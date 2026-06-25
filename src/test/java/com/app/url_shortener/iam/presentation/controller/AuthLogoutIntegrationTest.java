@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 
+@DisplayName("Testes de Integração - Endpoint de logout")
 class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
 
   private static final String LOGOUT_ENDPOINT = "/api/v1/auth/logout";
