@@ -18,7 +18,7 @@ public class OutboxEventSerializerAdapter implements OutboxEventSerializerPort {
     try {
       return objectMapper.writeValueAsString(event);
     } catch (JacksonException e) {
-      throw new OutboxEventSerializationException();
+      throw new OutboxEventSerializationException(e);
     }
   }
 }

@@ -159,10 +159,22 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
     response.setStatus(entry.response().status());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.getWriter().write(entry.response().body());
   }
 
   private static Charset responseCharset(HttpServletResponse response) {
+    String contentType = response.getContentType();
+    if (contentType != null && !contentType.isBlank()) {
+      MediaType mediaType = MediaType.parseMediaType(contentType);
+      if (mediaType.getCharset() != null) {
+        return mediaType.getCharset();
+      }
+      if (mediaType.getSubtype().equals("json") || mediaType.getSubtype().endsWith("+json")) {
+        return StandardCharsets.UTF_8;
+      }
+    }
+
     String characterEncoding = response.getCharacterEncoding();
     if (characterEncoding == null || characterEncoding.isBlank()) {
       return StandardCharsets.UTF_8;
