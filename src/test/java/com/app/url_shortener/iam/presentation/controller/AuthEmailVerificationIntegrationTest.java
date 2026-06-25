@@ -251,6 +251,64 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
+  @DisplayName("Deve rejeitar reutilização sequencial de OTP já consumido")
+  void shouldRejectSequentialReuseOfConsumedOtp() {
+    // Arrange
+    String email = "reused-consumed-otp.integration@example.com";
+    UserEntity user = userTestDataFactory.createPendingUser(email, PASSWORD);
+    EmailVerificationToken token = createToken(user, Instant.now().plus(Duration.ofMinutes(10)));
+    var requestBody =
+        """
+        {
+          "email": "reused-consumed-otp.integration@example.com",
+          "code": "123456"
+        }
+        """;
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Idempotency-Key", "verify-email-reuse-first")
+        .body(requestBody)
+        .when()
+        .post(VERIFY_EMAIL_ENDPOINT)
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .body("message", is(SUCCESS_MESSAGE));
+
+    // Act
+    given()
+        .contentType(ContentType.JSON)
+        .header("Idempotency-Key", "verify-email-reuse-second")
+        .body(requestBody)
+        .when()
+        .post(VERIFY_EMAIL_ENDPOINT)
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(400)
+        .contentType("application/problem+json")
+        .body("title", is("Validação"))
+        .body("type", is(ProblemType.VALIDATION))
+        .body("detail", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getMessage()))
+        .body("errorCode", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode()));
+
+    // Assert
+    UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
+    EmailVerificationTokenEntity savedToken =
+        emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
+
+    assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    assertThat(savedUser.isEmailVerified()).isTrue();
+    assertThat(savedUser.getRoles()).singleElement().satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
+    assertThat(savedToken.getConsumedAt()).isNotNull();
+    assertThat(savedToken.getRevokedAt()).isNull();
+    assertThat(savedToken.getFailedAttempts()).isZero();
+  }
+
+  @Test
   @DisplayName("Deve consumir o OTP apenas uma vez em verificações concorrentes")
   void shouldConsumeOtpOnlyOnceForConcurrentVerificationRequests() throws Exception {
     // Arrange

@@ -12,7 +12,11 @@ import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
 import com.app.url_shortener.shared.database.PostgresConstraintExtractor;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -108,6 +112,100 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 3. Assert
       assertThat(consumed).isTrue();
+      assertThat(timestampColumn(tokenId, "consumed_at")).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("Não deve consumir token que já foi consumido")
+    void shouldNotConsumeAlreadyConsumedToken() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50106");
+      var tokenId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50207");
+      var email = "already-consumed-token-adapter@email.com";
+      var consumedAt = CREATED_AT.plusSeconds(30);
+      var now = CREATED_AT.plusSeconds(60);
+      insertUser(userId, email);
+      insertToken(tokenId, userId, email, CREATED_AT.plusSeconds(600), consumedAt, null);
+
+      // 2. Act
+      var consumed = adapter.consumeIfActive(tokenId, now);
+
+      // 3. Assert
+      assertThat(consumed).isFalse();
+      assertThat(timestampColumn(tokenId, "consumed_at")).isEqualTo(consumedAt);
+    }
+
+    @Test
+    @DisplayName("Não deve consumir token revogado")
+    void shouldNotConsumeRevokedToken() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50107");
+      var tokenId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50208");
+      var email = "revoked-token-adapter@email.com";
+      var revokedAt = CREATED_AT.plusSeconds(30);
+      var now = CREATED_AT.plusSeconds(60);
+      insertUser(userId, email);
+      insertToken(tokenId, userId, email, CREATED_AT.plusSeconds(600), null, revokedAt);
+
+      // 2. Act
+      var consumed = adapter.consumeIfActive(tokenId, now);
+
+      // 3. Assert
+      assertThat(consumed).isFalse();
+      assertThat(timestampColumn(tokenId, "consumed_at")).isNull();
+      assertThat(timestampColumn(tokenId, "revoked_at")).isEqualTo(revokedAt);
+    }
+
+    @Test
+    @DisplayName("Não deve consumir token expirado")
+    void shouldNotConsumeExpiredToken() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50108");
+      var tokenId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50209");
+      var email = "expired-token-adapter@email.com";
+      var now = CREATED_AT.plusSeconds(600);
+      insertUser(userId, email);
+      insertToken(tokenId, userId, email, CREATED_AT.plusSeconds(300), null, null);
+
+      // 2. Act
+      var consumed = adapter.consumeIfActive(tokenId, now);
+
+      // 3. Assert
+      assertThat(consumed).isFalse();
+      assertThat(timestampColumn(tokenId, "consumed_at")).isNull();
+    }
+
+    @Test
+    @DisplayName("Deve consumir token apenas uma vez em chamadas concorrentes")
+    void shouldConsumeTokenOnlyOnceWhenRequestsAreConcurrent() throws Exception {
+      // 1. Arrange
+      var userId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50109");
+      var tokenId = UUID.fromString("019a1f1f-a71d-79c2-a9da-7a8e1db50210");
+      var email = "concurrent-consume-token-adapter@email.com";
+      var now = CREATED_AT.plusSeconds(60);
+      var workersReady = new CountDownLatch(2);
+      var startSignal = new CountDownLatch(1);
+      insertUser(userId, email);
+      insertToken(tokenId, userId, email, CREATED_AT.plusSeconds(600), null, null);
+
+      // 2. Act
+      List<Boolean> results;
+      try (var executor = Executors.newFixedThreadPool(2)) {
+        var firstConsume =
+            executor.submit(() -> consumeAfterSignal(tokenId, now, workersReady, startSignal));
+        var secondConsume =
+            executor.submit(() -> consumeAfterSignal(tokenId, now, workersReady, startSignal));
+
+        if (!workersReady.await(5, TimeUnit.SECONDS)) {
+          throw new IllegalStateException("Concurrent consume workers did not become ready");
+        }
+        startSignal.countDown();
+
+        results = List.of(firstConsume.get(10, TimeUnit.SECONDS), secondConsume.get(10, TimeUnit.SECONDS));
+      }
+
+      // 3. Assert
+      assertThat(results).containsExactlyInAnyOrder(true, false);
       assertThat(timestampColumn(tokenId, "consumed_at")).isEqualTo(now);
     }
 
@@ -229,6 +327,20 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
         "SELECT " + columnName + " FROM email_verification_tokens WHERE id = ?",
         Integer.class,
         tokenId);
+  }
+
+  private boolean consumeAfterSignal(
+      UUID tokenId,
+      Instant now,
+      CountDownLatch workersReady,
+      CountDownLatch startSignal)
+      throws InterruptedException {
+    workersReady.countDown();
+    if (!startSignal.await(5, TimeUnit.SECONDS)) {
+      throw new IllegalStateException("Concurrent consume start signal was not received");
+    }
+
+    return adapter.consumeIfActive(tokenId, now);
   }
 
   private static Timestamp timestamp(Instant instant) {

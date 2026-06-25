@@ -180,6 +180,46 @@ class AuthControllerTest extends BaseWebSliceTest {
       verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, verifyEmailUseCase);
     }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            missing email | {"code":"123456"} | email
+            blank email | {"email":"","code":"123456"} | email
+            invalid email | {"email":"invalid-email","code":"123456"} | email
+            long email | {"email":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@email.com","code":"123456"} | email
+            missing code | {"email":"user@email.com"} | code
+            blank code | {"email":"user@email.com","code":""} | code
+            non numeric code | {"email":"user@email.com","code":"ABC123"} | code
+            short code | {"email":"user@email.com","code":"12345"} | code
+            long code | {"email":"user@email.com","code":"1234567"} | code
+            """)
+    @DisplayName("Deve retornar 400 com ProblemDetail quando verify-email request for inválido")
+    void shouldReturnBadRequestProblemDetailWhenVerifyEmailRequestIsInvalid(
+            String scenario,
+            String body,
+            String invalidField
+    ) throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(post(AUTH_BASE_PATH + "/verify-email")
+              .contentType(MediaType.APPLICATION_JSON)
+              .content(body));
+
+      // 3. Assert
+      resultActions
+              .andExpect(status().isBadRequest())
+              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+              .andExpect(jsonPath("$.type").value(ProblemType.VALIDATION))
+              .andExpect(jsonPath("$.title").value("Validação"))
+              .andExpect(jsonPath("$.status").value(400))
+              .andExpect(jsonPath("$.detail").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage()))
+              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+              .andExpect(jsonPath("$.errors[?(@.field == '%s')]".formatted(invalidField)).exists())
+              .andExpect(result -> assertThat(scenario).isNotBlank());
+
+      verifyNoInteractions(iamWebMapper, verifyEmailUseCase);
+    }
   }
 
   @Nested
