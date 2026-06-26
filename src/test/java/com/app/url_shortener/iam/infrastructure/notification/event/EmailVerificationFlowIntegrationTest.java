@@ -6,6 +6,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
 
 import com.app.url_shortener.config.AbstractIntegrationTest;
+import com.app.url_shortener.config.ConcurrentTestExecutor;
 import com.app.url_shortener.config.LocalStackContainerSupport;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
 import com.app.url_shortener.iam.application.port.output.EmailDispatchRepositoryPort;
@@ -35,9 +36,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,9 +68,12 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
   private static final String VERIFY_ENDPOINT = "/api/v1/auth/verify-email";
   private static final String FROM_EMAIL = "no-reply@url-shortener.local";
   private static final String QUEUE_NAME = "email-verification-events-queue";
-  private static final String REGISTER_SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
-  private static final String RESEND_SUCCESS_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
-  private static final String VERIFY_SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String REGISTER_SUCCESS_MESSAGE =
+      "Enviamos um código de verificação para o seu e-mail.";
+  private static final String RESEND_SUCCESS_MESSAGE =
+      "Enviamos um novo código de verificação para o seu e-mail.";
+  private static final String VERIFY_SUCCESS_MESSAGE =
+      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(10);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(200);
   private static final Pattern VERIFICATION_CODE_PATTERN = Pattern.compile("\\b(\\d{6})\\b");
@@ -135,11 +136,16 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
     var savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     var savedOutboxEvent = outboxEventJpaRepository.findById(outboxEvent.getId()).orElseThrow();
     var savedDispatch = emailDispatchJpaRepository.findById(dispatch.getId()).orElseThrow();
-    var savedToken = emailVerificationTokenJpaRepository.findById(dispatch.getVerificationTokenId()).orElseThrow();
+    var savedToken =
+        emailVerificationTokenJpaRepository
+            .findById(dispatch.getVerificationTokenId())
+            .orElseThrow();
 
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
     assertThat(savedUser.isEmailVerified()).isTrue();
-    assertThat(savedUser.getRoles()).singleElement().satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
+    assertThat(savedUser.getRoles())
+        .singleElement()
+        .satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
     assertThat(savedOutboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
     assertThat(savedOutboxEvent.getPublishedAt()).isNotNull();
     assertThat(savedDispatch.getStatus()).isEqualTo(EmailDispatchStatus.ACCEPTED);
@@ -175,7 +181,8 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
     OutboxEventEntity resendEvent = outboxEventExcluding(registerEvent.getId());
     outboxPublisherScheduler.publishPendingEvents();
     EmailDispatchEntity resendDispatch = awaitAcceptedDispatch(resendEvent.getId());
-    String newVerificationCode = verificationCodeFromCapturedEmail(resendDispatch.getProviderMessageId());
+    String newVerificationCode =
+        verificationCodeFromCapturedEmail(resendDispatch.getProviderMessageId());
     verifyEmail(email, newVerificationCode, "verify-complete-resend-flow");
 
     // Assert
@@ -227,7 +234,8 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
     assertThat(emailVerificationTokenJpaRepository.count()).isEqualTo(1);
     assertThat(savedDispatch.getStatus()).isEqualTo(EmailDispatchStatus.ACCEPTED);
     assertThat(savedDispatch.getSendAttempts()).isEqualTo(1);
-    assertThat(savedDispatch.getProviderMessageId()).isEqualTo(initialDispatch.getProviderMessageId());
+    assertThat(savedDispatch.getProviderMessageId())
+        .isEqualTo(initialDispatch.getProviderMessageId());
     assertThat(capturedMessages()).hasSize(1);
   }
 
@@ -304,28 +312,14 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
     var preparedDispatch = emailDispatchVerificationService.findOrCreate(event);
     UUID dispatchId = preparedDispatch.dispatch().getId();
     Instant reservationTime = Instant.now();
-    var workersReady = new CountDownLatch(2);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<Boolean> reservationResults;
-    try (var executor = Executors.newFixedThreadPool(2)) {
-      var firstReservation =
-          executor.submit(
-              () -> reserveAfterSignal(dispatchId, reservationTime, workersReady, startSignal));
-      var secondReservation =
-          executor.submit(
-              () -> reserveAfterSignal(dispatchId, reservationTime, workersReady, startSignal));
-
-      if (!workersReady.await(5, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Concurrent reservation workers did not become ready");
-      }
-      startSignal.countDown();
-      reservationResults =
-          List.of(
-              firstReservation.get(5, TimeUnit.SECONDS),
-              secondReservation.get(5, TimeUnit.SECONDS));
-    }
+    List<Boolean> reservationResults =
+        ConcurrentTestExecutor.execute(
+            2,
+            ignored ->
+                emailDispatchRepositoryPort.markAsSendingIfAvailable(
+                    dispatchId, reservationTime, Instant.EPOCH));
 
     // Assert
     var savedDispatch = emailDispatchJpaRepository.findById(dispatchId).orElseThrow();
@@ -347,26 +341,11 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
     register(registerRequestBody(email), "concurrent-dispatch-creation-register");
     OutboxEventEntity outboxEvent = getFirstOutboxEvent();
     EmailVerificationRequestedEvent event = toEvent(outboxEvent);
-    var workersReady = new CountDownLatch(2);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<PreparedEmailVerificationDispatch> results;
-    try (var executor = Executors.newFixedThreadPool(2)) {
-      var firstPreparation =
-          executor.submit(() -> prepareAfterSignal(event, workersReady, startSignal));
-      var secondPreparation =
-          executor.submit(() -> prepareAfterSignal(event, workersReady, startSignal));
-
-      if (!workersReady.await(5, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Concurrent dispatch creation workers did not become ready");
-      }
-      startSignal.countDown();
-      results =
-          List.of(
-              firstPreparation.get(10, TimeUnit.SECONDS),
-              secondPreparation.get(10, TimeUnit.SECONDS));
-    }
+    List<PreparedEmailVerificationDispatch> results =
+        ConcurrentTestExecutor.execute(
+            2, ignored -> emailDispatchVerificationService.findOrCreate(event));
 
     // Assert
     assertThat(results)
@@ -601,31 +580,5 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
         payload.path("email").asString(),
         EmailDispatchReason.valueOf(payload.path("reason").asString()),
         envelope.occurredAt());
-  }
-
-  private boolean reserveAfterSignal(
-      UUID dispatchId,
-      Instant reservationTime,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal)
-      throws InterruptedException {
-    workersReady.countDown();
-    if (!startSignal.await(5, TimeUnit.SECONDS)) {
-      throw new IllegalStateException("Concurrent reservation start signal was not received");
-    }
-    return emailDispatchRepositoryPort.markAsSendingIfAvailable(
-        dispatchId, reservationTime, Instant.EPOCH);
-  }
-
-  private PreparedEmailVerificationDispatch prepareAfterSignal(
-      EmailVerificationRequestedEvent event,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal)
-      throws InterruptedException {
-    workersReady.countDown();
-    if (!startSignal.await(5, TimeUnit.SECONDS)) {
-      throw new IllegalStateException("Concurrent dispatch creation start signal was not received");
-    }
-    return emailDispatchVerificationService.findOrCreate(event);
   }
 }

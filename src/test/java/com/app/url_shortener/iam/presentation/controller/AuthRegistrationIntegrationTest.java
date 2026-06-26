@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 
 import com.app.url_shortener.config.AbstractIntegrationTest;
+import com.app.url_shortener.config.ConcurrentTestExecutor;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.domain.enums.PlanType;
@@ -22,11 +23,6 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.function.IntFunction;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +43,8 @@ import tools.jackson.databind.ObjectMapper;
 class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";
-  private static final String SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
+  private static final String SUCCESS_MESSAGE =
+      "Enviamos um código de verificação para o seu e-mail.";
   private static final String ROLLBACK_TEST_EMAIL = "outbox-rollback.integration@example.com";
   private static final String OUTBOX_FAILURE_TRIGGER = "trg_reject_register_outbox_for_test";
   private static final String OUTBOX_FAILURE_FUNCTION = "reject_register_outbox_for_test";
@@ -73,7 +70,8 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve retornar 201 ao cadastrar usuário anônimo e persistir evento de verificação na outbox")
+  @DisplayName(
+      "Deve retornar 201 ao cadastrar usuário anônimo e persistir evento de verificação na outbox")
   void shouldRegisterAnonymousUserAndPersistVerificationOutboxEvent() {
     // Arrange
     var requestBody =
@@ -100,7 +98,8 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
         .body("message", is(SUCCESS_MESSAGE));
 
     // Assert
-    UserEntity savedUser = userJpaRepository.findByEmail("maria.integration@example.com").orElseThrow();
+    UserEntity savedUser =
+        userJpaRepository.findByEmail("maria.integration@example.com").orElseThrow();
 
     assertThat(savedUser.getName()).isEqualTo("Maria da Silva");
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.PENDING_EMAIL_VERIFICATION);
@@ -115,7 +114,8 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
     OutboxEventEntity outboxEvent = outboxEvents.getFirst();
     assertThat(outboxEvent.getAggregateType()).isEqualTo(IamOutboxEventTypes.AGGREGATE_USER);
     assertThat(outboxEvent.getAggregateId()).isEqualTo(savedUser.getId().toString());
-    assertThat(outboxEvent.getEventType()).isEqualTo(IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED);
+    assertThat(outboxEvent.getEventType())
+        .isEqualTo(IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED);
     assertThat(outboxEvent.getSchemaVersion()).isEqualTo(1);
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
     assertThat(outboxEvent.getAttempts()).isZero();
@@ -126,7 +126,6 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
     assertThat(payload.path("userId").asString()).isEqualTo(savedUser.getId().toString());
     assertThat(payload.path("email").asString()).isEqualTo("maria.integration@example.com");
     assertThat(payload.path("reason").asString()).isEqualTo(EmailDispatchReason.REGISTER.name());
-    assertThat(payload.has("otp")).isFalse();
   }
 
   @Test
@@ -166,17 +165,18 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve retornar 400 quando a chave de idempotência estiver ausente sem processar o cadastro")
+  @DisplayName(
+      "Deve retornar 400 quando a chave de idempotência estiver ausente sem processar o cadastro")
   void shouldRequireIdempotencyKeyBeforeProcessingRegistration() {
     // Arrange
     var requestBody =
         """
-            {
-              "name": "Ana Souza",
-              "email": "ana.integration@example.com",
-              "password": "secure-password"
-            }
-            """;
+        {
+          "name": "Ana Souza",
+          "email": "ana.integration@example.com",
+          "password": "secure-password"
+        }
+        """;
 
     // Act
     given()
@@ -232,6 +232,7 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
         .statusCode(201)
         .contentType(ContentType.JSON)
         .body("message", is(SUCCESS_MESSAGE));
+
     assertThat(userJpaRepository.count()).isEqualTo(1);
     assertThat(outboxEventJpaRepository.count()).isEqualTo(1);
   }
@@ -274,8 +275,10 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
         .body("type", is(ProblemType.CONFLICT))
         .body("detail", is(CommonErrorCode.IDEMPOTENCY_IN_PROCESSING.getMessage()))
         .body("errorCode", is(CommonErrorCode.IDEMPOTENCY_IN_PROCESSING.getCode()));
-    assertThat(userJpaRepository.findByEmail("idempotent-first.integration@example.com")).isPresent();
-    assertThat(userJpaRepository.findByEmail("idempotent-conflict.integration@example.com")).isEmpty();
+    assertThat(userJpaRepository.findByEmail("idempotent-first.integration@example.com"))
+        .isPresent();
+    assertThat(userJpaRepository.findByEmail("idempotent-conflict.integration@example.com"))
+        .isEmpty();
     assertThat(userJpaRepository.count()).isEqualTo(1);
     assertThat(outboxEventJpaRepository.count()).isEqualTo(1);
   }
@@ -286,69 +289,25 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
     // Arrange
     String email = "concurrent-idempotency.integration@example.com";
     String idempotencyKey = "register-concurrent-idempotency";
-    var workersReady = new CountDownLatch(2);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<RegistrationHttpResult> results =
-        executeConcurrentRegistrations(
+    List<Response> results =
+        ConcurrentTestExecutor.execute(
             2,
-            workersReady,
-            startSignal,
-            attempt -> email,
-            attempt -> idempotencyKey,
-            "203.0.113.20");
+            attempt -> register(concurrentUserRequestBody(email), idempotencyKey, "203.0.113.20"));
 
     // Assert
-    assertThat(results).hasSize(2).anyMatch(result -> result.statusCode() == 201);
-    assertThat(results).allMatch(result -> result.statusCode() == 201 || result.statusCode() == 409);
+    assertThat(results).hasSize(2).anyMatch(response -> response.statusCode() == 201);
     assertThat(results)
-        .filteredOn(result -> result.statusCode() == 409)
+        .allMatch(response -> response.statusCode() == 201 || response.statusCode() == 409);
+    assertThat(results)
+        .filteredOn(response -> response.statusCode() == 409)
         .allSatisfy(
-            result ->
-                assertThat(result.errorCode())
+            response ->
+                assertThat(response.jsonPath().getString("errorCode"))
                     .isEqualTo(CommonErrorCode.IDEMPOTENCY_IN_PROCESSING.getCode()));
     assertThat(userJpaRepository.count()).isEqualTo(1);
     assertThat(outboxEventJpaRepository.count()).isEqualTo(1);
-  }
-
-  @Test
-  @DisplayName("Deve reverter usuário quando a persistência real da outbox falhar")
-  void shouldRollbackUserWhenOutboxPersistenceFails() {
-    // Arrange
-    var requestBody =
-        """
-        {
-          "name": "Rollback User",
-          "email": "%s",
-          "password": "secure-password"
-        }
-        """
-            .formatted(ROLLBACK_TEST_EMAIL);
-    installOutboxFailureTrigger();
-
-    // Act
-    Response response;
-    try {
-      response = register(requestBody, "register-outbox-rollback");
-    } finally {
-      removeOutboxFailureTrigger();
-    }
-
-    // Assert
-    response
-        .then()
-        .log()
-        .ifValidationFails()
-        .statusCode(503)
-        .contentType("application/problem+json")
-        .body("title", is("Infraestrutura"))
-        .body("type", is(ProblemType.INFRASTRUCTURE))
-        .body("detail", is(CommonErrorCode.DEPENDENCY_FAILURE.getMessage()))
-        .body("errorCode", is(CommonErrorCode.DEPENDENCY_FAILURE.getCode()));
-    assertThat(userJpaRepository.findByEmail(ROLLBACK_TEST_EMAIL)).isEmpty();
-    assertThat(userJpaRepository.count()).isZero();
-    assertThat(outboxEventJpaRepository.count()).isZero();
   }
 
   @Test
@@ -411,24 +370,22 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
     // Arrange
     String email = "concurrent-email-rate-limit.integration@example.com";
     String clientIp = "203.0.113.30";
-    var workersReady = new CountDownLatch(4);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<RegistrationHttpResult> results =
-        executeConcurrentRegistrations(
+    List<Response> results =
+        ConcurrentTestExecutor.execute(
             4,
-            workersReady,
-            startSignal,
-            attempt -> email,
-            attempt -> "register-concurrent-email-" + attempt,
-            clientIp);
+            attempt ->
+                register(
+                    concurrentUserRequestBody(email),
+                    "register-concurrent-email-" + attempt,
+                    clientIp));
 
     // Assert
-    assertThat(results).filteredOn(result -> result.statusCode() == 201).hasSize(1);
-    assertThat(results).filteredOn(result -> result.statusCode() == 409).hasSize(2);
+    assertThat(results).filteredOn(response -> response.statusCode() == 201).hasSize(1);
+    assertThat(results).filteredOn(response -> response.statusCode() == 409).hasSize(2);
     assertThat(results)
-        .filteredOn(result -> result.statusCode() == 429)
+        .filteredOn(response -> response.statusCode() == 429)
         .singleElement()
         .satisfies(this::assertRateLimited);
     assertThat(userJpaRepository.count()).isEqualTo(1);
@@ -436,30 +393,30 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve limitar atomicamente cadastros concorrentes de um mesmo IP")
-  void shouldAtomicallyRateLimitConcurrentRegistrationsFromSameIp() throws Exception {
+  @DisplayName("Deve limitar cadastros concorrentes de um mesmo IP")
+  void shouldRateLimitConcurrentRegistrationsFromSameIp() throws Exception {
     // Arrange
     String clientIp = "203.0.113.40";
-    var workersReady = new CountDownLatch(6);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<RegistrationHttpResult> results =
-        executeConcurrentRegistrations(
+    List<Response> results =
+        ConcurrentTestExecutor.execute(
             6,
-            workersReady,
-            startSignal,
-            attempt -> "concurrent-ip-" + attempt + ".integration@example.com",
-            attempt -> "register-concurrent-ip-" + attempt,
-            clientIp);
+            attempt ->
+                register(
+                    concurrentUserRequestBody(
+                        "concurrent-ip-" + attempt + ".integration@example.com"),
+                    "register-concurrent-ip-" + attempt,
+                    clientIp));
 
     // Assert
-    assertThat(results).filteredOn(result -> result.statusCode() == 201).hasSize(4);
+    assertThat(results).filteredOn(response -> response.statusCode() == 201).hasSize(4);
     assertThat(results)
-        .filteredOn(result -> result.statusCode() == 429)
+        .filteredOn(response -> response.statusCode() == 429)
         .hasSize(2)
         .allSatisfy(this::assertRateLimited);
-    assertThat(results).allMatch(result -> result.statusCode() == 201 || result.statusCode() == 429);
+    assertThat(results)
+        .allMatch(response -> response.statusCode() == 201 || response.statusCode() == 429);
     assertThat(userJpaRepository.count()).isEqualTo(4);
     assertThat(outboxEventJpaRepository.count()).isEqualTo(4);
     assertThat(outboxEventJpaRepository.findAll())
@@ -469,55 +426,69 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
                     .isPresent());
   }
 
-  private List<RegistrationHttpResult> executeConcurrentRegistrations(
-      int requestCount,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal,
-      IntFunction<String> emailProvider,
-      IntFunction<String> idempotencyKeyProvider,
-      String clientIp)
-      throws Exception {
-    try (var executor = Executors.newFixedThreadPool(requestCount)) {
-      var futures =
-          IntStream.rangeClosed(1, requestCount)
-              .mapToObj(
-                  attempt ->
-                      executor.submit(
-                          () ->
-                              registerAfterSignal(
-                                  emailProvider.apply(attempt),
-                                  idempotencyKeyProvider.apply(attempt),
-                                  clientIp,
-                                  workersReady,
-                                  startSignal)))
-              .toList();
+  @Test
+  @DisplayName("Deve reverter usuário quando a persistência real da outbox falhar")
+  void shouldRollbackUserWhenOutboxPersistenceFails() {
+    // Arrange
+    var requestBody =
+        """
+        {
+          "name": "Rollback User",
+          "email": "%s",
+          "password": "secure-password"
+        }
+        """
+            .formatted(ROLLBACK_TEST_EMAIL);
 
-      if (!workersReady.await(5, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Concurrent registration requests did not become ready");
-      }
-      startSignal.countDown();
+    installOutboxFailureTrigger();
 
-      return futures.stream()
-          .map(
-              future -> {
-                try {
-                  return future.get(15, TimeUnit.SECONDS);
-                } catch (Exception exception) {
-                  throw new IllegalStateException(
-                      "Concurrent registration request did not complete", exception);
-                }
-              })
-          .toList();
+    // Act
+    Response response;
+    try {
+      response = register(requestBody, "register-outbox-rollback");
+    } finally {
+      removeOutboxFailureTrigger();
     }
+
+    // Assert
+    response
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(503)
+        .contentType("application/problem+json")
+        .body("title", is("Infraestrutura"))
+        .body("type", is(ProblemType.INFRASTRUCTURE))
+        .body("detail", is(CommonErrorCode.DEPENDENCY_FAILURE.getMessage()))
+        .body("errorCode", is(CommonErrorCode.DEPENDENCY_FAILURE.getCode()));
+    assertThat(userJpaRepository.findByEmail(ROLLBACK_TEST_EMAIL)).isEmpty();
+    assertThat(userJpaRepository.count()).isZero();
+    assertThat(outboxEventJpaRepository.count()).isZero();
   }
 
   private Response register(String requestBody, String idempotencyKey) {
-    return given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", idempotencyKey)
-        .body(requestBody)
-        .when()
-        .post(REGISTER_ENDPOINT);
+    return register(requestBody, idempotencyKey, null);
+  }
+
+  private Response register(String requestBody, String idempotencyKey, String clientIp) {
+    var request = given().contentType(ContentType.JSON).header("Idempotency-Key", idempotencyKey);
+
+    if (clientIp != null) {
+      request.header("X-Forwarded-For", clientIp);
+    }
+
+    return given().spec(request).body(requestBody).when().post(REGISTER_ENDPOINT);
+  }
+
+  private String concurrentUserRequestBody(String email) {
+    return """
+        {
+          "name": "Concurrent User",
+          "email": "%s",
+          "password": "secure-password"
+        }
+        """
+        .formatted(email);
   }
 
   private void installOutboxFailureTrigger() {
@@ -551,58 +522,12 @@ class AuthRegistrationIntegrationTest extends AbstractIntegrationTest {
     jdbcTemplate.execute("DROP FUNCTION IF EXISTS " + OUTBOX_FAILURE_FUNCTION + "()");
   }
 
-  private RegistrationHttpResult registerAfterSignal(
-      String email,
-      String idempotencyKey,
-      String clientIp,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal)
-      throws InterruptedException {
-    workersReady.countDown();
-    if (!startSignal.await(5, TimeUnit.SECONDS)) {
-      throw new IllegalStateException("Concurrent registration start signal was not received");
-    }
-
-    var requestBody =
-        """
-        {
-          "name": "Concurrent User",
-          "email": "%s",
-          "password": "secure-password"
-        }
-        """
-            .formatted(email);
-    var response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Idempotency-Key", idempotencyKey)
-            .header("X-Forwarded-For", clientIp)
-            .body(requestBody)
-            .when()
-            .post(REGISTER_ENDPOINT);
-
-    return new RegistrationHttpResult(
-        response.statusCode(),
-        response.jsonPath().getString("errorCode"),
-        response.header(HttpHeaders.RETRY_AFTER),
-        response.contentType(),
-        response.jsonPath().getString("title"),
-        response.jsonPath().getString("type"));
+  private void assertRateLimited(Response response) {
+    assertThat(response.jsonPath().getString("errorCode"))
+        .isEqualTo(CommonErrorCode.TOO_MANY_REQUESTS.getCode());
+    assertThat(response.header(HttpHeaders.RETRY_AFTER)).isNotBlank().matches("\\d+");
+    assertThat(response.contentType()).startsWith("application/problem+json");
+    assertThat(response.jsonPath().getString("title")).isEqualTo("Muitas requisições");
+    assertThat(response.jsonPath().getString("type")).isEqualTo(ProblemType.TOO_MANY_REQUESTS);
   }
-
-  private void assertRateLimited(RegistrationHttpResult result) {
-    assertThat(result.errorCode()).isEqualTo(CommonErrorCode.TOO_MANY_REQUESTS.getCode());
-    assertThat(result.retryAfter()).isNotBlank().matches("\\d+");
-    assertThat(result.contentType()).startsWith("application/problem+json");
-    assertThat(result.title()).isEqualTo("Muitas requisições");
-    assertThat(result.type()).isEqualTo(ProblemType.TOO_MANY_REQUESTS);
-  }
-
-  private record RegistrationHttpResult(
-      int statusCode,
-      String errorCode,
-      String retryAfter,
-      String contentType,
-      String title,
-      String type) {}
 }

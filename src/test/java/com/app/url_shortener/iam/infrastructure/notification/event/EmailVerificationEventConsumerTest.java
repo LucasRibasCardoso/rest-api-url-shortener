@@ -28,8 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 @DisplayName("Testes de Unidade - Consumer de Verificação de Email")
 class EmailVerificationEventConsumerTest {
 
-  @Mock
-  private EmailVerificationEventProcessorService processorService;
+  @Mock private EmailVerificationEventProcessorService processorService;
 
   private ObjectMapper objectMapper;
   private EmailVerificationEventConsumer consumer;
@@ -79,7 +78,8 @@ class EmailVerificationEventConsumerTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> consumer.consume(envelope))
           .isInstanceOf(InvalidEmailVerificationEventException.class)
-          .hasMessage("Evento de verificação de e-mail inválido. Unsupported outbox event type: UNSUPPORTED_EVENT");
+          .hasMessage(
+              "Evento de verificação de e-mail inválido. Unsupported outbox event type: UNSUPPORTED_EVENT");
       verifyNoInteractions(processorService);
     }
 
@@ -93,7 +93,8 @@ class EmailVerificationEventConsumerTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> consumer.consume(envelope))
           .isInstanceOf(InvalidEmailVerificationEventException.class)
-          .hasMessage("Evento de verificação de e-mail inválido. Unsupported outbox schema version: 2");
+          .hasMessage(
+              "Evento de verificação de e-mail inválido. Unsupported outbox schema version: 2");
       verifyNoInteractions(processorService);
     }
 
@@ -115,7 +116,8 @@ class EmailVerificationEventConsumerTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> consumer.consume(envelope))
           .isInstanceOf(InvalidEmailVerificationEventException.class)
-          .hasMessage("Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
+          .hasMessage(
+              "Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
       verifyNoInteractions(processorService);
     }
 
@@ -209,7 +211,8 @@ class EmailVerificationEventConsumerTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> consumer.consume(envelope))
           .isInstanceOf(InvalidEmailVerificationEventException.class)
-          .hasMessage("Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
+          .hasMessage(
+              "Evento de verificação de e-mail inválido. Invalid email verification outbox payload");
       verifyNoInteractions(processorService);
     }
   }

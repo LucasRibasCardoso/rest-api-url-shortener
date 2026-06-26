@@ -3,6 +3,7 @@ package com.app.url_shortener.iam.infrastructure.notification.event;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.is;
 
 import com.app.url_shortener.config.AbstractIntegrationTest;
 import com.app.url_shortener.config.ImmediateSqsRetryTestConfiguration;
@@ -21,8 +22,8 @@ import com.app.url_shortener.shared.outbox.application.message.OutboxMessageEnve
 import com.app.url_shortener.shared.outbox.application.scheduler.OutboxPublisherScheduler;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEventStatus;
 import com.app.url_shortener.shared.outbox.infrastructure.repository.OutboxEventJpaRepository;
-import io.awspring.cloud.sqs.operations.SqsTemplate;
 import io.awspring.cloud.sqs.listener.acknowledgement.Acknowledgement;
+import io.awspring.cloud.sqs.operations.SqsTemplate;
 import io.restassured.http.ContentType;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.messaging.Message;
 import org.springframework.test.context.TestPropertySource;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.DeleteIdentityRequest;
@@ -64,6 +66,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
   private static final String FROM_EMAIL = "no-reply@url-shortener.local";
   private static final String QUEUE_NAME = "email-verification-events-queue";
   private static final String DLQ_NAME = "email-verification-events-dlq";
+  private static final String REGISTER_SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(15);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(200);
 
@@ -116,24 +119,9 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
     outboxPublisherScheduler.publishPendingEvents();
 
     // Assert
-    await()
-        .atMost(ASYNC_TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .untilAsserted(
-            () -> {
-              assertThat(visibleMessageCount(DLQ_NAME)).isEqualTo(1);
-              var dispatch =
-                  emailDispatchJpaRepository.findByEventId(outboxEvent.getId()).orElseThrow();
-              assertThat(dispatch.getStatus()).isEqualTo(EmailDispatchStatus.FAILED);
-              assertThat(dispatch.getSendAttempts()).isEqualTo(5);
-            });
+    awaitFailedDispatchInDlq(outboxEvent.getId());
 
-    var dlqMessage =
-        sqsTemplate
-            .receive(
-                options -> options.queue(DLQ_NAME).pollTimeout(Duration.ofSeconds(2)),
-                OutboxMessageEnvelope.class)
-            .orElseThrow();
+    var dlqMessage = receiveDlqMessage();
     var dispatch = emailDispatchJpaRepository.findByEventId(outboxEvent.getId()).orElseThrow();
     var token =
         emailVerificationTokenJpaRepository
@@ -174,24 +162,8 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
     sqsTemplate.send(QUEUE_NAME, invalidEnvelope);
 
     // Assert
-    await()
-        .atMost(ASYNC_TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .untilAsserted(() -> assertThat(visibleMessageCount(DLQ_NAME)).isEqualTo(1));
-
-    var dlqMessage =
-        sqsTemplate
-            .receive(
-                options -> options.queue(DLQ_NAME).pollTimeout(Duration.ofSeconds(2)),
-                OutboxMessageEnvelope.class)
-            .orElseThrow();
-
-    assertThat(dlqMessage.getPayload().eventId()).isEqualTo(eventId);
-    assertThat(userJpaRepository.count()).isZero();
-    assertThat(outboxEventJpaRepository.count()).isZero();
-    assertThat(emailDispatchJpaRepository.count()).isZero();
-    assertThat(emailVerificationTokenJpaRepository.count()).isZero();
-    assertThat(queueMessageCount(QUEUE_NAME)).isZero();
+    awaitDlqMessage(eventId);
+    assertNoIamStateCreated();
   }
 
   @Test
@@ -233,7 +205,9 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
             IamOutboxEventTypes.AGGREGATE_USER,
             UUID.fromString("019b7af8-2092-7ae1-89cc-cfef16f13122").toString(),
             Instant.now(),
-            objectMapper.createObjectNode().put("email", "invalid-payload.integration@example.com"));
+            objectMapper
+                .createObjectNode()
+                .put("email", "invalid-payload.integration@example.com"));
 
     // Act
     sqsTemplate.send(QUEUE_NAME, invalidEnvelope);
@@ -262,6 +236,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
     // Assert
     awaitQueueDrained();
     assertThat(userJpaRepository.count()).isZero();
+    assertThat(outboxEventJpaRepository.count()).isZero();
     assertThat(emailDispatchJpaRepository.count()).isZero();
     assertThat(emailVerificationTokenJpaRepository.count()).isZero();
     assertThat(capturedMessageCount()).isZero();
@@ -292,6 +267,8 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
 
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.PENDING_EMAIL_VERIFICATION);
     assertThat(savedUser.isEmailVerified()).isFalse();
+    assertThat(userJpaRepository.count()).isEqualTo(1);
+    assertThat(outboxEventJpaRepository.count()).isZero();
     assertThat(emailDispatchJpaRepository.count()).isZero();
     assertThat(emailVerificationTokenJpaRepository.count()).isZero();
     assertThat(capturedMessageCount()).isZero();
@@ -322,6 +299,8 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
 
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
     assertThat(savedUser.isEmailVerified()).isTrue();
+    assertThat(userJpaRepository.count()).isEqualTo(1);
+    assertThat(outboxEventJpaRepository.count()).isZero();
     assertThat(emailDispatchJpaRepository.count()).isZero();
     assertThat(emailVerificationTokenJpaRepository.count()).isZero();
     assertThat(capturedMessageCount()).isZero();
@@ -338,26 +317,11 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
     var outboxEvent = outboxEventJpaRepository.findAll().getFirst();
     outboxPublisherScheduler.publishPendingEvents();
 
-    await()
-        .atMost(ASYNC_TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .untilAsserted(
-            () -> {
-              assertThat(visibleMessageCount(DLQ_NAME)).isEqualTo(1);
-              var dispatch =
-                  emailDispatchJpaRepository.findByEventId(outboxEvent.getId()).orElseThrow();
-              assertThat(dispatch.getStatus()).isEqualTo(EmailDispatchStatus.FAILED);
-              assertThat(dispatch.getSendAttempts()).isEqualTo(5);
-            });
+    awaitFailedDispatchInDlq(outboxEvent.getId());
 
     var failedDispatch =
         emailDispatchJpaRepository.findByEventId(outboxEvent.getId()).orElseThrow();
-    var dlqMessage =
-        sqsTemplate
-            .receive(
-                options -> options.queue(DLQ_NAME).pollTimeout(Duration.ofSeconds(2)),
-                OutboxMessageEnvelope.class)
-            .orElseThrow();
+    var dlqMessage = receiveDlqMessage();
 
     // Act
     Acknowledgement.acknowledge(dlqMessage);
@@ -415,7 +379,30 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
         .then()
         .log()
         .ifValidationFails()
-        .statusCode(201);
+        .statusCode(201)
+        .contentType(ContentType.JSON)
+        .body("message", is(REGISTER_SUCCESS_MESSAGE));
+  }
+
+  private void awaitFailedDispatchInDlq(UUID eventId) {
+    await()
+        .atMost(ASYNC_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .untilAsserted(
+            () -> {
+              assertThat(visibleMessageCount(DLQ_NAME)).isEqualTo(1);
+              var dispatch = emailDispatchJpaRepository.findByEventId(eventId).orElseThrow();
+              assertThat(dispatch.getStatus()).isEqualTo(EmailDispatchStatus.FAILED);
+              assertThat(dispatch.getSendAttempts()).isEqualTo(5);
+            });
+  }
+
+  private Message<OutboxMessageEnvelope> receiveDlqMessage() {
+    return sqsTemplate
+        .receive(
+            options -> options.queue(DLQ_NAME).pollTimeout(Duration.ofSeconds(2)),
+            OutboxMessageEnvelope.class)
+        .orElseThrow();
   }
 
   private int visibleMessageCount(String queueName) {
@@ -476,12 +463,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
         .pollInterval(POLL_INTERVAL)
         .untilAsserted(() -> assertThat(visibleMessageCount(DLQ_NAME)).isEqualTo(1));
 
-    var dlqMessage =
-        sqsTemplate
-            .receive(
-                options -> options.queue(DLQ_NAME).pollTimeout(Duration.ofSeconds(2)),
-                OutboxMessageEnvelope.class)
-            .orElseThrow();
+    var dlqMessage = receiveDlqMessage();
 
     assertThat(dlqMessage.getPayload().eventId()).isEqualTo(eventId);
     assertThat(queueMessageCount(QUEUE_NAME)).isZero();
