@@ -17,8 +17,11 @@ import com.app.url_shortener.iam.domain.model.RefreshToken;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
+
+  private static final String ROLE_PREFIX = "ROLE_";
 
   private final SecureTokenGeneratorPort secureTokenGeneratorPort;
   private final RefreshTokenRepositoryPort refreshTokenRepositoryPort;
@@ -105,9 +110,12 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
     List<String> roles = userAccount.getRoles().stream().map(Role::getName).toList();
 
     List<String> authorities = userAccount.getRoles().stream()
-            .flatMap(role -> role.getPermissions().stream())
-            .map(Permission::getName)
-            .distinct()
+            .flatMap(role -> Stream.concat(
+                    Stream.of(toRoleAuthority(role)),
+                    role.getPermissions().stream().map(Permission::getName)
+            ))
+            .collect(Collectors.toCollection(LinkedHashSet::new))
+            .stream()
             .toList();
 
     return new AuthenticatedUserResult(
@@ -117,5 +125,9 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
         roles,
         authorities,
         userAccount.getPlan().name());
+  }
+
+  private String toRoleAuthority(Role role) {
+    return ROLE_PREFIX + role.getName();
   }
 }

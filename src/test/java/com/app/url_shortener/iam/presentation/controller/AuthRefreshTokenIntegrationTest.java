@@ -76,6 +76,7 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
             .toList();
 
     assertThat(replacementRawRefreshToken).isNotBlank();
+    assertThat(response.jsonPath().getMap("$")).doesNotContainKeys("refreshToken", "newRefreshToken");
     assertThat(replacementCookie.getName()).isEqualTo("refreshToken");
     assertThat(replacementCookie.isHttpOnly()).isTrue();
     assertThat(replacementCookie.getSecure()).isTrue();
@@ -87,7 +88,13 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
     assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
     assertThat(jwt.getClaimAsString("plan")).isEqualTo(PlanType.FREE.name());
     assertThat(jwt.getClaimAsStringList("authorities"))
-        .contains("url:create", "url:read:own");
+        .containsExactlyInAnyOrder(
+            "ROLE_USER",
+            "url:create",
+            "url:read:own",
+            "url:ranking:own",
+            "url:list:own",
+            "url:delete:own");
     assertThat(jwt.getExpiresAt()).isAfter(Instant.now());
 
     String replacementTokenHash =

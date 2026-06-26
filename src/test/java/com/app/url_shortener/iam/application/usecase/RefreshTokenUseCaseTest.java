@@ -132,7 +132,12 @@ class RefreshTokenUseCaseTest {
               () -> assertThat(authenticatedUser.plan()).isEqualTo("FREE"),
               () -> assertThat(authenticatedUser.roles()).containsExactlyInAnyOrder("USER", "ADMIN"),
               () -> assertThat(authenticatedUser.authorities())
-                      .containsExactlyInAnyOrder("url:create", "url:read", "user:manage")
+                      .containsExactlyInAnyOrder(
+                          "ROLE_USER",
+                          "ROLE_ADMIN",
+                          "url:create",
+                          "url:read",
+                          "user:manage")
       );
 
       verify(secureTokenGeneratorPort).hashToken(command.refreshToken());

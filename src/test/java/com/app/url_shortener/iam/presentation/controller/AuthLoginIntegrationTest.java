@@ -102,6 +102,7 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
             .map(String::trim)
             .toList();
 
+    assertThat(response.jsonPath().getMap("$")).doesNotContainKey("refreshToken");
     assertThat(rawRefreshToken).isNotBlank();
     assertThat(refreshCookie.getName()).isEqualTo("refreshToken");
     assertThat(refreshCookie.isHttpOnly()).isTrue();
@@ -113,7 +114,14 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
     Jwt jwt = jwtDecoder.decode(accessToken);
     assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
     assertThat(jwt.getClaimAsString("plan")).isEqualTo(PlanType.FREE.name());
-    assertThat(jwt.getClaimAsStringList("authorities")).contains("ROLE_USER", "url:create", "url:read:own");
+    assertThat(jwt.getClaimAsStringList("authorities"))
+        .containsExactlyInAnyOrder(
+            "ROLE_USER",
+            "url:create",
+            "url:read:own",
+            "url:ranking:own",
+            "url:list:own",
+            "url:delete:own");
     assertThat(jwt.getIssuedAt()).isNotNull();
     assertThat(jwt.getExpiresAt()).isAfter(Instant.now());
 
