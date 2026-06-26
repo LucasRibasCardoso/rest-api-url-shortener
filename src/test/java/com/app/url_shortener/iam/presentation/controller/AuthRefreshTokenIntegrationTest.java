@@ -62,9 +62,18 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
     String currentTokenHash = secureTokenGeneratorPort.hashToken(currentRawRefreshToken);
 
     // Act
-    Response response = refresh(currentRawRefreshToken, "refresh-active-token", 200);
+    Response response = refresh(currentRawRefreshToken, "refresh-active-token");
 
     // Assert
+    response
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()))
+        .body("newAccessToken", not(blankOrNullString()));
+
     String replacementRawRefreshToken = response.cookie("refreshToken");
     String replacementAccessToken = response.path("newAccessToken");
     String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
@@ -119,11 +128,13 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
     // Arrange
 
     // Act
-    given()
-        .header("Idempotency-Key", "refresh-without-cookie")
-        .when()
-        .post(REFRESH_ENDPOINT)
+    Response response = refreshWithoutCookie("refresh-without-cookie");
+
+    // Assert
+    response
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(401)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -132,7 +143,6 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.count()).isZero();
   }
 
@@ -143,12 +153,13 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
     String unknownRefreshToken = "unknown-refresh-token";
 
     // Act
-    given()
-        .header("Idempotency-Key", "refresh-unknown-token")
-        .cookie("refreshToken", unknownRefreshToken)
-        .when()
-        .post(REFRESH_ENDPOINT)
+    Response response = refresh(unknownRefreshToken, "refresh-unknown-token");
+
+    // Assert
+    response
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(401)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -157,7 +168,6 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.count()).isZero();
   }
 
@@ -170,15 +180,17 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
             "refresh-replay.integration@example.com", PASSWORD);
     String originalRawRefreshToken =
         login(user.getEmail(), PASSWORD, "login-before-replay").refreshToken();
-    refresh(originalRawRefreshToken, "refresh-before-replay", 200);
+    Response firstResponse = refresh(originalRawRefreshToken, "refresh-before-replay");
 
     // Act
-    given()
-        .header("Idempotency-Key", "refresh-replayed-token")
-        .cookie("refreshToken", originalRawRefreshToken)
-        .when()
-        .post(REFRESH_ENDPOINT)
+    Response replayResponse = refresh(originalRawRefreshToken, "refresh-replayed-token");
+
+    // Assert
+    firstResponse.then().log().ifValidationFails().statusCode(200);
+    replayResponse
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(401)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -187,24 +199,23 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_REFRESH_TOKEN_COMPROMISED.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_REFRESH_TOKEN_COMPROMISED.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.findAll())
         .hasSize(2)
         .allSatisfy(token -> assertThat(token.getRevokedAt()).isNotNull());
   }
 
-  private Response refresh(String rawRefreshToken, String idempotencyKey, int expectedStatus) {
+  private Response refresh(String rawRefreshToken, String idempotencyKey) {
     return given()
         .header("Idempotency-Key", idempotencyKey)
         .cookie("refreshToken", rawRefreshToken)
         .when()
-        .post(REFRESH_ENDPOINT)
-        .then()
-        .statusCode(expectedStatus)
-        .contentType(ContentType.JSON)
-        .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()))
-        .body("newAccessToken", not(blankOrNullString()))
-        .extract()
-        .response();
+        .post(REFRESH_ENDPOINT);
+  }
+
+  private Response refreshWithoutCookie(String idempotencyKey) {
+    return given()
+        .header("Idempotency-Key", idempotencyKey)
+        .when()
+        .post(REFRESH_ENDPOINT);
   }
 }

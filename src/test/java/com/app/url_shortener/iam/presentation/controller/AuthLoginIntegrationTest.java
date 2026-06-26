@@ -18,6 +18,7 @@ import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaReposi
 import com.app.url_shortener.shared.error.ProblemType;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import java.net.HttpCookie;
 import java.time.Duration;
 import java.time.Instant;
@@ -68,30 +69,25 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         """;
 
     // Act
-    var response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Idempotency-Key", "login-active-user")
-            .header("X-Forwarded-For", CLIENT_IP)
-            .body(requestBody)
-            .when()
-            .post(LOGIN_ENDPOINT)
-            .then()
-            .statusCode(200)
-            .contentType(ContentType.JSON)
-            .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()))
-            .body("accessToken", not(blankOrNullString()))
-            .body("tokenType", is("Bearer"))
-            .body("expiresInSeconds", is(900))
-            .body("user.id", is(user.getId().toString()))
-            .body("user.name", is(user.getName()))
-            .body("user.email", is(email))
-            .body("user.plan", is(PlanType.FREE.name()))
-            .body("user.roles", contains("USER"))
-            .extract()
-            .response();
+    Response response = login(requestBody, "login-active-user");
 
     // Assert
+    response
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()))
+        .body("accessToken", not(blankOrNullString()))
+        .body("tokenType", is("Bearer"))
+        .body("expiresInSeconds", is(900))
+        .body("user.id", is(user.getId().toString()))
+        .body("user.name", is(user.getName()))
+        .body("user.email", is(email))
+        .body("user.plan", is(PlanType.FREE.name()))
+        .body("user.roles", contains("USER"));
+
     String accessToken = response.path("accessToken");
     String rawRefreshToken = response.cookie("refreshToken");
     String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
@@ -151,14 +147,13 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         """;
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "login-invalid-password")
-        .header("X-Forwarded-For", CLIENT_IP)
-        .body(requestBody)
-        .when()
-        .post(LOGIN_ENDPOINT)
+    Response response = login(requestBody, "login-invalid-password");
+
+    // Assert
+    response
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(400)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -167,7 +162,6 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_INVALID_CREDENTIALS.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_INVALID_CREDENTIALS.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.count()).isZero();
   }
 
@@ -186,14 +180,13 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         """;
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "login-pending-user")
-        .header("X-Forwarded-For", CLIENT_IP)
-        .body(requestBody)
-        .when()
-        .post(LOGIN_ENDPOINT)
+    Response response = login(requestBody, "login-pending-user");
+
+    // Assert
+    response
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(403)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -202,7 +195,6 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_ACCOUNT_PENDING_VERIFICATION.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_ACCOUNT_PENDING_VERIFICATION.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.count()).isZero();
   }
 
@@ -221,26 +213,21 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         """;
 
     for (int attempt = 1; attempt <= 5; attempt++) {
-      given()
-          .contentType(ContentType.JSON)
-          .header("Idempotency-Key", "login-rate-limit-" + attempt)
-          .header("X-Forwarded-For", CLIENT_IP)
-          .body(requestBody)
-          .when()
-          .post(LOGIN_ENDPOINT)
+      login(requestBody, "login-rate-limit-" + attempt)
           .then()
+          .log()
+          .ifValidationFails()
           .statusCode(400);
     }
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "login-rate-limit-blocked")
-        .header("X-Forwarded-For", CLIENT_IP)
-        .body(requestBody)
-        .when()
-        .post(LOGIN_ENDPOINT)
+    Response response = login(requestBody, "login-rate-limit-blocked");
+
+    // Assert
+    response
         .then()
+        .log()
+        .ifValidationFails()
         .statusCode(429)
         .contentType("application/problem+json")
         .header(HttpHeaders.SET_COOKIE, blankOrNullString())
@@ -250,8 +237,17 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
         .body("errorCode", is(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
 
-    // Assert
     assertThat(refreshTokenJpaRepository.count()).isZero();
+  }
+
+  private Response login(String requestBody, String idempotencyKey) {
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Idempotency-Key", idempotencyKey)
+        .header("X-Forwarded-For", CLIENT_IP)
+        .body(requestBody)
+        .when()
+        .post(LOGIN_ENDPOINT);
   }
 
 }

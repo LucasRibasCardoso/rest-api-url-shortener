@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesPattern;
 
 import com.app.url_shortener.config.AbstractIntegrationTest;
+import com.app.url_shortener.config.ConcurrentTestExecutor;
 import com.app.url_shortener.config.UserTestDataFactory;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.VerificationCodeProtectorPort;
@@ -20,13 +21,11 @@ import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
 import com.app.url_shortener.shared.error.ProblemType;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,12 +80,10 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         """;
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-valid-code")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    Response response = verifyEmail(requestBody, "verify-email-valid-code");
+
+    // Assert
+    response
         .then()
         .log()
         .ifValidationFails()
@@ -94,7 +91,6 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .contentType(ContentType.JSON)
         .body("message", is(SUCCESS_MESSAGE));
 
-    // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     EmailVerificationTokenEntity savedToken =
         emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
@@ -123,12 +119,10 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
     var requestBody = invalidCodeRequestBody(email);
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-invalid-code")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    Response response = verifyEmail(requestBody, "verify-email-invalid-code");
+
+    // Assert
+    response
         .then()
         .log()
         .ifValidationFails()
@@ -139,7 +133,6 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode()));
 
-    // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     EmailVerificationTokenEntity savedToken =
         emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
@@ -170,12 +163,10 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         """;
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-expired-code")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    Response response = verifyEmail(requestBody, "verify-email-expired-code");
+
+    // Assert
+    response
         .then()
         .log()
         .ifValidationFails()
@@ -186,7 +177,6 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode()));
 
-    // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     EmailVerificationTokenEntity savedToken =
         emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
@@ -210,12 +200,7 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
     var requestBody = invalidCodeRequestBody(email);
 
     for (int attempt = 1; attempt <= 5; attempt++) {
-      given()
-          .contentType(ContentType.JSON)
-          .header("Idempotency-Key", "verify-email-rate-limit-" + attempt)
-          .body(requestBody)
-          .when()
-          .post(VERIFY_EMAIL_ENDPOINT)
+      verifyEmail(requestBody, "verify-email-rate-limit-" + attempt)
           .then()
           .log()
           .ifValidationFails()
@@ -223,12 +208,10 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
     }
 
     // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-rate-limit-blocked")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    Response response = verifyEmail(requestBody, "verify-email-rate-limit-blocked");
+
+    // Assert
+    response
         .then()
         .log()
         .ifValidationFails()
@@ -240,7 +223,6 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
         .body("errorCode", is(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
 
-    // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     EmailVerificationTokenEntity savedToken = emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
 
@@ -265,26 +247,20 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         }
         """;
 
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-reuse-first")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    Response firstResponse = verifyEmail(requestBody, "verify-email-reuse-first");
+
+    // Act
+    Response secondResponse = verifyEmail(requestBody, "verify-email-reuse-second");
+
+    // Assert
+    firstResponse
         .then()
         .log()
         .ifValidationFails()
         .statusCode(200)
         .contentType(ContentType.JSON)
         .body("message", is(SUCCESS_MESSAGE));
-
-    // Act
-    given()
-        .contentType(ContentType.JSON)
-        .header("Idempotency-Key", "verify-email-reuse-second")
-        .body(requestBody)
-        .when()
-        .post(VERIFY_EMAIL_ENDPOINT)
+    secondResponse
         .then()
         .log()
         .ifValidationFails()
@@ -295,7 +271,6 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getMessage()))
         .body("errorCode", is(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode()));
 
-    // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
     EmailVerificationTokenEntity savedToken =
         emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
@@ -322,38 +297,14 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
           "code": "123456"
         }
         """;
-    var workersReady = new CountDownLatch(2);
-    var startSignal = new CountDownLatch(1);
 
     // Act
-    List<VerificationHttpResult> results;
-    try (var executor = Executors.newFixedThreadPool(2)) {
-      var firstRequest =
-          executor.submit(
-              () ->
-                  verifyAfterSignal(
-                      requestBody,
-                      "verify-email-concurrent-first",
-                      workersReady,
-                      startSignal));
-      var secondRequest =
-          executor.submit(
-              () ->
-                  verifyAfterSignal(
-                      requestBody,
-                      "verify-email-concurrent-second",
-                      workersReady,
-                      startSignal));
-
-      if (!workersReady.await(5, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Concurrent verification requests did not become ready");
-      }
-      startSignal.countDown();
-      results =
-          List.of(
-              firstRequest.get(10, TimeUnit.SECONDS),
-              secondRequest.get(10, TimeUnit.SECONDS));
-    }
+    List<VerificationHttpResult> results =
+        ConcurrentTestExecutor.execute(
+            2,
+            attempt ->
+                toVerificationHttpResult(
+                    verifyEmail(requestBody, "verify-email-concurrent-" + attempt)));
 
     // Assert
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
@@ -412,24 +363,16 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .formatted(email, INVALID_CODE);
   }
 
-  private VerificationHttpResult verifyAfterSignal(
-      String requestBody,
-      String idempotencyKey,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal)
-      throws InterruptedException {
-    workersReady.countDown();
-    if (!startSignal.await(5, TimeUnit.SECONDS)) {
-      throw new IllegalStateException("Concurrent verification start signal was not received");
-    }
+  private Response verifyEmail(String requestBody, String idempotencyKey) {
+    return given()
+        .contentType(ContentType.JSON)
+        .header("Idempotency-Key", idempotencyKey)
+        .body(requestBody)
+        .when()
+        .post(VERIFY_EMAIL_ENDPOINT);
+  }
 
-    var response =
-        given()
-            .contentType(ContentType.JSON)
-            .header("Idempotency-Key", idempotencyKey)
-            .body(requestBody)
-            .when()
-            .post(VERIFY_EMAIL_ENDPOINT);
+  private VerificationHttpResult toVerificationHttpResult(Response response) {
     return new VerificationHttpResult(
         response.statusCode(), response.jsonPath().getString("errorCode"));
   }
