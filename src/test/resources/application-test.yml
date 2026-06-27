@@ -45,6 +45,10 @@ app:
   iam:
     email-verification:
       sender: console
+      code-protection:
+        encryption-password: test-email-verification-password-32
+        encryption-salt: 0123456789abcdef
+        hmac-secret: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
   outbox:
     publisher:
       enabled: false
