@@ -64,25 +64,24 @@ public class UserEntity {
   @ManyToMany(fetch = FetchType.LAZY)
   @Column(nullable = false, length = 120)
   @JoinTable(
-          name = "user_roles",
-          joinColumns = @JoinColumn(name = "user_id"),
-          inverseJoinColumns = @JoinColumn(name = "role_id"))
+      name = "user_roles",
+      joinColumns = @JoinColumn(name = "user_id"),
+      inverseJoinColumns = @JoinColumn(name = "role_id"))
   private Set<RoleEntity> roles = new HashSet<>();
 
-  public UserEntity() {
-  }
+  public UserEntity() {}
 
   public UserEntity(
-          UUID id,
-          String name,
-          String email,
-          String passwordHash,
-          UserStatus status,
-          PlanType plan,
-          boolean emailVerified,
-          UserEntity createdBy,
-          UserEntity updatedBy,
-          Set<RoleEntity> roles) {
+      UUID id,
+      String name,
+      String email,
+      String passwordHash,
+      UserStatus status,
+      PlanType plan,
+      boolean emailVerified,
+      UserEntity createdBy,
+      UserEntity updatedBy,
+      Set<RoleEntity> roles) {
     this.id = id;
     this.name = name;
     this.email = email;

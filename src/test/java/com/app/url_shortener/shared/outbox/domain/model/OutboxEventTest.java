@@ -123,7 +123,8 @@ class OutboxEventTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("com.app.url_shortener.shared.outbox.domain.model.OutboxEventTest#requiredFieldScenarios")
+    @MethodSource(
+        "com.app.url_shortener.shared.outbox.domain.model.OutboxEventTest#requiredFieldScenarios")
     @DisplayName("Deve rejeitar campos obrigatórios nulos")
     void shouldRejectNullRequiredFields(
         String scenario, Supplier<OutboxEvent> eventSupplier, String expectedMessage) {
@@ -143,10 +144,7 @@ class OutboxEventTest {
       var nextAttemptAt = CREATED_AT.plusSeconds(30);
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(
-              () ->
-                  restore(
-                      OutboxEventStatus.PENDING, 1, "   ", null, nextAttemptAt))
+      assertThatThrownBy(() -> restore(OutboxEventStatus.PENDING, 1, "   ", null, nextAttemptAt))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("lastError must not be blank");
     }
@@ -158,10 +156,7 @@ class OutboxEventTest {
       var oversizedError = "x".repeat(2_001);
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(
-              () ->
-                  restore(
-                      OutboxEventStatus.FAILED, 1, oversizedError, null, null))
+      assertThatThrownBy(() -> restore(OutboxEventStatus.FAILED, 1, oversizedError, null, null))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("lastError must not exceed 2000 characters");
     }
@@ -172,8 +167,7 @@ class OutboxEventTest {
       // 1. Arrange
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(
-              () -> restore(OutboxEventStatus.FAILED, 1, null, null, null))
+      assertThatThrownBy(() -> restore(OutboxEventStatus.FAILED, 1, null, null, null))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("FAILED event must have lastError");
     }
@@ -207,9 +201,7 @@ class OutboxEventTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(
-              () ->
-                  restore(
-                      OutboxEventStatus.PENDING, 0, "temporary failure", null, nextAttemptAt))
+              () -> restore(OutboxEventStatus.PENDING, 0, "temporary failure", null, nextAttemptAt))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Initial PENDING event must not have retry metadata");
     }
@@ -244,8 +236,7 @@ class OutboxEventTest {
       var publishedAt = CREATED_AT.minusSeconds(1);
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(
-              () -> restore(OutboxEventStatus.PUBLISHED, 0, null, publishedAt, null))
+      assertThatThrownBy(() -> restore(OutboxEventStatus.PUBLISHED, 0, null, publishedAt, null))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("publishedAt must not be before createdAt");
     }
@@ -258,9 +249,7 @@ class OutboxEventTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(
-              () ->
-                  restore(
-                      OutboxEventStatus.FAILED, 1, "permanent failure", null, nextAttemptAt))
+              () -> restore(OutboxEventStatus.FAILED, 1, "permanent failure", null, nextAttemptAt))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("FAILED event must not have nextAttemptAt");
     }
@@ -412,8 +401,7 @@ class OutboxEventTest {
           .isInstanceOf(NullPointerException.class)
           .hasMessage("nextAttemptDelay must not be null");
       assertThatThrownBy(
-              () ->
-                  event.registerFailure("failure", CREATED_AT.plusSeconds(30), 3, Duration.ZERO))
+              () -> event.registerFailure("failure", CREATED_AT.plusSeconds(30), 3, Duration.ZERO))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("nextAttemptDelay must be positive");
       assertThatThrownBy(
@@ -552,8 +540,7 @@ class OutboxEventTest {
     void shouldConsiderRetryPublishableExactlyAtNextAttemptDate() {
       // 1. Arrange
       var nextAttemptAt = CREATED_AT.plusSeconds(30);
-      var event =
-          restore(OutboxEventStatus.PENDING, 1, "temporary failure", null, nextAttemptAt);
+      var event = restore(OutboxEventStatus.PENDING, 1, "temporary failure", null, nextAttemptAt);
 
       // 2. Act
       var beforeNextAttempt = event.canBePublishedAt(nextAttemptAt.minusNanos(1));
@@ -602,9 +589,11 @@ class OutboxEventTest {
       // 1. Arrange
       var id = UUID.randomUUID();
       var first =
-          OutboxEvent.createPending(id, AGGREGATE_TYPE, AGGREGATE_ID, EVENT_TYPE, PAYLOAD, CREATED_AT);
+          OutboxEvent.createPending(
+              id, AGGREGATE_TYPE, AGGREGATE_ID, EVENT_TYPE, PAYLOAD, CREATED_AT);
       var second =
-          OutboxEvent.createPending(id, AGGREGATE_TYPE, AGGREGATE_ID, EVENT_TYPE, "other", CREATED_AT);
+          OutboxEvent.createPending(
+              id, AGGREGATE_TYPE, AGGREGATE_ID, EVENT_TYPE, "other", CREATED_AT);
 
       // 2. Act & 3. Assert
       assertThat(first).isEqualTo(second).hasSameHashCodeAs(second);
@@ -672,7 +661,12 @@ class OutboxEventTest {
             (Supplier<OutboxEvent>)
                 () ->
                     OutboxEvent.createPending(
-                        UUID.randomUUID(), AGGREGATE_TYPE, AGGREGATE_ID, EVENT_TYPE, null, CREATED_AT),
+                        UUID.randomUUID(),
+                        AGGREGATE_TYPE,
+                        AGGREGATE_ID,
+                        EVENT_TYPE,
+                        null,
+                        CREATED_AT),
             "payload is required"),
         Arguments.of(
             "data de criação",

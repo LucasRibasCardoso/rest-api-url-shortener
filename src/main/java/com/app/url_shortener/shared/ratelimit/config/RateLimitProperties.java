@@ -22,7 +22,8 @@ public record RateLimitProperties(
     RateLimitPolicyProperties properties = policies.get(policy.getConfigKey());
 
     if (properties == null) {
-      throw new IllegalStateException("Missing rate limit policy configuration for key: " + policy.getConfigKey());
+      throw new IllegalStateException(
+          "Missing rate limit policy configuration for key: " + policy.getConfigKey());
     }
 
     return properties;
@@ -31,10 +32,14 @@ public record RateLimitProperties(
   @Override
   public String toString() {
     return "RateLimitProperties{"
-        + "enabled=" + enabled
-        + ", keyPrefix='" + keyPrefix + '\''
+        + "enabled="
+        + enabled
+        + ", keyPrefix='"
+        + keyPrefix
+        + '\''
         + ", emailHashSecret='[REDACTED]'"
-        + ", policies=" + policies
+        + ", policies="
+        + policies
         + '}';
   }
 }

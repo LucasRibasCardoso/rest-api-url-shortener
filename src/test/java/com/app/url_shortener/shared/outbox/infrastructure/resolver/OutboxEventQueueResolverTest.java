@@ -26,8 +26,7 @@ class OutboxEventQueueResolverTest {
     @DisplayName("Deve resolver e normalizar fila configurada")
     void shouldResolveAndNormalizeConfiguredQueue() {
       // 1. Arrange
-      var resolver =
-          resolver(Map.of(EVENT_TYPE.value(), "  email-verification-events-queue  "));
+      var resolver = resolver(Map.of(EVENT_TYPE.value(), "  email-verification-events-queue  "));
 
       // 2. Act
       var result = resolver.resolve(EVENT_TYPE);
@@ -46,7 +45,9 @@ class OutboxEventQueueResolverTest {
       var throwableAssert = assertThatThrownBy(() -> resolver.resolve(null));
 
       // 3. Assert
-      throwableAssert.isInstanceOf(NullPointerException.class).hasMessage("eventType must not be null");
+      throwableAssert
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("eventType must not be null");
     }
 
     @Test

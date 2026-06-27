@@ -30,14 +30,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Adaptador de Repositório de Roles")
 class RoleRepositoryAdapterTest {
 
-  @Mock
-  private RoleJpaRepository roleJpaRepository;
+  @Mock private RoleJpaRepository roleJpaRepository;
 
-  @Mock
-  private RolePersistenceMapper rolePersistenceMapper;
+  @Mock private RolePersistenceMapper rolePersistenceMapper;
 
-  @InjectMocks
-  private RoleRepositoryAdapter adapter;
+  @InjectMocks private RoleRepositoryAdapter adapter;
 
   @Nested
   @DisplayName("Busca da Role Padrão")
@@ -75,8 +72,8 @@ class RoleRepositoryAdapterTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DefaultRoleNotFoundException.class)
-              .hasMessage("Permissão padrão não encontrada.");
+          .isInstanceOf(DefaultRoleNotFoundException.class)
+          .hasMessage("Permissão padrão não encontrada.");
 
       verify(roleJpaRepository).findDefaultRole();
       verifyNoInteractions(rolePersistenceMapper);
@@ -86,23 +83,17 @@ class RoleRepositoryAdapterTest {
 
   private RoleEntity roleEntity(String name, boolean isDefault) {
     return new RoleEntity(
-            UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac123"),
-            name,
-            isDefault,
-            Set.of(new PermissionEntity(
-                    UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac456"),
-                    "url:create",
-                    "Criar URLs encurtadas"
-            ))
-    );
+        UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac123"),
+        name,
+        isDefault,
+        Set.of(
+            new PermissionEntity(
+                UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac456"),
+                "url:create",
+                "Criar URLs encurtadas")));
   }
 
   private Role roleDomain(UUID id, String name, boolean isDefault) {
-    return Role.restore(
-            id,
-            name,
-            isDefault,
-            Set.of()
-    );
+    return Role.restore(id, name, isDefault, Set.of());
   }
 }

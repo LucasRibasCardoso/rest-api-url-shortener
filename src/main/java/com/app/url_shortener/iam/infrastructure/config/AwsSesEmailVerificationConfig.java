@@ -11,9 +11,7 @@ import software.amazon.awssdk.regions.providers.AwsRegionProvider;
 import software.amazon.awssdk.services.ses.SesClient;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    name = "app.iam.email-verification.sender",
-    havingValue = "ses")
+@ConditionalOnProperty(name = "app.iam.email-verification.sender", havingValue = "ses")
 @EnableConfigurationProperties(AwsSesEmailVerificationProperties.class)
 public class AwsSesEmailVerificationConfig {
 
@@ -23,11 +21,11 @@ public class AwsSesEmailVerificationConfig {
       AwsCredentialsProvider credentialsProvider,
       AwsSesEmailVerificationProperties properties) {
 
-    var overrideConfiguration = ClientOverrideConfiguration.builder()
-            .apiCallTimeout(properties.apiCallTimeout())
-            .build();
+    var overrideConfiguration =
+        ClientOverrideConfiguration.builder().apiCallTimeout(properties.apiCallTimeout()).build();
 
-    var builder = SesClient.builder()
+    var builder =
+        SesClient.builder()
             .credentialsProvider(credentialsProvider)
             .region(regionProvider.getRegion())
             .overrideConfiguration(overrideConfiguration);

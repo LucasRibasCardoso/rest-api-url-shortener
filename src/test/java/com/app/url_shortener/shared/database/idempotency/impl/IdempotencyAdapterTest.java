@@ -1,5 +1,8 @@
 package com.app.url_shortener.shared.database.idempotency.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.shared.exception.internalservererror.IdempotencyCacheException;
 import com.app.url_shortener.shared.idempotency.enums.IdempotencyStatus;
@@ -8,6 +11,10 @@ import com.app.url_shortener.shared.idempotency.valueobjects.CachedResponse;
 import com.app.url_shortener.shared.idempotency.valueobjects.IdempotencyEntry;
 import com.app.url_shortener.shared.idempotency.valueobjects.IdempotencyKey;
 import com.app.url_shortener.shared.idempotency.valueobjects.RequestFingerprint;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,40 +28,22 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @Tag("redis-slice")
-@Import({
-        IdempotencyAdapter.class,
-        RedisIdempotencyStoreObjectMapperTestConfig.class
-})
+@Import({IdempotencyAdapter.class, RedisIdempotencyStoreObjectMapperTestConfig.class})
 @DisplayName("Slice Redis - Armazenamento de Idempotência")
 class IdempotencyAdapterTest extends BaseRedisSliceTest {
 
   private static final String KEY_PREFIX = "idempotency:";
   private static final String KEY_PATTERN = KEY_PREFIX + "*";
-  private static final RequestFingerprint FINGERPRINT = new RequestFingerprint(
-          "user:1",
-          "POST",
-          "/api/v1/urls",
-          "body-hash"
-  );
+  private static final RequestFingerprint FINGERPRINT =
+      new RequestFingerprint("user:1", "POST", "/api/v1/urls", "body-hash");
   private static final String RAW_IDEMPOTENCY_KEY = "request-key";
 
-  @Autowired
-  private IdempotencyAdapter store;
+  @Autowired private IdempotencyAdapter store;
 
-  @Autowired
-  private StringRedisTemplate redisTemplate;
+  @Autowired private StringRedisTemplate redisTemplate;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {
@@ -84,17 +73,18 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
       // 3. Assert
       assertThat(result).isTrue();
 
-      var storedEntry = objectMapper.readValue(redisTemplate.opsForValue().get(redisKey), IdempotencyEntry.class);
+      var storedEntry =
+          objectMapper.readValue(redisTemplate.opsForValue().get(redisKey), IdempotencyEntry.class);
       assertThat(storedEntry.status()).isEqualTo(IdempotencyStatus.IN_PROGRESS);
       assertThat(storedEntry.fingerprint()).isEqualTo(FINGERPRINT);
       assertThat(storedEntry.response()).isNull();
 
       var ttlMillis = redisTemplate.getExpire(redisKey, TimeUnit.MILLISECONDS);
       assertThat(ttlMillis)
-              .isNotNull()
-              .isPositive()
-              .isLessThanOrEqualTo(ttl.toMillis())
-              .isGreaterThan(ttl.minusSeconds(5).toMillis());
+          .isNotNull()
+          .isPositive()
+          .isLessThanOrEqualTo(ttl.toMillis())
+          .isGreaterThan(ttl.minusSeconds(5).toMillis());
     }
 
     @Test
@@ -111,7 +101,9 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
       assertThat(firstResult).isTrue();
       assertThat(secondResult).isFalse();
 
-      var storedEntry = objectMapper.readValue(redisTemplate.opsForValue().get(redisKey(idempotencyKey)), IdempotencyEntry.class);
+      var storedEntry =
+          objectMapper.readValue(
+              redisTemplate.opsForValue().get(redisKey(idempotencyKey)), IdempotencyEntry.class);
       assertThat(storedEntry.status()).isEqualTo(IdempotencyStatus.IN_PROGRESS);
     }
   }
@@ -126,7 +118,9 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
       // 1. Arrange
       var idempotencyKey = idempotencyKey("completed-json");
       var entry = completedEntry();
-      redisTemplate.opsForValue().set(redisKey(idempotencyKey), objectMapper.writeValueAsString(entry));
+      redisTemplate
+          .opsForValue()
+          .set(redisKey(idempotencyKey), objectMapper.writeValueAsString(entry));
 
       // 2. Act
       var result = store.find(idempotencyKey);
@@ -158,8 +152,8 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> store.find(idempotencyKey))
-              .isInstanceOf(IdempotencyCacheException.class)
-              .hasMessage("Falha ao desserializar o cache de idempotency-key");
+          .isInstanceOf(IdempotencyCacheException.class)
+          .hasMessage("Falha ao desserializar o cache de idempotency-key");
     }
   }
 
@@ -190,10 +184,10 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
 
       var ttlMillis = redisTemplate.getExpire(redisKey, TimeUnit.MILLISECONDS);
       assertThat(ttlMillis)
-              .isNotNull()
-              .isPositive()
-              .isLessThanOrEqualTo(ttl.toMillis())
-              .isGreaterThan(ttl.minusSeconds(5).toMillis());
+          .isNotNull()
+          .isPositive()
+          .isLessThanOrEqualTo(ttl.toMillis())
+          .isGreaterThan(ttl.minusSeconds(5).toMillis());
     }
   }
 
@@ -227,11 +221,10 @@ class IdempotencyAdapterTest extends BaseRedisSliceTest {
 
   private static IdempotencyEntry completedEntry() {
     return new IdempotencyEntry(
-            IdempotencyStatus.COMPLETED,
-            FINGERPRINT,
-            cachedResponse(201, "{\"id\":\"123\"}"),
-            Instant.parse("2026-05-29T12:00:00Z")
-    );
+        IdempotencyStatus.COMPLETED,
+        FINGERPRINT,
+        cachedResponse(201, "{\"id\":\"123\"}"),
+        Instant.parse("2026-05-29T12:00:00Z"));
   }
 
   private static CachedResponse cachedResponse(int status, String body) {

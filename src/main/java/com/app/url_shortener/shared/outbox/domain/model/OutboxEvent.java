@@ -148,7 +148,8 @@ public class OutboxEvent {
     this.lastError = null;
   }
 
-  public void registerFailure(String errorMessage, Instant now, int maxAttempts, Duration nextAttemptDelay) {
+  public void registerFailure(
+      String errorMessage, Instant now, int maxAttempts, Duration nextAttemptDelay) {
     Objects.requireNonNull(now, "now must not be null");
     Objects.requireNonNull(nextAttemptDelay, "nextAttemptDelay must not be null");
 

@@ -3,7 +3,8 @@ package com.app.url_shortener.iam.application.policy;
 import java.time.Duration;
 import java.util.Objects;
 
-public record EmailVerificationPolicy(Duration codeTtl, Duration sendingTimeout, Duration resendCooldown) {
+public record EmailVerificationPolicy(
+    Duration codeTtl, Duration sendingTimeout, Duration resendCooldown) {
 
   public EmailVerificationPolicy {
     Objects.requireNonNull(codeTtl, "codeTtl must not be null");

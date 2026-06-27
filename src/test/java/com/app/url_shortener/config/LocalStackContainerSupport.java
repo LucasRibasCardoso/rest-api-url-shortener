@@ -15,6 +15,8 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.VerifyEmailIdentityRequest;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 import software.amazon.awssdk.services.sqs.model.GetQueueAttributesRequest;
@@ -22,8 +24,6 @@ import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
 import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
-import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.VerifyEmailIdentityRequest;
 
 public final class LocalStackContainerSupport {
 
@@ -79,7 +79,8 @@ public final class LocalStackContainerSupport {
     registry.add("spring.cloud.aws.credentials.secret-key", () -> SECRET_KEY);
     registry.add("app.aws.sqs.url-redirect-events-queue", () -> URL_REDIRECT_EVENTS_QUEUE);
     registry.add("app.aws.sqs.url-redirect-events-dlq", () -> URL_REDIRECT_EVENTS_DLQ);
-    registry.add("app.aws.sqs.email-verification-events-queue", () -> EMAIL_VERIFICATION_EVENTS_QUEUE);
+    registry.add(
+        "app.aws.sqs.email-verification-events-queue", () -> EMAIL_VERIFICATION_EVENTS_QUEUE);
     registry.add("app.aws.sqs.email-verification-events-dlq", () -> EMAIL_VERIFICATION_EVENTS_DLQ);
   }
 
@@ -133,10 +134,7 @@ public final class LocalStackContainerSupport {
 
   public static void resetSesMessages() {
     try (var httpClient = HttpClient.newHttpClient()) {
-      var request =
-          HttpRequest.newBuilder(sesEndpoint().resolve("/_aws/ses"))
-              .DELETE()
-              .build();
+      var request = HttpRequest.newBuilder(sesEndpoint().resolve("/_aws/ses")).DELETE().build();
       var response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
 
       if (response.statusCode() >= 400) {
@@ -145,7 +143,8 @@ public final class LocalStackContainerSupport {
       }
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while clearing LocalStack SES messages", exception);
+      throw new IllegalStateException(
+          "Interrupted while clearing LocalStack SES messages", exception);
     } catch (Exception exception) {
       throw new IllegalStateException("Failed to clear LocalStack SES messages", exception);
     }
@@ -169,9 +168,12 @@ public final class LocalStackContainerSupport {
 
     Map<QueueAttributeName, String> queueAttributes =
         Map.of(
-            QueueAttributeName.VISIBILITY_TIMEOUT, VISIBILITY_TIMEOUT,
-            QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS, RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
-            QueueAttributeName.MESSAGE_RETENTION_PERIOD, MESSAGE_RETENTION_PERIOD,
+            QueueAttributeName.VISIBILITY_TIMEOUT,
+            VISIBILITY_TIMEOUT,
+            QueueAttributeName.RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
+            RECEIVE_MESSAGE_WAIT_TIME_SECONDS,
+            QueueAttributeName.MESSAGE_RETENTION_PERIOD,
+            MESSAGE_RETENTION_PERIOD,
             QueueAttributeName.REDRIVE_POLICY,
             "{\"deadLetterTargetArn\":\""
                 + dlqArn
@@ -193,9 +195,11 @@ public final class LocalStackContainerSupport {
 
   private static DynamoDbClient createDynamoDbClient() {
     return DynamoDbClient.builder()
-        .endpointOverride(LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.DYNAMODB))
+        .endpointOverride(
+            LOCALSTACK_CONTAINER.getEndpointOverride(LocalStackContainer.Service.DYNAMODB))
         .region(Region.of(LOCALSTACK_CONTAINER.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
         .build();
   }
 
@@ -276,8 +280,7 @@ public final class LocalStackContainerSupport {
 
   private static boolean tableExists(DynamoDbClient dynamoDbClient, String tableName) {
     try {
-      dynamoDbClient.describeTable(
-          DescribeTableRequest.builder().tableName(tableName).build());
+      dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName(tableName).build());
       return true;
     } catch (ResourceNotFoundException exception) {
       return false;
@@ -305,10 +308,12 @@ public final class LocalStackContainerSupport {
 
   private static Map<String, AttributeValue> urlCounterItem() {
     return Map.of(
-        COUNTER_PRIMARY_KEY, stringAttribute(URL_COUNTER_NAME),
-        "currentValue", numberAttribute(0),
+        COUNTER_PRIMARY_KEY,
+        stringAttribute(URL_COUNTER_NAME),
+        "currentValue",
+        numberAttribute(0),
         "description",
-            stringAttribute("Global counter used to allocate URL short code ID blocks"));
+        stringAttribute("Global counter used to allocate URL short code ID blocks"));
   }
 
   private static void clearTable(

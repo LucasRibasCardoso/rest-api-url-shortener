@@ -1,8 +1,8 @@
 package com.app.url_shortener.url.infrastructure.messaging;
 
+import com.app.url_shortener.shared.config.AwsSqsProperties;
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
-import com.app.url_shortener.shared.config.AwsSqsProperties;
 import io.awspring.cloud.sqs.operations.SqsAsyncOperations;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,7 @@ public class UrlRedirectEventPublisherAdapter implements UrlRedirectEventPublish
   private final String urlRedirectEventsQueue;
 
   public UrlRedirectEventPublisherAdapter(
-      AwsSqsProperties properties,
-      SqsAsyncOperations sqsAsyncOperations) {
+      AwsSqsProperties properties, SqsAsyncOperations sqsAsyncOperations) {
     this.urlRedirectEventsQueue = properties.urlRedirectEventsQueue();
     this.sqsAsyncOperations = sqsAsyncOperations;
   }

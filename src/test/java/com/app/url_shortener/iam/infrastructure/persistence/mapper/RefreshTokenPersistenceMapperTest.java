@@ -1,5 +1,7 @@
 package com.app.url_shortener.iam.infrastructure.persistence.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.model.RefreshToken;
@@ -7,19 +9,16 @@ import com.app.url_shortener.iam.infrastructure.entity.RefreshTokenEntity;
 import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapper;
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - RefreshTokenPersistenceMapper")
@@ -32,7 +31,8 @@ class RefreshTokenPersistenceMapperTest {
   class ToDomainTests {
 
     @Test
-    @DisplayName("Deve mapear entidade de refresh token para domínio com usuário e token substituto")
+    @DisplayName(
+        "Deve mapear entidade de refresh token para domínio com usuário e token substituto")
     void shouldMapRefreshTokenEntityToDomainWithUserAndReplacement() {
       // 1. Arrange
       var tokenId = UUID.randomUUID();
@@ -42,24 +42,12 @@ class RefreshTokenPersistenceMapperTest {
       var expiresAt = Instant.parse("2026-05-14T10:00:00Z");
       var revokedAt = Instant.parse("2026-05-08T10:00:00Z");
       var user = userEntity(userId);
-      var replacedByToken = new RefreshTokenEntity(
-              replacedByTokenId,
-              user,
-              "replacement-token-hash",
-              createdAt,
-              expiresAt,
-              null,
-              null
-      );
-      var entity = new RefreshTokenEntity(
-              tokenId,
-              user,
-              "token-hash",
-              createdAt,
-              expiresAt,
-              revokedAt,
-              replacedByToken
-      );
+      var replacedByToken =
+          new RefreshTokenEntity(
+              replacedByTokenId, user, "replacement-token-hash", createdAt, expiresAt, null, null);
+      var entity =
+          new RefreshTokenEntity(
+              tokenId, user, "token-hash", createdAt, expiresAt, revokedAt, replacedByToken);
 
       // 2. Act
       var domain = mapper.toDomain(entity);
@@ -83,15 +71,9 @@ class RefreshTokenPersistenceMapperTest {
       var userId = UUID.randomUUID();
       var createdAt = Instant.parse("2026-05-07T10:00:00Z");
       var expiresAt = Instant.parse("2026-05-14T10:00:00Z");
-      var entity = new RefreshTokenEntity(
-              tokenId,
-              userEntity(userId),
-              "token-hash",
-              createdAt,
-              expiresAt,
-              null,
-              null
-      );
+      var entity =
+          new RefreshTokenEntity(
+              tokenId, userEntity(userId), "token-hash", createdAt, expiresAt, null, null);
 
       // 2. Act
       var domain = mapper.toDomain(entity);
@@ -132,15 +114,9 @@ class RefreshTokenPersistenceMapperTest {
       var createdAt = Instant.parse("2026-05-07T10:00:00Z");
       var expiresAt = Instant.parse("2026-05-14T10:00:00Z");
       var revokedAt = Instant.parse("2026-05-08T10:00:00Z");
-      var domain = RefreshToken.restore(
-              tokenId,
-              userId,
-              "token-hash",
-              createdAt,
-              expiresAt,
-              revokedAt,
-              replacedByTokenId
-      );
+      var domain =
+          RefreshToken.restore(
+              tokenId, userId, "token-hash", createdAt, expiresAt, revokedAt, replacedByTokenId);
 
       // 2. Act
       var entity = mapper.toEntity(domain);
@@ -166,15 +142,8 @@ class RefreshTokenPersistenceMapperTest {
       var userId = UUID.randomUUID();
       var createdAt = Instant.parse("2026-05-07T10:00:00Z");
       var expiresAt = Instant.parse("2026-05-14T10:00:00Z");
-      var domain = RefreshToken.restore(
-              tokenId,
-              userId,
-              "token-hash",
-              createdAt,
-              expiresAt,
-              null,
-              null
-      );
+      var domain =
+          RefreshToken.restore(tokenId, userId, "token-hash", createdAt, expiresAt, null, null);
 
       // 2. Act
       var entity = mapper.toEntity(domain);
@@ -207,7 +176,8 @@ class RefreshTokenPersistenceMapperTest {
     return mapper;
   }
 
-  private static void setEntityManager(RefreshTokenPersistenceMapper mapper, EntityManager entityManager) {
+  private static void setEntityManager(
+      RefreshTokenPersistenceMapper mapper, EntityManager entityManager) {
     try {
       Field field = RefreshTokenPersistenceMapper.class.getDeclaredField("entityManager");
       field.setAccessible(true);
@@ -218,9 +188,10 @@ class RefreshTokenPersistenceMapperTest {
   }
 
   private static EntityManager entityManagerProxy() {
-    return (EntityManager) Proxy.newProxyInstance(
+    return (EntityManager)
+        Proxy.newProxyInstance(
             EntityManager.class.getClassLoader(),
-            new Class<?>[]{EntityManager.class},
+            new Class<?>[] {EntityManager.class},
             (proxy, method, args) -> {
               if ("getReference".equals(method.getName())) {
                 return getReference(args);
@@ -228,9 +199,9 @@ class RefreshTokenPersistenceMapperTest {
               if ("toString".equals(method.getName())) {
                 return "EntityManager test proxy";
               }
-              throw new UnsupportedOperationException("Unsupported EntityManager method: " + method.getName());
-            }
-    );
+              throw new UnsupportedOperationException(
+                  "Unsupported EntityManager method: " + method.getName());
+            });
   }
 
   private static Object getReference(Object[] args) {
@@ -245,7 +216,8 @@ class RefreshTokenPersistenceMapperTest {
       var user = userEntity(UUID.randomUUID());
       var createdAt = Instant.parse("2026-05-07T10:00:00Z");
       var expiresAt = Instant.parse("2026-05-14T10:00:00Z");
-      return new RefreshTokenEntity(id, user, "reference-token-hash", createdAt, expiresAt, null, null);
+      return new RefreshTokenEntity(
+          id, user, "reference-token-hash", createdAt, expiresAt, null, null);
     }
 
     throw new UnsupportedOperationException("Unsupported reference type: " + entityClass.getName());
@@ -253,16 +225,15 @@ class RefreshTokenPersistenceMapperTest {
 
   private static UserEntity userEntity(UUID id) {
     return new UserEntity(
-            id,
-            "Reference User",
-            "reference@email.com",
-            "password-hash",
-            UserStatus.ACTIVE,
-            PlanType.FREE,
-            true,
-            null,
-            null,
-            Set.of()
-    );
+        id,
+        "Reference User",
+        "reference@email.com",
+        "password-hash",
+        UserStatus.ACTIVE,
+        PlanType.FREE,
+        true,
+        null,
+        null,
+        Set.of());
   }
 }

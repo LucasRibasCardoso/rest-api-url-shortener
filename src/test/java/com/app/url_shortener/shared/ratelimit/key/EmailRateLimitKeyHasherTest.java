@@ -38,9 +38,9 @@ class EmailRateLimitKeyHasherTest {
 
       // 3. Assert
       assertThat(hash)
-              .isEqualTo("a279e67a2f86aafe1691a2bea2bd1577132d185a9340a20655d2f19dbd87c13b")
-              .hasSize(64)
-              .matches("^[0-9a-f]{64}$");
+          .isEqualTo("a279e67a2f86aafe1691a2bea2bd1577132d185a9340a20655d2f19dbd87c13b")
+          .hasSize(64)
+          .matches("^[0-9a-f]{64}$");
     }
 
     @Test
@@ -70,8 +70,8 @@ class EmailRateLimitKeyHasherTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Email must not be null or blank");
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Email must not be null or blank");
     }
   }
 
@@ -92,8 +92,8 @@ class EmailRateLimitKeyHasherTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("Rate limit email hash secret must not be blank");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Rate limit email hash secret must not be blank");
     }
 
     @Test
@@ -107,9 +107,9 @@ class EmailRateLimitKeyHasherTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("Rate limit email hash secret must be Base64 encoded")
-              .hasCauseInstanceOf(IllegalArgumentException.class);
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Rate limit email hash secret must be Base64 encoded")
+          .hasCauseInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -123,8 +123,8 @@ class EmailRateLimitKeyHasherTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("Rate limit email hash secret must decode to at least 32 bytes");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Rate limit email hash secret must decode to at least 32 bytes");
     }
   }
 

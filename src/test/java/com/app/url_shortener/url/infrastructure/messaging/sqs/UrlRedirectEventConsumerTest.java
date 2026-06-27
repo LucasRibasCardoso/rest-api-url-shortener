@@ -39,11 +39,9 @@ import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 @SuppressWarnings({"unchecked", "rawtypes"})
 class UrlRedirectEventConsumerTest {
 
-  @Mock
-  private UrlRepositoryPort urlRepositoryPort;
+  @Mock private UrlRepositoryPort urlRepositoryPort;
 
-  @InjectMocks
-  private UrlRedirectEventConsumer consumer;
+  @InjectMocks private UrlRedirectEventConsumer consumer;
 
   @Nested
   @DisplayName("Consumo em lote")
@@ -161,9 +159,7 @@ class UrlRedirectEventConsumerTest {
       var lastAccessedAt = Instant.parse("2026-06-06T12:30:45Z");
       var messages = List.of(message("aB3dE", lastAccessedAt));
       var failure = DynamoDbException.builder().message("DynamoDB unavailable").build();
-      doThrow(failure)
-          .when(urlRepositoryPort)
-          .incrementAccessCount("aB3dE", 1L, lastAccessedAt);
+      doThrow(failure).when(urlRepositoryPort).incrementAccessCount("aB3dE", 1L, lastAccessedAt);
 
       try (MockedStatic<Acknowledgement> acknowledgement = mockStatic(Acknowledgement.class)) {
 
@@ -179,9 +175,7 @@ class UrlRedirectEventConsumerTest {
   private Message<UrlRedirectedEvent> message(String shortCode, Instant lastAccessedAt) {
     return MessageBuilder.withPayload(
             new UrlRedirectedEvent(
-                UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac100"),
-                shortCode,
-                lastAccessedAt))
+                UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac100"), shortCode, lastAccessedAt))
         .build();
   }
 

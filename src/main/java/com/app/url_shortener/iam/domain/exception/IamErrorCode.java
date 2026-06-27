@@ -26,7 +26,8 @@ public enum IamErrorCode implements ErrorCode {
   AUTH_ENCRYPTED_VERIFICATION_CODE_INVALID("Código de verificação criptografado inválido."),
   AUTH_VERIFICATION_CODE_INVALID("Código de verificação inválido."),
   AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND("Token de verificação de e-mail não encontrado."),
-  AUTH_DUPLICATE_OPEN_EMAIL_VERIFICATION_TOKEN("Já existe um token de verificação de e-mail aberto para este usuário.");
+  AUTH_DUPLICATE_OPEN_EMAIL_VERIFICATION_TOKEN(
+      "Já existe um token de verificação de e-mail aberto para este usuário.");
 
   private final String message;
 

@@ -29,7 +29,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 @DisplayName("Testes de Integração - Endpoint de refresh token")
-class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
+class AuthRefreshTokenIT extends AbstractIntegrationTest {
 
   private static final String REFRESH_ENDPOINT = "/api/v1/auth/refresh";
   private static final String PASSWORD = "secure-password";
@@ -40,7 +40,7 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
   private final JwtDecoder jwtDecoder;
 
   @Autowired
-  AuthRefreshTokenIntegrationTest(
+  AuthRefreshTokenIT(
       UserTestDataFactory userTestDataFactory,
       RefreshTokenJpaRepository refreshTokenJpaRepository,
       SecureTokenGeneratorPort secureTokenGeneratorPort,
@@ -56,9 +56,9 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
   void shouldRotateRefreshTokenAndIssueNewAccessToken() {
     // Arrange
     UserEntity user =
-        userTestDataFactory.createActiveUser(
-            "refresh-success.integration@example.com", PASSWORD);
-    String currentRawRefreshToken = login(user.getEmail(), PASSWORD, "login-before-refresh").refreshToken();
+        userTestDataFactory.createActiveUser("refresh-success.integration@example.com", PASSWORD);
+    String currentRawRefreshToken =
+        login(user.getEmail(), PASSWORD, "login-before-refresh").refreshToken();
     String currentTokenHash = secureTokenGeneratorPort.hashToken(currentRawRefreshToken);
 
     // Act
@@ -79,13 +79,11 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
     String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
     HttpCookie replacementCookie = HttpCookie.parse(setCookieHeader).getFirst();
     var cookieAttributes =
-        Arrays.stream(setCookieHeader.split(";"))
-            .skip(1)
-            .map(String::trim)
-            .toList();
+        Arrays.stream(setCookieHeader.split(";")).skip(1).map(String::trim).toList();
 
     assertThat(replacementRawRefreshToken).isNotBlank();
-    assertThat(response.jsonPath().getMap("$")).doesNotContainKeys("refreshToken", "newRefreshToken");
+    assertThat(response.jsonPath().getMap("$"))
+        .doesNotContainKeys("refreshToken", "newRefreshToken");
     assertThat(replacementCookie.getName()).isEqualTo("refreshToken");
     assertThat(replacementCookie.isHttpOnly()).isTrue();
     assertThat(replacementCookie.getSecure()).isTrue();
@@ -106,8 +104,7 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
             "url:delete:own");
     assertThat(jwt.getExpiresAt()).isAfter(Instant.now());
 
-    String replacementTokenHash =
-        secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
+    String replacementTokenHash = secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
     RefreshTokenEntity currentToken =
         refreshTokenJpaRepository.findByTokenHash(currentTokenHash).orElseThrow();
     RefreshTokenEntity replacementToken =
@@ -176,8 +173,7 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
   void shouldRevokeAllUserTokensWhenRotatedRefreshTokenIsReused() {
     // Arrange
     UserEntity user =
-        userTestDataFactory.createActiveUser(
-            "refresh-replay.integration@example.com", PASSWORD);
+        userTestDataFactory.createActiveUser("refresh-replay.integration@example.com", PASSWORD);
     String originalRawRefreshToken =
         login(user.getEmail(), PASSWORD, "login-before-replay").refreshToken();
     Response firstResponse = refresh(originalRawRefreshToken, "refresh-before-replay");
@@ -213,9 +209,6 @@ class AuthRefreshTokenIntegrationTest extends AbstractIntegrationTest {
   }
 
   private Response refreshWithoutCookie(String idempotencyKey) {
-    return given()
-        .header("Idempotency-Key", idempotencyKey)
-        .when()
-        .post(REFRESH_ENDPOINT);
+    return given().header("Idempotency-Key", idempotencyKey).when().post(REFRESH_ENDPOINT);
   }
 }

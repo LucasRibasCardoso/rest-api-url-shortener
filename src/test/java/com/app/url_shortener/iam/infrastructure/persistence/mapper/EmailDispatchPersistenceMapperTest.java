@@ -21,8 +21,7 @@ import org.mapstruct.factory.Mappers;
 @DisplayName("Testes de Unidade - EmailDispatchPersistenceMapper")
 class EmailDispatchPersistenceMapperTest {
 
-  private static final UUID DISPATCH_ID =
-      UUID.fromString("11111111-1111-1111-1111-111111111111");
+  private static final UUID DISPATCH_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
   private static final UUID EVENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
   private static final UUID USER_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
   private static final UUID VERIFICATION_TOKEN_ID =

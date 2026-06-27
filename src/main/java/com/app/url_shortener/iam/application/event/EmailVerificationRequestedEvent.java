@@ -8,11 +8,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record EmailVerificationRequestedEvent(
-    UUID eventId,
-    UUID userId,
-    String email,
-    EmailDispatchReason reason,
-    Instant occurredAt) {
+    UUID eventId, UUID userId, String email, EmailDispatchReason reason, Instant occurredAt) {
 
   public EmailVerificationRequestedEvent {
     Objects.requireNonNull(eventId, "eventId must not be null");
@@ -23,8 +19,10 @@ public record EmailVerificationRequestedEvent(
     email = RequiredText.normalize(email, "email").toLowerCase(Locale.ROOT);
   }
 
-  public static EmailVerificationRequestedEvent create(UUID userId, String email, EmailDispatchReason reason) {
-    return new EmailVerificationRequestedEvent(UUID.randomUUID(), userId, email, reason, Instant.now());
+  public static EmailVerificationRequestedEvent create(
+      UUID userId, String email, EmailDispatchReason reason) {
+    return new EmailVerificationRequestedEvent(
+        UUID.randomUUID(), userId, email, reason, Instant.now());
   }
 
   public EmailVerificationRequestedPayload toPayload() {

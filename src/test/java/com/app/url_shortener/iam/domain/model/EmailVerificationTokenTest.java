@@ -32,7 +32,12 @@ class EmailVerificationTokenTest {
       // 2. Act
       var token =
           EmailVerificationToken.create(
-              USER_ID, " user@example.com ", " verification-code-hash ", " encrypted-code ", EXPIRES_AT, CREATED_AT);
+              USER_ID,
+              " user@example.com ",
+              " verification-code-hash ",
+              " encrypted-code ",
+              EXPIRES_AT,
+              CREATED_AT);
 
       // 3. Assert
       assertThat(token.getId()).isNotNull();
@@ -58,13 +63,7 @@ class EmailVerificationTokenTest {
       var updatedAt = consumedAt;
 
       // 2. Act
-      var token =
-          restore(
-              consumedAt,
-              null,
-              1,
-              lastAttemptAt,
-              updatedAt);
+      var token = restore(consumedAt, null, 1, lastAttemptAt, updatedAt);
 
       // 3. Assert
       assertThat(token.getId()).isEqualTo(TOKEN_ID);
@@ -114,7 +113,13 @@ class EmailVerificationTokenTest {
     @DisplayName("Deve identificar token revogado como inativo")
     void shouldIdentifyRevokedTokenAsInactive() {
       // 1. Arrange
-      var token = restore(null, CREATED_AT.plus(Duration.ofMinutes(1)), 0, null, CREATED_AT.plus(Duration.ofMinutes(1)));
+      var token =
+          restore(
+              null,
+              CREATED_AT.plus(Duration.ofMinutes(1)),
+              0,
+              null,
+              CREATED_AT.plus(Duration.ofMinutes(1)));
 
       // 2. Act
       var active = token.isActive(CREATED_AT.plus(Duration.ofMinutes(2)));
@@ -199,9 +204,7 @@ class EmailVerificationTokenTest {
       var result = token.toString();
 
       // 3. Assert
-      assertThat(result)
-          .doesNotContain("verification-code-hash")
-          .doesNotContain("encrypted-code");
+      assertThat(result).doesNotContain("verification-code-hash").doesNotContain("encrypted-code");
     }
   }
 

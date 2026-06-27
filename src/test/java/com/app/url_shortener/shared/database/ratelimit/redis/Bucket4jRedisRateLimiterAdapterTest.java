@@ -1,11 +1,20 @@
 package com.app.url_shortener.shared.database.ratelimit.redis;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.shared.ratelimit.config.Bucket4jRedisConfig;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitPolicyProperties;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
-import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
+import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
 import com.app.url_shortener.shared.ratelimit.infrastructure.Bucket4jRedisRateLimiterAdapter;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKey;
 import io.github.bucket4j.ConsumptionProbe;
@@ -28,20 +37,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 @Tag("redis-slice")
 @Import({
-    Bucket4jRedisConfig.class,
-    Bucket4jRedisRateLimiterAdapter.class,
-    Bucket4jRedisRateLimiterAdapterTest.RateLimitTestConfig.class
+  Bucket4jRedisConfig.class,
+  Bucket4jRedisRateLimiterAdapter.class,
+  Bucket4jRedisRateLimiterAdapterTest.RateLimitTestConfig.class
 })
 @DisplayName("Slice Redis - Rate limiter Bucket4j")
 class Bucket4jRedisRateLimiterAdapterTest extends BaseRedisSliceTest {
@@ -50,11 +50,9 @@ class Bucket4jRedisRateLimiterAdapterTest extends BaseRedisSliceTest {
   private static final String KEY_PATTERN = KEY_PREFIX + ":*";
   private static final RateLimitPolicy POLICY = RateLimitPolicy.AUTH_LOGIN;
 
-  @Autowired
-  private Bucket4jRedisRateLimiterAdapter adapter;
+  @Autowired private Bucket4jRedisRateLimiterAdapter adapter;
 
-  @Autowired
-  private StringRedisTemplate redisTemplate;
+  @Autowired private StringRedisTemplate redisTemplate;
 
   @BeforeEach
   void setUp() {
@@ -136,7 +134,8 @@ class Bucket4jRedisRateLimiterAdapterTest extends BaseRedisSliceTest {
       var adapter = new Bucket4jRedisRateLimiterAdapter(properties, proxyManager);
       var key = RateLimitKey.createForEmail(POLICY, "redis-failure");
 
-      given(proxyManager.getProxy(anyString(), any())).willThrow(new RedisException("Redis timeout"));
+      given(proxyManager.getProxy(anyString(), any()))
+          .willThrow(new RedisException("Redis timeout"));
 
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> adapter.consume(POLICY, key))
@@ -215,7 +214,8 @@ class Bucket4jRedisRateLimiterAdapterTest extends BaseRedisSliceTest {
   }
 
   private static RateLimitProperties rateLimitProperties() {
-    return new RateLimitProperties(true, KEY_PREFIX, "test-secret", Map.of(POLICY.getConfigKey(), policyProperties()));
+    return new RateLimitProperties(
+        true, KEY_PREFIX, "test-secret", Map.of(POLICY.getConfigKey(), policyProperties()));
   }
 
   private static RateLimitPolicyProperties policyProperties() {

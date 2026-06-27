@@ -20,8 +20,7 @@ import org.junit.jupiter.api.Test;
 @DisplayName("Testes de Unidade - Mapper de Persistência Outbox")
 class OutboxEventPersistenceMapperTest {
 
-  private static final UUID EVENT_ID =
-      UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+  private static final UUID EVENT_ID = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
   private static final Instant CREATED_AT = Instant.parse("2026-06-12T10:00:00Z");
   private static final Instant RETRY_AT = Instant.parse("2026-06-12T10:05:00Z");
   private static final Instant PUBLISHED_AT = Instant.parse("2026-06-12T10:01:00Z");
@@ -91,13 +90,7 @@ class OutboxEventPersistenceMapperTest {
     @DisplayName("Deve restaurar evento publicado a partir da entidade")
     void shouldRestorePublishedEventFromEntity() {
       // 1. Arrange
-      var entity =
-          entity(
-              OutboxEventStatus.PUBLISHED,
-              1,
-              null,
-              PUBLISHED_AT,
-              null);
+      var entity = entity(OutboxEventStatus.PUBLISHED, 1, null, PUBLISHED_AT, null);
 
       // 2. Act
       var event = mapper.toDomain(entity);
@@ -122,13 +115,7 @@ class OutboxEventPersistenceMapperTest {
     @DisplayName("Deve restaurar evento pendente com metadados de retry")
     void shouldRestoreRetriedPendingEventFromEntity() {
       // 1. Arrange
-      var entity =
-          entity(
-              OutboxEventStatus.PENDING,
-              1,
-              "SQS unavailable",
-              null,
-              RETRY_AT);
+      var entity = entity(OutboxEventStatus.PENDING, 1, "SQS unavailable", null, RETRY_AT);
 
       // 2. Act
       var event = mapper.toDomain(entity);

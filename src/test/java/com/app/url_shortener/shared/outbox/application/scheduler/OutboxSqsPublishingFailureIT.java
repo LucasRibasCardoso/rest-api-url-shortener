@@ -38,7 +38,7 @@ import org.springframework.test.context.TestPropertySource;
       "app.outbox.sqs.queues.PARTIAL_SUCCESS_EVENT=email-verification-events-queue"
     })
 @DisplayName("Testes de Integração - Falha na publicação da outbox na SQS")
-class OutboxSqsPublishingFailureIntegrationTest extends AbstractIntegrationTest {
+class OutboxSqsPublishingFailureIT extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";
   private static final String QUEUE_NAME = "email-verification-events-queue";
@@ -50,7 +50,7 @@ class OutboxSqsPublishingFailureIntegrationTest extends AbstractIntegrationTest 
   private final OutboxPublisherScheduler outboxPublisherScheduler;
 
   @Autowired
-  OutboxSqsPublishingFailureIntegrationTest(
+  OutboxSqsPublishingFailureIT(
       SqsTemplate sqsTemplate,
       OutboxEventJpaRepository outboxEventJpaRepository,
       EmailDispatchJpaRepository emailDispatchJpaRepository,
@@ -142,10 +142,13 @@ class OutboxSqsPublishingFailureIntegrationTest extends AbstractIntegrationTest 
     assertThat(publishedEvent.getLastError()).isNull();
     assertThat(publishedEvent.getNextAttemptAt()).isNull();
     assertThat(publishedEvent.getPublishedAt()).isNotNull();
-    assertThat(messages).singleElement().satisfies(message -> {
-      assertThat(message.getPayload().eventId()).isEqualTo(publishedEventId);
-      assertThat(message.getPayload().eventType()).isEqualTo("PARTIAL_SUCCESS_EVENT");
-    });
+    assertThat(messages)
+        .singleElement()
+        .satisfies(
+            message -> {
+              assertThat(message.getPayload().eventId()).isEqualTo(publishedEventId);
+              assertThat(message.getPayload().eventType()).isEqualTo("PARTIAL_SUCCESS_EVENT");
+            });
     assertThat(emailDispatchJpaRepository.count()).isZero();
     assertThat(emailVerificationTokenJpaRepository.count()).isZero();
   }

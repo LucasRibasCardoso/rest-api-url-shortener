@@ -205,7 +205,6 @@ class EmailDispatchTest {
       // 3. Assert
       assertThat(sendingRecently).isFalse();
     }
-
   }
 
   @Nested
@@ -413,10 +412,8 @@ class EmailDispatchTest {
       String failedResult = failedDispatch.toString();
 
       // 3. Assert
-      assertThat(acceptedResult)
-          .doesNotContain("provider-message-id");
-      assertThat(failedResult)
-          .doesNotContain("Provider rejected message");
+      assertThat(acceptedResult).doesNotContain("provider-message-id");
+      assertThat(failedResult).doesNotContain("Provider rejected message");
     }
   }
 

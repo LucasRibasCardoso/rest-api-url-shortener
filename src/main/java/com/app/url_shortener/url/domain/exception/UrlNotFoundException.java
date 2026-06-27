@@ -8,4 +8,3 @@ public class UrlNotFoundException extends NotFoundException {
     super(UrlErrorCode.URL_NOT_FOUND);
   }
 }
-

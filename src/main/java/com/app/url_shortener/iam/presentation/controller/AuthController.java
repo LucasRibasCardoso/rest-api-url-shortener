@@ -15,14 +15,13 @@ import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
 import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -41,7 +40,8 @@ public class AuthController {
   private final ResendVerificationUseCase resendVerificationUseCase;
 
   @PostMapping("/register")
-  public ResponseEntity<GenericMessageResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto, HttpServletRequest request) {
+  public ResponseEntity<GenericMessageResponseDto> register(
+      @Valid @RequestBody RegisterRequestDto requestDto, HttpServletRequest request) {
     String clientIp = clientIpResolver.resolve(request);
 
     RegisterUserCommand command = iamWebMapper.toRegisterUserCommand(requestDto, clientIp);
@@ -51,7 +51,8 @@ public class AuthController {
   }
 
   @PostMapping("/verify-email")
-  public ResponseEntity<GenericMessageResponseDto> verifyEmail(@Valid @RequestBody VerifyEmailRequestDto request) {
+  public ResponseEntity<GenericMessageResponseDto> verifyEmail(
+      @Valid @RequestBody VerifyEmailRequestDto request) {
     VerifyEmailCommand command = iamWebMapper.toVerifyEmailCommand(request);
     VerifyEmailResult result = verifyEmailUseCase.execute(command);
     GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
@@ -59,7 +60,8 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpServletRequest request) {
+  public ResponseEntity<LoginResponseDto> login(
+      @Valid @RequestBody LoginRequestDto requestDto, HttpServletRequest request) {
     String clientIp = clientIpResolver.resolve(request);
 
     LoginCommand command = iamWebMapper.toLoginCommand(requestDto, clientIp);
@@ -70,7 +72,8 @@ public class AuthController {
   }
 
   @PostMapping("/refresh")
-  public ResponseEntity<RefreshTokenResponseDto> refresh(@CookieValue(required = false) String refreshToken) {
+  public ResponseEntity<RefreshTokenResponseDto> refresh(
+      @CookieValue(required = false) String refreshToken) {
     if (refreshToken == null || refreshToken.isBlank()) throw new InvalidRefreshTokenException();
 
     RefreshTokenCommand command = iamWebMapper.toRefreshTokenCommand(refreshToken);
@@ -85,11 +88,14 @@ public class AuthController {
     LogoutCommand command = iamWebMapper.toLogoutCommand(refreshToken);
     logoutUseCase.execute(command);
     ResponseCookie expiredCookie = buildExpireRefreshTokenCookie();
-    return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, expiredCookie.toString()).build();
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+        .build();
   }
 
   @PostMapping("/resend-verification")
-  public ResponseEntity<GenericMessageResponseDto> resend(@Valid @RequestBody ResendVerificationRequestDto request) {
+  public ResponseEntity<GenericMessageResponseDto> resend(
+      @Valid @RequestBody ResendVerificationRequestDto request) {
     ResendVerificationCommand command = iamWebMapper.toResendVerificationCommand(request);
     ResendVerificationResult result = resendVerificationUseCase.execute(command);
     GenericMessageResponseDto response = iamWebMapper.toGenericMessageResponse(result);
@@ -99,21 +105,21 @@ public class AuthController {
 
   private ResponseCookie buildRefreshTokenCookie(String refreshToken) {
     return ResponseCookie.from("refreshToken", refreshToken)
-            .httpOnly(true)
-            .secure(true)
-            .sameSite("Strict")
-            .path("/api/v1/auth")
-            .maxAge(DEFAULT_MAX_AGE)
-            .build();
+        .httpOnly(true)
+        .secure(true)
+        .sameSite("Strict")
+        .path("/api/v1/auth")
+        .maxAge(DEFAULT_MAX_AGE)
+        .build();
   }
 
   private ResponseCookie buildExpireRefreshTokenCookie() {
     return ResponseCookie.from("refreshToken", "")
-            .httpOnly(true)
-            .secure(true)
-            .sameSite("Strict")
-            .path("/api/v1/auth")
-            .maxAge(Duration.ZERO)
-            .build();
+        .httpOnly(true)
+        .secure(true)
+        .sameSite("Strict")
+        .path("/api/v1/auth")
+        .maxAge(Duration.ZERO)
+        .build();
   }
 }

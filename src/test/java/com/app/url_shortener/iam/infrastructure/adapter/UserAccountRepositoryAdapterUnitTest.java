@@ -1,13 +1,20 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import com.app.url_shortener.iam.infrastructure.mapper.UserAccountPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
-import com.app.url_shortener.shared.exception.conflict.DataIntegrityConflictException;
 import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
+import com.app.url_shortener.shared.exception.conflict.DataIntegrityConflictException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -21,29 +28,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - UserAccountRepositoryAdapter")
 class UserAccountRepositoryAdapterUnitTest {
 
-  @Mock
-  private UserJpaRepository userJpaRepository;
+  @Mock private UserJpaRepository userJpaRepository;
 
-  @Mock
-  private DataIntegrityExceptionTranslator dataIntegrityExceptionTranslator;
+  @Mock private DataIntegrityExceptionTranslator dataIntegrityExceptionTranslator;
 
-  @Mock
-  private UserAccountPersistenceMapper userAccountPersistenceMapper;
+  @Mock private UserAccountPersistenceMapper userAccountPersistenceMapper;
 
-  @InjectMocks
-  private UserAccountRepositoryAdapter adapter;
+  @InjectMocks private UserAccountRepositoryAdapter adapter;
 
   @Nested
   @DisplayName("Persistência")
@@ -98,7 +94,8 @@ class UserAccountRepositoryAdapterUnitTest {
       verify(userAccountPersistenceMapper).toEntity(domain);
       verify(userJpaRepository).saveAndFlush(entity);
       verify(dataIntegrityExceptionTranslator).translate(dataIntegrityViolation);
-      verifyNoMoreInteractions(userAccountPersistenceMapper, userJpaRepository, dataIntegrityExceptionTranslator);
+      verifyNoMoreInteractions(
+          userAccountPersistenceMapper, userJpaRepository, dataIntegrityExceptionTranslator);
     }
   }
 
@@ -185,7 +182,8 @@ class UserAccountRepositoryAdapterUnitTest {
       var domain = userAccount("permissions@email.com");
 
       given(userJpaRepository.findByIdWithRolesAndPermissions(id)).willReturn(Optional.of(entity));
-      given(userAccountPersistenceMapper.toDomainWithRolesAndPermissions(entity)).willReturn(domain);
+      given(userAccountPersistenceMapper.toDomainWithRolesAndPermissions(entity))
+          .willReturn(domain);
 
       // 2. Act
       var result = adapter.findByIdWithRolesAndPermissions(id);

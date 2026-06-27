@@ -33,8 +33,7 @@ class IdGeneratorAdapterTest {
 
   private static final long BLOCK_SIZE = 10L;
 
-  @Mock
-  private IdBlockAllocatorPort idBlockAllocatorPort;
+  @Mock private IdBlockAllocatorPort idBlockAllocatorPort;
 
   @Nested
   @DisplayName("Geração sequencial")
@@ -69,8 +68,7 @@ class IdGeneratorAdapterTest {
       var thirdId = adapter.generateId();
 
       // 3. Assert
-      assertThat(List.of(firstId, secondId, thirdId))
-          .containsExactly(1L, 2L, 3L);
+      assertThat(List.of(firstId, secondId, thirdId)).containsExactly(1L, 2L, 3L);
       verify(idBlockAllocatorPort).allocateBlock(BLOCK_SIZE);
       verifyNoMoreInteractions(idBlockAllocatorPort);
     }
@@ -83,14 +81,11 @@ class IdGeneratorAdapterTest {
       var adapter = new IdGeneratorAdapter(idBlockAllocatorPort, properties(BLOCK_SIZE));
 
       // 2. Act
-      var generatedIds = LongStream.rangeClosed(1, 11)
-          .map(ignored -> adapter.generateId())
-          .boxed()
-          .toList();
+      var generatedIds =
+          LongStream.rangeClosed(1, 11).map(ignored -> adapter.generateId()).boxed().toList();
 
       // 3. Assert
-      assertThat(generatedIds)
-          .containsExactlyElementsOf(expectedRange(1L, 11L));
+      assertThat(generatedIds).containsExactlyElementsOf(expectedRange(1L, 11L));
       verify(idBlockAllocatorPort, times(2)).allocateBlock(BLOCK_SIZE);
       verifyNoMoreInteractions(idBlockAllocatorPort);
     }
@@ -119,8 +114,7 @@ class IdGeneratorAdapterTest {
       // 3. Assert
       assertThat(generatedIds).hasSize(totalIds);
       assertThat(generatedIds.stream().distinct().count()).isEqualTo(totalIds);
-      assertThat(generatedIds)
-          .containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
+      assertThat(generatedIds).containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
       verify(idBlockAllocatorPort, times(expectedBlocks)).allocateBlock(blockSize);
       verifyNoMoreInteractions(idBlockAllocatorPort);
     }
@@ -144,8 +138,7 @@ class IdGeneratorAdapterTest {
       // 3. Assert
       assertThat(generatedIds).hasSize(totalIds);
       assertThat(generatedIds.stream().distinct().count()).isEqualTo(totalIds);
-      assertThat(generatedIds)
-          .containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
+      assertThat(generatedIds).containsExactlyInAnyOrderElementsOf(expectedRange(1L, totalIds));
       assertThat(generatedIds).allSatisfy(id -> assertThat(id).isBetween(1L, (long) totalIds));
       verify(idBlockAllocatorPort, times(expectedBlocks)).allocateBlock(blockSize);
       verifyNoMoreInteractions(idBlockAllocatorPort);
@@ -175,9 +168,7 @@ class IdGeneratorAdapterTest {
   }
 
   private static List<Long> expectedRange(long startInclusive, long endInclusive) {
-    return LongStream.rangeClosed(startInclusive, endInclusive)
-        .boxed()
-        .toList();
+    return LongStream.rangeClosed(startInclusive, endInclusive).boxed().toList();
   }
 
   private static IdGeneratorProperties properties(long blockSize) {
@@ -189,9 +180,7 @@ class IdGeneratorAdapterTest {
   }
 
   private static List<Long> generateConcurrently(
-      IdGeneratorAdapter adapter,
-      int totalIds,
-      int threadPoolSize) throws Exception {
+      IdGeneratorAdapter adapter, int totalIds, int threadPoolSize) throws Exception {
 
     var executor = Executors.newFixedThreadPool(threadPoolSize);
     var startLatch = new CountDownLatch(1);
@@ -200,10 +189,12 @@ class IdGeneratorAdapterTest {
       var futures = new ArrayList<java.util.concurrent.Future<Long>>();
 
       for (int i = 0; i < totalIds; i++) {
-        futures.add(executor.submit(() -> {
-          startLatch.await();
-          return adapter.generateId();
-        }));
+        futures.add(
+            executor.submit(
+                () -> {
+                  startLatch.await();
+                  return adapter.generateId();
+                }));
       }
 
       startLatch.countDown();

@@ -1,12 +1,18 @@
 package com.app.url_shortener.iam.application.usecase;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+
 import com.app.url_shortener.iam.application.command.RegisterUserCommand;
 import com.app.url_shortener.iam.application.port.output.CheckAuthRateLimitPort;
-import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.port.output.EmailVerificationOutboxPort;
 import com.app.url_shortener.iam.application.port.output.PasswordEncoderPort;
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.application.usecase.impl.RegisterUserUseCaseImpl;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.user.EmailAlreadyRegisteredException;
@@ -22,42 +28,31 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Caso de Uso Registro de Usuário")
 class RegisterUserUseCaseTest {
 
-  private static final String SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
+  private static final String SUCCESS_MESSAGE =
+      "Enviamos um código de verificação para o seu e-mail.";
   private static final String CLIENT_IP = "203.0.113.10";
 
-  @Mock
-  private PasswordEncoderPort passwordEncoderPort;
+  @Mock private PasswordEncoderPort passwordEncoderPort;
 
-  @Mock
-  private CheckAuthRateLimitPort checkAuthRateLimitPort;
+  @Mock private CheckAuthRateLimitPort checkAuthRateLimitPort;
 
-  @Mock
-  private EmailVerificationOutboxPort emailVerificationEventPort;
+  @Mock private EmailVerificationOutboxPort emailVerificationEventPort;
 
-  @Mock
-  private UserAccountRepositoryPort userAccountRepositoryPort;
+  @Mock private UserAccountRepositoryPort userAccountRepositoryPort;
 
-  @Captor
-  private ArgumentCaptor<UserAccount> userAccountCaptor;
+  @Captor private ArgumentCaptor<UserAccount> userAccountCaptor;
 
-  @InjectMocks
-  private RegisterUserUseCaseImpl registerUserUseCase;
+  @InjectMocks private RegisterUserUseCaseImpl registerUserUseCase;
 
   @Nested
   @DisplayName("Execução do registro de usuário")
@@ -68,8 +63,7 @@ class RegisterUserUseCaseTest {
     void shouldCreatePendingUserAndPublishRegisterEventSuccessfully() {
       // 1. Arrange
       var command =
-          new RegisterUserCommand(
-              CLIENT_IP, "  User   Name  ", " USER@EMAIL.COM ", "raw-password");
+          new RegisterUserCommand(CLIENT_IP, "  User   Name  ", " USER@EMAIL.COM ", "raw-password");
       var passwordHash = "encoded-password";
       var savedUser = savedPendingUser();
 
@@ -94,32 +88,32 @@ class RegisterUserUseCaseTest {
       var userToPersist = userAccountCaptor.getValue();
 
       assertAll(
-              () -> assertThat(userToPersist.getId()).isNotNull(),
-              () -> assertThat(userToPersist.getName()).isEqualTo("User Name"),
-              () -> assertThat(userToPersist.getEmail()).isEqualTo("user@email.com"),
-              () -> assertThat(userToPersist.getPasswordHash()).isEqualTo(passwordHash),
-              () -> assertThat(userToPersist.getStatus()).isEqualTo(UserStatus.PENDING_EMAIL_VERIFICATION),
-              () -> assertThat(userToPersist.getPlan()).isEqualTo(PlanType.FREE),
-              () -> assertThat(userToPersist.isEmailVerified()).isFalse(),
-              () -> assertThat(userToPersist.getRoles()).isEmpty()
-      );
+          () -> assertThat(userToPersist.getId()).isNotNull(),
+          () -> assertThat(userToPersist.getName()).isEqualTo("User Name"),
+          () -> assertThat(userToPersist.getEmail()).isEqualTo("user@email.com"),
+          () -> assertThat(userToPersist.getPasswordHash()).isEqualTo(passwordHash),
+          () ->
+              assertThat(userToPersist.getStatus())
+                  .isEqualTo(UserStatus.PENDING_EMAIL_VERIFICATION),
+          () -> assertThat(userToPersist.getPlan()).isEqualTo(PlanType.FREE),
+          () -> assertThat(userToPersist.isEmailVerified()).isFalse(),
+          () -> assertThat(userToPersist.getRoles()).isEmpty());
 
-      inOrder.verify(emailVerificationEventPort).publishEmailVerificationRequestedEvent(
-              savedUser.getId(),
-              savedUser.getEmail(),
-              EmailDispatchReason.REGISTER
-      );
+      inOrder
+          .verify(emailVerificationEventPort)
+          .publishEmailVerificationRequestedEvent(
+              savedUser.getId(), savedUser.getEmail(), EmailDispatchReason.REGISTER);
 
       verifyNoMoreInteractions(
-              passwordEncoderPort,
-              checkAuthRateLimitPort,
-              emailVerificationEventPort,
-              userAccountRepositoryPort
-      );
+          passwordEncoderPort,
+          checkAuthRateLimitPort,
+          emailVerificationEventPort,
+          userAccountRepositoryPort);
     }
 
     @Test
-    @DisplayName("Deve propagar exceção e não persistir usuário quando a criptografia da senha falhar")
+    @DisplayName(
+        "Deve propagar exceção e não persistir usuário quando a criptografia da senha falhar")
     void shouldPropagateExceptionAndNotPersistUserWhenPasswordEncodingFails() {
       // 1. Arrange
       var command =
@@ -133,19 +127,18 @@ class RegisterUserUseCaseTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("Falha ao criptografar senha.");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Falha ao criptografar senha.");
 
       verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       verify(passwordEncoderPort).encode(command.password());
-      verifyNoInteractions(
-              userAccountRepositoryPort,
-              emailVerificationEventPort);
+      verifyNoInteractions(userAccountRepositoryPort, emailVerificationEventPort);
       verifyNoMoreInteractions(passwordEncoderPort, checkAuthRateLimitPort);
     }
 
     @Test
-    @DisplayName("Deve propagar exceção e não solicitar evento quando a persistência do usuário falhar")
+    @DisplayName(
+        "Deve propagar exceção e não solicitar evento quando a persistência do usuário falhar")
     void shouldPropagateExceptionAndNotPublishEventWhenUserPersistenceFails() {
       // 1. Arrange
       var command =
@@ -161,8 +154,8 @@ class RegisterUserUseCaseTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("Falha ao salvar usuário.");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Falha ao salvar usuário.");
 
       verify(checkAuthRateLimitPort).checkRegister(CLIENT_IP, command.email());
       verify(passwordEncoderPort).encode(command.password());
@@ -213,10 +206,7 @@ class RegisterUserUseCaseTest {
       doThrow(exception)
           .when(emailVerificationEventPort)
           .publishEmailVerificationRequestedEvent(
-                  savedUser.getId(),
-                  savedUser.getEmail(),
-                  EmailDispatchReason.REGISTER
-          );
+              savedUser.getId(), savedUser.getEmail(), EmailDispatchReason.REGISTER);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> registerUserUseCase.execute(command));
@@ -238,10 +228,7 @@ class RegisterUserUseCaseTest {
       inOrder
           .verify(emailVerificationEventPort)
           .publishEmailVerificationRequestedEvent(
-              savedUser.getId(),
-                  savedUser.getEmail(),
-                  EmailDispatchReason.REGISTER
-          );
+              savedUser.getId(), savedUser.getEmail(), EmailDispatchReason.REGISTER);
       verifyNoMoreInteractions(
           checkAuthRateLimitPort,
           passwordEncoderPort,
@@ -274,14 +261,13 @@ class RegisterUserUseCaseTest {
 
   private UserAccount savedPendingUser() {
     return UserAccount.restore(
-            UUID.fromString("019a178e-4062-7e7d-8589-954203d08001"),
-            "User Name",
-            "user@email.com",
-            "encoded-password",
-            UserStatus.PENDING_EMAIL_VERIFICATION,
-            PlanType.FREE,
-            false,
-            Set.of()
-    );
+        UUID.fromString("019a178e-4062-7e7d-8589-954203d08001"),
+        "User Name",
+        "user@email.com",
+        "encoded-password",
+        UserStatus.PENDING_EMAIL_VERIFICATION,
+        PlanType.FREE,
+        false,
+        Set.of());
   }
 }

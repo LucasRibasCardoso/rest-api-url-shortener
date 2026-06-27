@@ -15,6 +15,7 @@ public class FindAllUrlsByUserIdUseCaseImpl implements FindAllUrlsByUserIdUseCas
 
   @Override
   public UrlPageResult execute(FindAllUrlsByUserIdCommand command) {
-    return urlRepositoryPort.findAllByUserId(command.userId(), command.limit(), command.cursor(), command.status());
+    return urlRepositoryPort.findAllByUserId(
+        command.userId(), command.limit(), command.cursor(), command.status());
   }
 }

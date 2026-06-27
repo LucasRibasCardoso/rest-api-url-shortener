@@ -7,8 +7,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedEvent;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.shared.exception.internalservererror.InternalServerErrorException;
 import com.app.url_shortener.shared.outbox.domain.exception.OutboxEventSerializationException;
 import java.time.Instant;
@@ -29,11 +29,9 @@ import tools.jackson.databind.ObjectMapper;
 @DisplayName("Testes de Unidade - Serializador de Eventos Outbox")
 class OutboxEventSerializerAdapterTest {
 
-  @Mock
-  private ObjectMapper objectMapper;
+  @Mock private ObjectMapper objectMapper;
 
-  @InjectMocks
-  private OutboxEventSerializerAdapter adapter;
+  @InjectMocks private OutboxEventSerializerAdapter adapter;
 
   @Nested
   @DisplayName("Serialização")

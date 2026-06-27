@@ -163,8 +163,7 @@ class EmailVerificationRequestedEventTest {
       var throwableAssert =
           assertThatThrownBy(
               () ->
-                  new EmailVerificationRequestedPayload(
-                      UUID.randomUUID(), "user@email.com", null));
+                  new EmailVerificationRequestedPayload(UUID.randomUUID(), "user@email.com", null));
 
       // 3. Assert
       throwableAssert

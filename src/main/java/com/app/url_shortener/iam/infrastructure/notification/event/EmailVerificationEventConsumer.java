@@ -35,11 +35,13 @@ public class EmailVerificationEventConsumer {
     }
 
     if (!IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED.equals(envelope.eventType())) {
-      throw new InvalidEmailVerificationEventException("Unsupported outbox event type: " + envelope.eventType());
+      throw new InvalidEmailVerificationEventException(
+          "Unsupported outbox event type: " + envelope.eventType());
     }
 
     if (envelope.schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
-      throw new InvalidEmailVerificationEventException("Unsupported outbox schema version: " + envelope.schemaVersion());
+      throw new InvalidEmailVerificationEventException(
+          "Unsupported outbox schema version: " + envelope.schemaVersion());
     }
 
     if (envelope.eventId() == null) {

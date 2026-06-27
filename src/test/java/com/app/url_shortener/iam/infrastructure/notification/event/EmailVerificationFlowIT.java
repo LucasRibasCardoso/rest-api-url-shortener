@@ -61,7 +61,7 @@ import tools.jackson.databind.ObjectMapper;
       "app.outbox.publisher.initial-delay=1h"
     })
 @DisplayName("Testes de Integração - Fluxo de verificação de e-mail")
-class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
+class EmailVerificationFlowIT extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";
   private static final String RESEND_ENDPOINT = "/api/v1/auth/resend-verification";
@@ -92,7 +92,7 @@ class EmailVerificationFlowIntegrationTest extends AbstractIntegrationTest {
   private final EmailDispatchVerificationService emailDispatchVerificationService;
 
   @Autowired
-  EmailVerificationFlowIntegrationTest(
+  EmailVerificationFlowIT(
       ObjectMapper objectMapper,
       SesClient sesClient,
       SqsTemplate sqsTemplate,

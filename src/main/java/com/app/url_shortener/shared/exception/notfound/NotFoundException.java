@@ -8,6 +8,4 @@ public abstract class NotFoundException extends AppBusinessException {
   public NotFoundException(ErrorCode errorCode) {
     super(errorCode);
   }
-
 }
-

@@ -9,9 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("test")
-@ConditionalOnProperty(
-    name = "app.iam.email-verification.sender",
-    havingValue = "console")
+@ConditionalOnProperty(name = "app.iam.email-verification.sender", havingValue = "console")
 public class ConsoleEmailVerificationSenderStrategy implements EmailVerificationSenderPort {
 
   @Override

@@ -57,10 +57,15 @@ class EmailVerificationPersistenceSchemaTest extends BaseDataJpaSliceTest {
       assertColumn(columns, "email", "character varying", 320, false);
       assertColumn(columns, "verification_code_hash", "character varying", 255, false);
       assertColumn(columns, "encrypted_code", "text", null, false);
-      assertThat(hasConstraint("email_verification_tokens", "uk_email_verification_tokens_id_user_id", "u"))
+      assertThat(
+              hasConstraint(
+                  "email_verification_tokens", "uk_email_verification_tokens_id_user_id", "u"))
           .isTrue();
-      assertThat(hasConstraint("email_verification_tokens", "fk_email_verification_tokens_user", "f")).isTrue();
-      assertThat(hasIndex("email_verification_tokens", "idx_email_verification_tokens_open_lookup")).isTrue();
+      assertThat(
+              hasConstraint("email_verification_tokens", "fk_email_verification_tokens_user", "f"))
+          .isTrue();
+      assertThat(hasIndex("email_verification_tokens", "idx_email_verification_tokens_open_lookup"))
+          .isTrue();
       assertThat(hasPartialUniqueOpenTokenIndex()).isTrue();
     }
 
@@ -397,5 +402,6 @@ class EmailVerificationPersistenceSchemaTest extends BaseDataJpaSliceTest {
     return instant == null ? null : Timestamp.from(instant);
   }
 
-  private record ColumnMetadata(String name, String dataType, Integer maxLength, boolean nullable) {}
+  private record ColumnMetadata(
+      String name, String dataType, Integer maxLength, boolean nullable) {}
 }

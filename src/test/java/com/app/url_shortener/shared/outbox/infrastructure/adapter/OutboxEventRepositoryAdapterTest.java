@@ -40,20 +40,15 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
   private static final Instant CREATED_AT = Instant.parse("2026-06-10T20:00:00Z");
 
-  @Autowired
-  private OutboxEventRepositoryAdapter adapter;
+  @Autowired private OutboxEventRepositoryAdapter adapter;
 
-  @Autowired
-  private OutboxEventJpaRepository repository;
+  @Autowired private OutboxEventJpaRepository repository;
 
-  @Autowired
-  private TestEntityManager entityManager;
+  @Autowired private TestEntityManager entityManager;
 
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
-  @Autowired
-  private PlatformTransactionManager transactionManager;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   @Nested
   @DisplayName("Persistência")
@@ -90,8 +85,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldPersistBatchWithPublishedRetryAndFailedEvents() {
       // 1. Arrange
       var transitionAt = CREATED_AT.plusSeconds(30);
-      var published =
-          pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0111"));
+      var published = pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0111"));
       var retry = pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0112"));
       var failed = pendingEvent(UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0113"));
       published.markAsPublished(transitionAt);
@@ -134,8 +128,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       insertRaw(firstId, "PENDING", 0, null, null, null);
       insertRaw(secondId, "PENDING", 1, "temporary failure", null, now);
-      insertRaw(
-          futureRetryId, "PENDING", 1, "temporary failure", null, now.plusSeconds(30));
+      insertRaw(futureRetryId, "PENDING", 1, "temporary failure", null, now.plusSeconds(30));
       insertRaw(publishedId, "PUBLISHED", 0, null, now, null);
 
       // 2. Act
@@ -177,9 +170,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
                 .submit(
                     () ->
                         transactionTemplate.execute(
-                            status ->
-                                adapter.findPendingToPublish(
-                                    CREATED_AT.plusSeconds(30), 1)))
+                            status -> adapter.findPendingToPublish(CREATED_AT.plusSeconds(30), 1)))
                 .get(5, TimeUnit.SECONDS);
 
         releaseLock.countDown();
@@ -206,11 +197,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
       var id = UUID.fromString("019a1a60-8e31-73b0-bc44-238e6aea0201");
 
       // 2. Act
-      var throwableAssert =
-          assertThatThrownBy(
-              () ->
-                  insertRaw(
-                      id, "INVALID", 0, null, null, null));
+      var throwableAssert = assertThatThrownBy(() -> insertRaw(id, "INVALID", 0, null, null, null));
 
       // 3. Assert
       throwableAssert
@@ -242,8 +229,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       // 2. Act
       var throwableAssert =
-          assertThatThrownBy(
-              () -> insertRaw(id, "[]", "PENDING", 0, null, null, null));
+          assertThatThrownBy(() -> insertRaw(id, "[]", "PENDING", 0, null, null, null));
 
       // 3. Assert
       throwableAssert
@@ -270,13 +256,7 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
       Instant publishedAt,
       Instant nextAttemptAt) {
     insertRaw(
-        id,
-        "{\"userId\":\"user-123\"}",
-        status,
-        attempts,
-        lastError,
-        publishedAt,
-        nextAttemptAt);
+        id, "{\"userId\":\"user-123\"}", status, attempts, lastError, publishedAt, nextAttemptAt);
   }
 
   private void insertRaw(
@@ -319,7 +299,8 @@ class OutboxEventRepositoryAdapterTest extends BaseDataJpaSliceTest {
       }
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while waiting to release database lock", exception);
+      throw new IllegalStateException(
+          "Interrupted while waiting to release database lock", exception);
     }
   }
 }

@@ -10,9 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.application.event.EmailVerificationRequestedPayload;
 import com.app.url_shortener.iam.application.event.IamOutboxEventTypes;
+import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventSerializerPort;
 import com.app.url_shortener.shared.outbox.domain.exception.OutboxEventSerializationException;
@@ -36,28 +36,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Adapter Outbox de Verificação de Email")
 class EmailVerificationOutboxAdapterTest {
 
-  private static final UUID USER_ID =
-      UUID.fromString("019a1a4f-d0db-7f94-bd8d-63d831f40001");
+  private static final UUID USER_ID = UUID.fromString("019a1a4f-d0db-7f94-bd8d-63d831f40001");
   private static final String EMAIL = "user@email.com";
   private static final String PAYLOAD_JSON =
       """
       {"userId":"019a1a4f-d0db-7f94-bd8d-63d831f40001","email":"user@email.com","reason":"REGISTER"}
       """;
 
-  @Mock
-  private OutboxEventRepositoryPort outboxEventRepositoryPort;
+  @Mock private OutboxEventRepositoryPort outboxEventRepositoryPort;
 
-  @Mock
-  private OutboxEventSerializerPort outboxEventSerializerPort;
+  @Mock private OutboxEventSerializerPort outboxEventSerializerPort;
 
-  @Captor
-  private ArgumentCaptor<Object> payloadCaptor;
+  @Captor private ArgumentCaptor<Object> payloadCaptor;
 
-  @Captor
-  private ArgumentCaptor<OutboxEvent> outboxEventCaptor;
+  @Captor private ArgumentCaptor<OutboxEvent> outboxEventCaptor;
 
-  @InjectMocks
-  private EmailVerificationOutboxAdapter adapter;
+  @InjectMocks private EmailVerificationOutboxAdapter adapter;
 
   @Nested
   @DisplayName("Publicação de solicitação de verificação")
@@ -91,11 +85,15 @@ class EmailVerificationOutboxAdapterTest {
                   .extracting(component -> component.getName())
                   .containsExactly("userId", "email", "reason"),
           () -> assertThat(outboxEvent.getId()).isNotNull(),
-          () -> assertThat(outboxEvent.getAggregateType().value())
-              .isEqualTo(IamOutboxEventTypes.AGGREGATE_USER),
-          () -> assertThat(outboxEvent.getAggregateId().value()).isEqualTo(payload.userId().toString()),
-          () -> assertThat(outboxEvent.getEventType().value())
-              .isEqualTo(IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED),
+          () ->
+              assertThat(outboxEvent.getAggregateType().value())
+                  .isEqualTo(IamOutboxEventTypes.AGGREGATE_USER),
+          () ->
+              assertThat(outboxEvent.getAggregateId().value())
+                  .isEqualTo(payload.userId().toString()),
+          () ->
+              assertThat(outboxEvent.getEventType().value())
+                  .isEqualTo(IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED),
           () -> assertThat(outboxEvent.getPayload()).isEqualTo(PAYLOAD_JSON.strip()),
           () -> assertThat(outboxEvent.getPayload()).doesNotContainIgnoringCase("otp"),
           () -> assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING),
@@ -112,7 +110,8 @@ class EmailVerificationOutboxAdapterTest {
     @DisplayName("Não deve salvar evento quando a serialização do payload falhar")
     void shouldNotSaveOutboxEventWhenPayloadSerializationFails() {
       // 1. Arrange
-      var exception = new OutboxEventSerializationException(new IllegalStateException("Jackson failure"));
+      var exception =
+          new OutboxEventSerializationException(new IllegalStateException("Jackson failure"));
       given(outboxEventSerializerPort.serialize(any(EmailVerificationRequestedPayload.class)))
           .willThrow(exception);
 

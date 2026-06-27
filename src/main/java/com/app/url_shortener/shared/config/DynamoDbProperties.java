@@ -20,11 +20,16 @@ public record DynamoDbProperties(
   @Override
   public String toString() {
     return "DynamoDbProperties{"
-        + "endpoint='" + endpoint + '\''
-        + ", region='" + region + '\''
+        + "endpoint='"
+        + endpoint
+        + '\''
+        + ", region='"
+        + region
+        + '\''
         + ", accessKey='[REDACTED]'"
         + ", secretKey='[REDACTED]'"
-        + ", tables=" + tables
+        + ", tables="
+        + tables
         + '}';
   }
 }

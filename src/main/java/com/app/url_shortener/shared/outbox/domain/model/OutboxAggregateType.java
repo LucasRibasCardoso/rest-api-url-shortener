@@ -18,7 +18,8 @@ public record OutboxAggregateType(String value) {
     }
 
     if (value.length() > MAX_LENGTH) {
-      throw new IllegalArgumentException("aggregateType must not exceed " + MAX_LENGTH + " characters");
+      throw new IllegalArgumentException(
+          "aggregateType must not exceed " + MAX_LENGTH + " characters");
     }
 
     if (!PATTERN.matcher(value).matches()) {

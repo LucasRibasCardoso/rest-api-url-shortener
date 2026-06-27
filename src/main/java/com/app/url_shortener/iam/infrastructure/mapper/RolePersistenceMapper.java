@@ -19,8 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
     uses = PermissionPersistenceMapper.class)
 public abstract class RolePersistenceMapper {
 
-  @Autowired
-  protected PermissionPersistenceMapper permissionPersistenceMapper;
+  @Autowired protected PermissionPersistenceMapper permissionPersistenceMapper;
 
   @Named("roleWithoutPermissions")
   public Role toDomainWithoutPermissions(RoleEntity entity) {

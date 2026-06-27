@@ -1,10 +1,9 @@
 package com.app.url_shortener.shared.idempotency.impl;
 
-import org.springframework.stereotype.Component;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import org.springframework.stereotype.Component;
 
 @Component
 public class RequestBodyHasher {

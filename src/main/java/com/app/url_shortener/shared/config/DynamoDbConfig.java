@@ -17,7 +17,8 @@ public class DynamoDbConfig {
 
   @Bean
   public DynamoDbClient dynamoDbClient(DynamoDbProperties properties) {
-    var awsBasicCredentials = AwsBasicCredentials.create(properties.accessKey(), properties.secretKey());
+    var awsBasicCredentials =
+        AwsBasicCredentials.create(properties.accessKey(), properties.secretKey());
 
     return DynamoDbClient.builder()
         .endpointOverride(URI.create(properties.endpoint()))
@@ -33,8 +34,7 @@ public class DynamoDbConfig {
 
   @Bean
   public DynamoDbTable<UrlEntity> urlTable(
-      DynamoDbEnhancedClient dynamoDbEnhancedClient,
-      DynamoDbProperties properties) {
+      DynamoDbEnhancedClient dynamoDbEnhancedClient, DynamoDbProperties properties) {
 
     return dynamoDbEnhancedClient.table(
         properties.tables().url(), TableSchema.fromImmutableClass(UrlEntity.class));

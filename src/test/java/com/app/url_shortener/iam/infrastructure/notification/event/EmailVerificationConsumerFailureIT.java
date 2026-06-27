@@ -60,13 +60,14 @@ import tools.jackson.databind.ObjectMapper;
       "app.outbox.publisher.initial-delay=1h"
     })
 @DisplayName("Testes de Integração - Falhas no consumo de verificação de e-mail")
-class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegrationTest {
+class EmailVerificationConsumerFailureIT extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";
   private static final String FROM_EMAIL = "no-reply@url-shortener.local";
   private static final String QUEUE_NAME = "email-verification-events-queue";
   private static final String DLQ_NAME = "email-verification-events-dlq";
-  private static final String REGISTER_SUCCESS_MESSAGE = "Enviamos um código de verificação para o seu e-mail.";
+  private static final String REGISTER_SUCCESS_MESSAGE =
+      "Enviamos um código de verificação para o seu e-mail.";
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(15);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(200);
 
@@ -83,7 +84,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
   private final UserTestDataFactory userTestDataFactory;
 
   @Autowired
-  EmailVerificationConsumerFailureIntegrationTest(
+  EmailVerificationConsumerFailureIT(
       SesClient sesClient,
       SqsTemplate sqsTemplate,
       SqsAsyncClient sqsAsyncClient,
@@ -284,11 +285,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
             "active-user-event.integration@example.com", "secure-password");
     UUID eventId = UUID.fromString("019b7af8-2092-7ae1-89cc-cfef16f13151");
     var envelope =
-        validEnvelope(
-            eventId,
-            user.getId(),
-            user.getEmail(),
-            EmailDispatchReason.REGISTER);
+        validEnvelope(eventId, user.getId(), user.getEmail(), EmailDispatchReason.REGISTER);
 
     // Act
     sqsTemplate.send(QUEUE_NAME, envelope);
@@ -411,7 +408,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
 
   private int queueMessageCount(String queueName) {
     return visibleMessageCount(queueName)
-            + queueAttribute(queueName, QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES_NOT_VISIBLE);
+        + queueAttribute(queueName, QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES_NOT_VISIBLE);
   }
 
   private int queueAttribute(String queueName, QueueAttributeName attributeName) {
@@ -485,10 +482,7 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
   }
 
   private OutboxMessageEnvelope validEnvelope(
-      UUID eventId,
-      UUID userId,
-      String email,
-      EmailDispatchReason reason) {
+      UUID eventId, UUID userId, String email, EmailDispatchReason reason) {
     return new OutboxMessageEnvelope(
         eventId,
         IamOutboxEventTypes.EMAIL_VERIFICATION_REQUESTED,
@@ -502,5 +496,4 @@ class EmailVerificationConsumerFailureIntegrationTest extends AbstractIntegratio
   private JsonNode validPayload(UUID userId, String email, EmailDispatchReason reason) {
     return objectMapper.valueToTree(new EmailVerificationRequestedPayload(userId, email, reason));
   }
-
 }

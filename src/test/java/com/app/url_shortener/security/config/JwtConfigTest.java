@@ -1,5 +1,8 @@
 package com.app.url_shortener.security.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -9,9 +12,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - JwtConfig")
@@ -49,8 +49,8 @@ class JwtConfigTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("JWT secret must not be blank.");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("JWT secret must not be blank.");
     }
   }
 
@@ -82,8 +82,8 @@ class JwtConfigTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalStateException.class)
-              .hasMessage("JWT secret must have at least 256 bits.");
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("JWT secret must have at least 256 bits.");
     }
   }
 

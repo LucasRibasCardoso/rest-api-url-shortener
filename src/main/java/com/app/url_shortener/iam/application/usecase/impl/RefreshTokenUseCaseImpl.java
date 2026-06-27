@@ -42,7 +42,8 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
   @Transactional
   public RefreshTokenResult execute(RefreshTokenCommand command) {
     String currentRefreshTokenHash = secureTokenGeneratorPort.hashToken(command.refreshToken());
-    RefreshToken currentRefreshToken = refreshTokenRepositoryPort
+    RefreshToken currentRefreshToken =
+        refreshTokenRepositoryPort
             .findByTokenHash(currentRefreshTokenHash)
             .orElseThrow(RefreshTokenExpiredException::new);
 
@@ -51,21 +52,18 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
     ensureRefreshTokenIsNotExpired(currentRefreshToken);
 
     String replacementRawRefreshToken = secureTokenGeneratorPort.generateRandomToken();
-    String replacementRefreshTokenHash = secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
+    String replacementRefreshTokenHash =
+        secureTokenGeneratorPort.hashToken(replacementRawRefreshToken);
 
-    RefreshToken replacementRefreshToken = RefreshToken.create(
-            currentRefreshToken.getUserId(),
-            replacementRefreshTokenHash
-    );
+    RefreshToken replacementRefreshToken =
+        RefreshToken.create(currentRefreshToken.getUserId(), replacementRefreshTokenHash);
     refreshTokenRepositoryPort.save(replacementRefreshToken);
 
     rotateCurrentRefreshTokenOrReject(
-            currentRefreshTokenHash,
-            currentRefreshToken,
-            replacementRefreshToken.getId()
-    );
+        currentRefreshTokenHash, currentRefreshToken, replacementRefreshToken.getId());
 
-    AuthenticatedUserResult authenticatedUser = loadAuthenticatedUserResult(currentRefreshToken.getUserId());
+    AuthenticatedUserResult authenticatedUser =
+        loadAuthenticatedUserResult(currentRefreshToken.getUserId());
     String replacementAccessToken = accessTokenIssuerPort.issue(authenticatedUser).value();
     return new RefreshTokenResult(replacementRawRefreshToken, replacementAccessToken);
   }
@@ -87,11 +85,9 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
       RefreshToken currentRefreshToken,
       UUID replacementRefreshTokenId) {
 
-    int updatedRows = refreshTokenRepositoryPort.markTokenAsRotatedIfActive(
-            currentRefreshTokenHash,
-            Instant.now(),
-            replacementRefreshTokenId
-    );
+    int updatedRows =
+        refreshTokenRepositoryPort.markTokenAsRotatedIfActive(
+            currentRefreshTokenHash, Instant.now(), replacementRefreshTokenId);
     if (updatedRows != 1) {
       revokeAllTokensDueToCompromise(currentRefreshToken.getUserId());
     }
@@ -103,17 +99,20 @@ public class RefreshTokenUseCaseImpl implements RefreshTokenUseCase {
   }
 
   private AuthenticatedUserResult loadAuthenticatedUserResult(UUID userId) {
-    UserAccount userAccount = userAccountRepositoryPort
+    UserAccount userAccount =
+        userAccountRepositoryPort
             .findByIdWithRolesAndPermissions(userId)
             .orElseThrow(UserNotFoundException::new);
 
     List<String> roles = userAccount.getRoles().stream().map(Role::getName).toList();
 
-    List<String> authorities = userAccount.getRoles().stream()
-            .flatMap(role -> Stream.concat(
-                    Stream.of(toRoleAuthority(role)),
-                    role.getPermissions().stream().map(Permission::getName)
-            ))
+    List<String> authorities =
+        userAccount.getRoles().stream()
+            .flatMap(
+                role ->
+                    Stream.concat(
+                        Stream.of(toRoleAuthority(role)),
+                        role.getPermissions().stream().map(Permission::getName)))
             .collect(Collectors.toCollection(LinkedHashSet::new))
             .stream()
             .toList();

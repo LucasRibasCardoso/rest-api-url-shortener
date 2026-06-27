@@ -78,7 +78,8 @@ class EmailVerificationPropertiesTest {
     // 3. Assert
     assertThat(violations)
         .extracting(violation -> violation.getPropertyPath().toString())
-        .containsExactlyInAnyOrder("codeProtection.encryptionPassword", "codeProtection.encryptionSalt");
+        .containsExactlyInAnyOrder(
+            "codeProtection.encryptionPassword", "codeProtection.encryptionSalt");
   }
 
   private static String base64SecretWith32Bytes() {

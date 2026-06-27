@@ -40,11 +40,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
   private static final Duration IN_PROGRESS_TTL = Duration.ofMinutes(2);
   private static final Duration COMPLETED_TTL = Duration.ofHours(24);
 
-  private static final Set<String> IDEMPOTENCY_SUPPORTED_METHODS = Set.of(
-          HttpMethod.POST.name(),
-          HttpMethod.PUT.name(),
-          HttpMethod.PATCH.name()
-  );
+  private static final Set<String> IDEMPOTENCY_SUPPORTED_METHODS =
+      Set.of(HttpMethod.POST.name(), HttpMethod.PUT.name(), HttpMethod.PATCH.name());
 
   private final IdempotencyPort idempotencyPort;
   private final RequestBodyHasher requestBodyHasher;
@@ -54,12 +51,11 @@ public class IdempotencyFilter extends OncePerRequestFilter {
   private final PathMatcher pathMatcher = new AntPathMatcher();
 
   public IdempotencyFilter(
-          IdempotencyPort idempotencyPort,
-          @Qualifier("handlerExceptionResolver")
-          HandlerExceptionResolver exceptionResolver,
-          IdempotencyProperties idempotencyProperties,
-          PrincipalScopeResolver principalScopeResolver,
-          RequestBodyHasher requestBodyHasher) {
+      IdempotencyPort idempotencyPort,
+      @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver,
+      IdempotencyProperties idempotencyProperties,
+      PrincipalScopeResolver principalScopeResolver,
+      RequestBodyHasher requestBodyHasher) {
     this.idempotencyPort = idempotencyPort;
     this.exceptionResolver = exceptionResolver;
     this.idempotencyProperties = idempotencyProperties;
@@ -80,32 +76,32 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     }
 
     String requestUri = request.getRequestURI();
-    boolean matchesProtectedUri = protectedUris.stream().anyMatch(pattern -> pathMatcher.match(pattern, requestUri));
+    boolean matchesProtectedUri =
+        protectedUris.stream().anyMatch(pattern -> pathMatcher.match(pattern, requestUri));
 
     return !matchesProtectedUri;
   }
 
   @Override
   public void doFilterInternal(
-          HttpServletRequest request,
-          HttpServletResponse response,
-          FilterChain filterChain)
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
     String idempotencyKeyValue = request.getHeader(IDEMPOTENCY_KEY_HEADER);
     if (idempotencyKeyValue == null || idempotencyKeyValue.isBlank()) {
-      exceptionResolver.resolveException(request, response, null, new IdempotencyHeaderMissingException());
+      exceptionResolver.resolveException(
+          request, response, null, new IdempotencyHeaderMissingException());
       return;
     }
 
     byte[] requestBody = StreamUtils.copyToByteArray(request.getInputStream());
     var cachedRequest = new CachedBodyHttpServletRequest(request, requestBody);
-    var fingerprint = RequestFingerprint.of(
+    var fingerprint =
+        RequestFingerprint.of(
             principalScopeResolver.resolve(request),
             request.getMethod(),
             request.getRequestURI(),
-            requestBodyHasher.sha256Hex(requestBody)
-    );
+            requestBodyHasher.sha256Hex(requestBody));
 
     IdempotencyKey idempotencyKey = IdempotencyKey.generate(idempotencyKeyValue, fingerprint);
     boolean savedInProgress = idempotencyPort.saveInProgress(idempotencyKey, IN_PROGRESS_TTL);
@@ -118,7 +114,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         return;
       }
 
-      exceptionResolver.resolveException(request, response, null, new IdempotencyConflictException());
+      exceptionResolver.resolveException(
+          request, response, null, new IdempotencyConflictException());
       return;
     }
 
@@ -128,19 +125,18 @@ public class IdempotencyFilter extends OncePerRequestFilter {
       filterChain.doFilter(cachedRequest, wrappedResponse);
 
       if (wrappedResponse.getStatus() >= 200 && wrappedResponse.getStatus() < 300) {
-        var responseBody = new String(wrappedResponse.getContentAsByteArray(), responseCharset(wrappedResponse));
+        var responseBody =
+            new String(wrappedResponse.getContentAsByteArray(), responseCharset(wrappedResponse));
         var cachedResponse = new CachedResponse(wrappedResponse.getStatus(), responseBody);
         idempotencyPort.saveCompleted(idempotencyKey, cachedResponse, COMPLETED_TTL);
         return;
       }
 
       idempotencyPort.delete(idempotencyKey);
-    }
-    catch (Exception exception) {
+    } catch (Exception exception) {
       idempotencyPort.delete(idempotencyKey);
       throw exception;
-    }
-    finally {
+    } finally {
       wrappedResponse.copyBodyToResponse();
     }
   }
@@ -149,10 +145,11 @@ public class IdempotencyFilter extends OncePerRequestFilter {
       HttpServletRequest request,
       HttpServletResponse response,
       RequestFingerprint currentFingerprint,
-      IdempotencyEntry entry
-  ) throws IOException {
+      IdempotencyEntry entry)
+      throws IOException {
     if (!currentFingerprint.equals(entry.fingerprint()) || entry.response() == null) {
-      exceptionResolver.resolveException(request, response, null, new IdempotencyConflictException());
+      exceptionResolver.resolveException(
+          request, response, null, new IdempotencyConflictException());
       return;
     }
 
@@ -180,5 +177,4 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     }
     return Charset.forName(characterEncoding);
   }
-
 }

@@ -179,7 +179,8 @@ class EmailVerificationTokenPersistenceMapperTest {
               if ("toString".equals(method.getName())) {
                 return "EntityManager test proxy";
               }
-              throw new UnsupportedOperationException("Unsupported EntityManager method: " + method.getName());
+              throw new UnsupportedOperationException(
+                  "Unsupported EntityManager method: " + method.getName());
             });
   }
 

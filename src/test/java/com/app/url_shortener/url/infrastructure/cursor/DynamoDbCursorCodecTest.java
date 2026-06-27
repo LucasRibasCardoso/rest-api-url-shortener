@@ -1,5 +1,8 @@
 package com.app.url_shortener.url.infrastructure.cursor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.app.url_shortener.url.domain.exception.InvalidUrlCursorException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -17,9 +20,6 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import tools.jackson.databind.ObjectMapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Codec de Cursor DynamoDB")
@@ -35,9 +35,10 @@ class DynamoDbCursorCodecTest {
     @DisplayName("Deve codificar chave do DynamoDB como cursor opaco em Base64 URL-safe")
     void shouldEncodeDynamoDbKeyAsUrlSafeBase64Cursor() {
       // 1. Arrange
-      var lastKey = Map.of(
-          "shortCode", AttributeValue.builder().s("aB3dE").build(),
-          "sequence", AttributeValue.builder().n("100").build());
+      var lastKey =
+          Map.of(
+              "shortCode", AttributeValue.builder().s("aB3dE").build(),
+              "sequence", AttributeValue.builder().n("100").build());
 
       // 2. Act
       var result = codec.encode(lastKey);
@@ -97,11 +98,14 @@ class DynamoDbCursorCodecTest {
     @DisplayName("Deve decodificar cursor para chave do DynamoDB")
     void shouldDecodeCursorToDynamoDbKey() {
       // 1. Arrange
-      var json = """
+      var json =
+          """
           {"version":1,"key":{"shortCode":{"S":"aB3dE"},"sequence":{"N":"100"}}}
           """;
-      var cursor = Base64.getUrlEncoder().withoutPadding()
-          .encodeToString(json.getBytes(StandardCharsets.UTF_8));
+      var cursor =
+          Base64.getUrlEncoder()
+              .withoutPadding()
+              .encodeToString(json.getBytes(StandardCharsets.UTF_8));
 
       // 2. Act
       var result = codec.decode(cursor);
@@ -133,23 +137,24 @@ class DynamoDbCursorCodecTest {
       var cursor = "invalid";
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> codec.decode(cursor))
-          .isInstanceOf(InvalidUrlCursorException.class);
+      assertThatThrownBy(() -> codec.decode(cursor)).isInstanceOf(InvalidUrlCursorException.class);
     }
 
     @Test
     @DisplayName("Deve lançar RuntimeException quando versão do cursor não for suportada")
     void shouldThrowRuntimeExceptionWhenCursorVersionIsUnsupported() {
       // 1. Arrange
-      var json = """
+      var json =
+          """
           {"version":2,"key":{"shortCode":{"S":"aB3dE"}}}
           """;
-      var cursor = Base64.getUrlEncoder().withoutPadding()
-          .encodeToString(json.getBytes(StandardCharsets.UTF_8));
+      var cursor =
+          Base64.getUrlEncoder()
+              .withoutPadding()
+              .encodeToString(json.getBytes(StandardCharsets.UTF_8));
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> codec.decode(cursor))
-          .isInstanceOf(InvalidUrlCursorException.class);
+      assertThatThrownBy(() -> codec.decode(cursor)).isInstanceOf(InvalidUrlCursorException.class);
     }
   }
 
@@ -162,10 +167,11 @@ class DynamoDbCursorCodecTest {
     void shouldPreserveKeyValuesWhenEncodingAndDecodingCursor() {
       // 1. Arrange
       var binary = SdkBytes.fromUtf8String("binary-value");
-      var lastKey = Map.of(
-          "userId", AttributeValue.builder().s("019a16f1-ae7f-7c9d-9e18-44773f1ac001").build(),
-          "sequence", AttributeValue.builder().n("100").build(),
-          "binary", AttributeValue.builder().b(binary).build());
+      var lastKey =
+          Map.of(
+              "userId", AttributeValue.builder().s("019a16f1-ae7f-7c9d-9e18-44773f1ac001").build(),
+              "sequence", AttributeValue.builder().n("100").build(),
+              "binary", AttributeValue.builder().b(binary).build());
 
       // 2. Act
       var cursor = codec.encode(lastKey);

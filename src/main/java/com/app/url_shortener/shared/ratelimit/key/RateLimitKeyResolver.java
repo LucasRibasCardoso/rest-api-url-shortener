@@ -53,7 +53,8 @@ public class RateLimitKeyResolver {
     Objects.requireNonNull(policy, "policy must not be null");
 
     if (!policy.isPremium() && !policy.isFree()) {
-      throw new IllegalArgumentException("Invalid shorten rate limit policy for user-based key: " + policy);
+      throw new IllegalArgumentException(
+          "Invalid shorten rate limit policy for user-based key: " + policy);
     }
     return RateLimitKey.createForUserId(policy, userId);
   }

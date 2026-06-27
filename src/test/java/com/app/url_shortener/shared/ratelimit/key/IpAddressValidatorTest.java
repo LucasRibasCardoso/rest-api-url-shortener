@@ -1,5 +1,7 @@
 package com.app.url_shortener.shared.ratelimit.key;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.shared.ratelimit.core.IpAddressValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,8 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -54,7 +54,8 @@ class IpAddressValidatorTest {
   class Ipv6Tests {
 
     @ParameterizedTest
-    @ValueSource(strings = {"::1", "2001:db8::1", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", " fe80::1 "})
+    @ValueSource(
+        strings = {"::1", "2001:db8::1", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", " fe80::1 "})
     @DisplayName("Deve aceitar IPv6 válido")
     void shouldAcceptValidIpv6(String value) {
       // 1. Arrange
@@ -68,7 +69,8 @@ class IpAddressValidatorTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" ", "2001:db8:::1", "12345::1", "localhost", "example.com", "203.0.113.10"})
+    @ValueSource(
+        strings = {" ", "2001:db8:::1", "12345::1", "localhost", "example.com", "203.0.113.10"})
     @DisplayName("Deve rejeitar valor que não seja IPv6 válido")
     void shouldRejectInvalidIpv6(String value) {
       // 1. Arrange

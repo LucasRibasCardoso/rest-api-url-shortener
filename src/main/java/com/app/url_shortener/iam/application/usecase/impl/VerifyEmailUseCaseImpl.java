@@ -48,7 +48,8 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   private void consumeToken(UserAccount userAccount, VerificationCode verificationCode) {
     var now = Instant.now();
 
-    EmailVerificationToken token = emailVerificationTokenRepositoryPort
+    EmailVerificationToken token =
+        emailVerificationTokenRepositoryPort
             .findActiveByUserIdAndEmail(userAccount.getId(), userAccount.getEmail(), now)
             .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
 

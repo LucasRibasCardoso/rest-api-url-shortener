@@ -12,9 +12,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.app.url_shortener.shared.outbox.application.policy.OutboxPublisherPolicy;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventPublisherPort;
 import com.app.url_shortener.shared.outbox.application.port.OutboxEventRepositoryPort;
-import com.app.url_shortener.shared.outbox.application.policy.OutboxPublisherPolicy;
 import com.app.url_shortener.shared.outbox.domain.exception.OutboxPublishException;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
@@ -45,11 +45,9 @@ class OutboxPublisherServiceTest {
   private static final Duration RETRY_DELAY = Duration.ofSeconds(30);
   private static final Instant CREATED_AT = Instant.parse("2026-06-10T10:00:00Z");
 
-  @Mock
-  private OutboxEventRepositoryPort outboxEventRepositoryPort;
+  @Mock private OutboxEventRepositoryPort outboxEventRepositoryPort;
 
-  @Mock
-  private OutboxEventPublisherPort outboxEventPublisherPort;
+  @Mock private OutboxEventPublisherPort outboxEventPublisherPort;
 
   private OutboxPublisherService service;
 
@@ -176,9 +174,7 @@ class OutboxPublisherServiceTest {
       var exception = new IllegalStateException("Unexpected failure");
       given(outboxEventRepositoryPort.findPendingToPublish(any(Instant.class), eq(BATCH_SIZE)))
           .willReturn(events);
-      doThrow(exception)
-          .when(outboxEventPublisherPort)
-          .publish(event);
+      doThrow(exception).when(outboxEventPublisherPort).publish(event);
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> service.publishPendingEvents());
@@ -211,8 +207,7 @@ class OutboxPublisherServiceTest {
 
   private OutboxPublisherService service(int maxAttempts) {
     var policy = new OutboxPublisherPolicy(BATCH_SIZE, maxAttempts, RETRY_DELAY);
-    return new OutboxPublisherService(
-        outboxEventRepositoryPort, outboxEventPublisherPort, policy);
+    return new OutboxPublisherService(outboxEventRepositoryPort, outboxEventPublisherPort, policy);
   }
 
   private OutboxEvent event(String eventId) {

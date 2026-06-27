@@ -1,5 +1,8 @@
 package com.app.url_shortener.shared.ratelimit.key;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -11,9 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -30,8 +30,7 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var key =
-          RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, "203.0.113.10");
+      var key = RateLimitKey.createForIp(RateLimitPolicy.AUTH_REGISTER_IP, "203.0.113.10");
 
       // 3. Assert
       assertThat(key.getValue()).isEqualTo("auth-register-ip:ip:203.0.113.10");
@@ -81,7 +80,9 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var key = RateLimitKey.createForIpAndEmail(RateLimitPolicy.AUTH_LOGIN, "203.0.113.10", "hashed-email");
+      var key =
+          RateLimitKey.createForIpAndEmail(
+              RateLimitPolicy.AUTH_LOGIN, "203.0.113.10", "hashed-email");
 
       // 3. Assert
       assertThat(key.getValue()).isEqualTo("auth-login:ip:203.0.113.10:email:hashed-email");
@@ -93,7 +94,9 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> RateLimitKey.createForIpAndEmail(null, "203.0.113.10", "hashed-email"));
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> RateLimitKey.createForIpAndEmail(null, "203.0.113.10", "hashed-email"));
 
       // 3. Assert
       throwableAssert
@@ -109,8 +112,11 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(
-          () -> RateLimitKey.createForIpAndEmail(RateLimitPolicy.AUTH_LOGIN, clientIp, "hashed-email"));
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  RateLimitKey.createForIpAndEmail(
+                      RateLimitPolicy.AUTH_LOGIN, clientIp, "hashed-email"));
 
       // 3. Assert
       throwableAssert
@@ -126,8 +132,11 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(
-          () -> RateLimitKey.createForIpAndEmail(RateLimitPolicy.AUTH_LOGIN, "203.0.113.10", emailHash));
+      var throwableAssert =
+          assertThatThrownBy(
+              () ->
+                  RateLimitKey.createForIpAndEmail(
+                      RateLimitPolicy.AUTH_LOGIN, "203.0.113.10", emailHash));
 
       // 3. Assert
       throwableAssert
@@ -158,7 +167,8 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> RateLimitKey.createForEmail(null, "hashed-email"));
+      var throwableAssert =
+          assertThatThrownBy(() -> RateLimitKey.createForEmail(null, "hashed-email"));
 
       // 3. Assert
       throwableAssert
@@ -174,8 +184,9 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(
-          () -> RateLimitKey.createForEmail(RateLimitPolicy.AUTH_VERIFY_EMAIL, emailHash));
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> RateLimitKey.createForEmail(RateLimitPolicy.AUTH_VERIFY_EMAIL, emailHash));
 
       // 3. Assert
       throwableAssert
@@ -198,7 +209,8 @@ class RateLimitKeyTest {
       var key = RateLimitKey.createForUserId(RateLimitPolicy.URL_SHORTEN_FREE, userId);
 
       // 3. Assert
-      assertThat(key.getValue()).isEqualTo("url-shorten-free:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
+      assertThat(key.getValue())
+          .isEqualTo("url-shorten-free:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
     }
 
     @Test
@@ -222,7 +234,9 @@ class RateLimitKeyTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> RateLimitKey.createForUserId(RateLimitPolicy.URL_SHORTEN_FREE, null));
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> RateLimitKey.createForUserId(RateLimitPolicy.URL_SHORTEN_FREE, null));
 
       // 3. Assert
       throwableAssert
@@ -243,9 +257,7 @@ class RateLimitKeyTest {
       var secondKey = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_LOGIN, "hashed-email");
 
       // 2. Act & 3. Assert
-      assertThat(firstKey)
-          .isEqualTo(secondKey)
-          .hasSameHashCodeAs(secondKey);
+      assertThat(firstKey).isEqualTo(secondKey).hasSameHashCodeAs(secondKey);
     }
 
     @Test

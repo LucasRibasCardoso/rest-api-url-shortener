@@ -27,6 +27,8 @@ public class RedirectController {
   public ResponseEntity<?> redirectToOriginalUrl(@PathVariable String shortCode) {
     ResolveUrlCommand command = urlWebMapper.toResolveUrlCommand(shortCode);
     ResolveUrlResult result = resolveUrlUseCase.execute(command);
-    return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(result.originalUrl())).build();
+    return ResponseEntity.status(HttpStatus.FOUND)
+        .location(URI.create(result.originalUrl()))
+        .build();
   }
 }

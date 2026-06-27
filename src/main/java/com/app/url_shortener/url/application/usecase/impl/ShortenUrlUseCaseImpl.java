@@ -47,7 +47,9 @@ public class ShortenUrlUseCaseImpl implements ShortenUrlUseCase {
     try {
       redirectCachePort.saveActive(url.getShortCode(), url.getOriginalUrl());
     } catch (RedirectCacheException exception) {
-      log.warn("Falha ao tentar salvar nova URL no cache de redirecionamento: {}", exception.getMessage());
+      log.warn(
+          "Falha ao tentar salvar nova URL no cache de redirecionamento: {}",
+          exception.getMessage());
     }
   }
 }

@@ -2,8 +2,7 @@ package com.app.url_shortener.shared.error;
 
 public final class ProblemType {
 
-  private ProblemType() {
-  }
+  private ProblemType() {}
 
   public static final String VALIDATION = "/errors/validation";
   public static final String CONFLICT = "/errors/conflict";

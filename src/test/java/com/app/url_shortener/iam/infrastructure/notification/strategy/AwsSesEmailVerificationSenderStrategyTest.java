@@ -43,8 +43,11 @@ class AwsSesEmailVerificationSenderStrategyTest {
 
   @BeforeEach
   void setUp() {
-    var properties = new AwsSesEmailVerificationProperties(null, FROM_EMAIL, SUBJECT, Duration.ofSeconds(10));
-    var policy = new EmailVerificationPolicy(Duration.ofMinutes(10), Duration.ofMinutes(1), Duration.ofSeconds(30));
+    var properties =
+        new AwsSesEmailVerificationProperties(null, FROM_EMAIL, SUBJECT, Duration.ofSeconds(10));
+    var policy =
+        new EmailVerificationPolicy(
+            Duration.ofMinutes(10), Duration.ofMinutes(1), Duration.ofSeconds(30));
     strategy = new AwsSesEmailVerificationSenderStrategy(sesClient, properties, policy);
   }
 
@@ -57,7 +60,7 @@ class AwsSesEmailVerificationSenderStrategyTest {
     void shouldSendTextAndHtmlContentAndReturnMessageId() {
       // 1. Arrange
       given(sesClient.sendEmail(any(SendEmailRequest.class)))
-              .willReturn(SendEmailResponse.builder().messageId("provider-message-id").build());
+          .willReturn(SendEmailResponse.builder().messageId("provider-message-id").build());
       var requestCaptor = ArgumentCaptor.forClass(SendEmailRequest.class);
 
       // 2. Act
@@ -106,8 +109,7 @@ class AwsSesEmailVerificationSenderStrategyTest {
               .message("message rejected")
               .statusCode(400)
               .requestId("request-id")
-              .awsErrorDetails(
-                  AwsErrorDetails.builder().errorCode("MessageRejected").build())
+              .awsErrorDetails(AwsErrorDetails.builder().errorCode("MessageRejected").build())
               .build();
       given(sesClient.sendEmail(any(SendEmailRequest.class))).willThrow(cause);
 

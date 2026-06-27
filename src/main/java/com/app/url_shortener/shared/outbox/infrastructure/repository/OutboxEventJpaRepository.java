@@ -22,5 +22,6 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
           FOR UPDATE SKIP LOCKED
           """,
       nativeQuery = true)
-  List<OutboxEventEntity> findPendingToPublish(@Param("now") Instant now, @Param("limit") int limit);
+  List<OutboxEventEntity> findPendingToPublish(
+      @Param("now") Instant now, @Param("limit") int limit);
 }

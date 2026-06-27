@@ -13,8 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
     uses = RolePersistenceMapper.class)
 public abstract class UserAccountPersistenceMapper {
 
-  @Autowired
-  protected RolePersistenceMapper rolePersistenceMapper;
+  @Autowired protected RolePersistenceMapper rolePersistenceMapper;
 
   public UserAccount toDomainWithoutRoles(UserEntity entity) {
     if (entity == null) {

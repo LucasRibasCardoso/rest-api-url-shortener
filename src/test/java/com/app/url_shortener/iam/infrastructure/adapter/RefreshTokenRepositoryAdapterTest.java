@@ -1,11 +1,17 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.app.url_shortener.config.BaseDataJpaSliceTest;
 import com.app.url_shortener.iam.domain.model.RefreshToken;
 import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.mapper.RefreshTokenPersistenceMapperImpl;
 import com.app.url_shortener.iam.infrastructure.repository.RefreshTokenJpaRepository;
-import com.app.url_shortener.config.BaseDataJpaSliceTest;
 import com.app.url_shortener.shared.config.JpaAuditingConfig;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.*;
 import org.postgresql.util.PSQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,19 +20,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @Tag("jpa-slice")
 @Import({
-        RefreshTokenCleanupTask.class,
-        RefreshTokenRepositoryAdapter.class,
-        RefreshTokenPersistenceMapperImpl.class,
-        JpaAuditingConfig.class
+  RefreshTokenCleanupTask.class,
+  RefreshTokenRepositoryAdapter.class,
+  RefreshTokenPersistenceMapperImpl.class,
+  JpaAuditingConfig.class
 })
 @DisplayName("Slice Data JPA - Adaptador de Repositório de Refresh Tokens")
 class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
@@ -34,23 +33,17 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
   private static final Instant CREATED_AT = Instant.parse("2026-05-07T12:00:00Z");
   private static final Instant EXPIRES_AT = Instant.parse("2026-05-14T12:00:00Z");
 
-  @Autowired
-  private RefreshTokenRepositoryAdapter adapter;
+  @Autowired private RefreshTokenRepositoryAdapter adapter;
 
-  @Autowired
-  private RefreshTokenCleanupTask cleanupTask;
+  @Autowired private RefreshTokenCleanupTask cleanupTask;
 
-  @Autowired
-  private RefreshTokenJpaRepository refreshTokenJpaRepository;
+  @Autowired private RefreshTokenJpaRepository refreshTokenJpaRepository;
 
-  @Autowired
-  private RefreshTokenPersistenceMapper refreshTokenPersistenceMapper;
+  @Autowired private RefreshTokenPersistenceMapper refreshTokenPersistenceMapper;
 
-  @Autowired
-  private TestEntityManager entityManager;
+  @Autowired private TestEntityManager entityManager;
 
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @Nested
   @DisplayName("Busca por hash")
@@ -63,13 +56,13 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad101");
       insertUser(userId, "token-owner@email.com");
 
-      var token = refreshToken(
+      var token =
+          refreshToken(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad102"),
               userId,
               "hash-find-by-token",
               null,
-              null
-      );
+              null);
       adapter.save(token);
       entityManager.flush();
       entityManager.clear();
@@ -131,10 +124,34 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       insertUser(targetUserId, "target-revoke@email.com");
       insertUser(otherUserId, "other-revoke@email.com");
 
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad303"), targetUserId, "target-active-1", null, null));
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad304"), targetUserId, "target-active-2", null, null));
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad305"), targetUserId, "target-revoked", alreadyRevokedAt, null));
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad306"), otherUserId, "other-active", null, null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad303"),
+              targetUserId,
+              "target-active-1",
+              null,
+              null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad304"),
+              targetUserId,
+              "target-active-2",
+              null,
+              null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad305"),
+              targetUserId,
+              "target-revoked",
+              alreadyRevokedAt,
+              null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad306"),
+              otherUserId,
+              "other-active",
+              null,
+              null));
       entityManager.flush();
       entityManager.clear();
 
@@ -158,9 +175,27 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       var alreadyRevokedAt = Instant.parse("2026-05-08T09:00:00Z");
 
       insertUser(userId, "hash-revoke@email.com");
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad402"), userId, "hash-to-revoke", null, null));
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad403"), userId, "hash-to-keep", null, null));
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad404"), userId, "hash-already-revoked", alreadyRevokedAt, null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad402"),
+              userId,
+              "hash-to-revoke",
+              null,
+              null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad403"),
+              userId,
+              "hash-to-keep",
+              null,
+              null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad404"),
+              userId,
+              "hash-already-revoked",
+              alreadyRevokedAt,
+              null));
       entityManager.flush();
       entityManager.clear();
 
@@ -186,7 +221,13 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       var rotatedAt = Instant.parse("2026-05-08T10:15:30Z");
 
       insertUser(userId, "active-rotation@email.com");
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad406"), userId, oldTokenHash, null, null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad406"),
+              userId,
+              oldTokenHash,
+              null,
+              null));
       adapter.save(refreshToken(newTokenId, userId, "new-active-rotation-token", null, null));
       entityManager.flush();
       entityManager.clear();
@@ -215,19 +256,21 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       insertUser(userId, "already-rotated@email.com");
       adapter.save(refreshToken(firstNewTokenId, userId, "first-new-rotation-token", null, null));
-      adapter.save(refreshToken(
+      adapter.save(
+          refreshToken(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad409"),
               userId,
               oldTokenHash,
               originalRevokedAt,
-              firstNewTokenId
-      ));
-      adapter.save(refreshToken(anotherNewTokenId, userId, "another-new-rotation-token", null, null));
+              firstNewTokenId));
+      adapter.save(
+          refreshToken(anotherNewTokenId, userId, "another-new-rotation-token", null, null));
       entityManager.flush();
       entityManager.clear();
 
       // 2. Act
-      var updatedRows = adapter.markTokenAsRotatedIfActive(oldTokenHash, anotherRotatedAt, anotherNewTokenId);
+      var updatedRows =
+          adapter.markTokenAsRotatedIfActive(oldTokenHash, anotherRotatedAt, anotherNewTokenId);
       entityManager.flush();
       entityManager.clear();
 
@@ -248,11 +291,10 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
 
       insertUser(userId, "expired-rotation@email.com");
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40d"),
-              userId,
-              expiredTokenHash,
-              Instant.parse("2026-05-08T10:15:29Z")
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad40d"),
+          userId,
+          expiredTokenHash,
+          Instant.parse("2026-05-08T10:15:29Z"));
       adapter.save(refreshToken(newTokenId, userId, "new-expired-rotation-token", null, null));
       entityManager.flush();
       entityManager.clear();
@@ -280,28 +322,37 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad501");
       insertUser(userId, "duplicate-token@email.com");
 
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad502"), userId, "duplicate-hash", null, null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad502"),
+              userId,
+              "duplicate-hash",
+              null,
+              null));
       entityManager.flush();
       entityManager.clear();
 
-      var duplicateToken = refreshToken(
+      var duplicateToken =
+          refreshToken(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad503"),
               userId,
               "duplicate-hash",
               null,
-              null
-      );
+              null);
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> {
-        refreshTokenJpaRepository.saveAndFlush(refreshTokenPersistenceMapper.toEntity(duplicateToken));
-      });
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> {
+                refreshTokenJpaRepository.saveAndFlush(
+                    refreshTokenPersistenceMapper.toEntity(duplicateToken));
+              });
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("refresh_tokens_token_hash_key");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("refresh_tokens_token_hash_key");
     }
 
     @Test
@@ -309,24 +360,27 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
     void shouldRejectTokenForMissingUser() {
       // 1. Arrange
       var missingUserId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad601");
-      var token = refreshToken(
+      var token =
+          refreshToken(
               UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad602"),
               missingUserId,
               "missing-user-hash",
               null,
-              null
-      );
+              null);
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> {
-        refreshTokenJpaRepository.saveAndFlush(refreshTokenPersistenceMapper.toEntity(token));
-      });
+      var throwableAssert =
+          assertThatThrownBy(
+              () -> {
+                refreshTokenJpaRepository.saveAndFlush(
+                    refreshTokenPersistenceMapper.toEntity(token));
+              });
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(DataIntegrityViolationException.class)
-              .hasRootCauseInstanceOf(PSQLException.class)
-              .hasMessageContaining("refresh_tokens_user_id_fkey");
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasRootCauseInstanceOf(PSQLException.class)
+          .hasMessageContaining("refresh_tokens_user_id_fkey");
     }
 
     @Test
@@ -335,7 +389,13 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       // 1. Arrange
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad701");
       insertUser(userId, "cascade-refresh@email.com");
-      adapter.save(refreshToken(UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad702"), userId, "cascade-hash", null, null));
+      adapter.save(
+          refreshToken(
+              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad702"),
+              userId,
+              "cascade-hash",
+              null,
+              null));
       entityManager.flush();
       entityManager.clear();
 
@@ -361,28 +421,27 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       insertUser(userId, "cleanup-query@email.com");
 
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad802"),
-              userId,
-              "cleanup-old-expired",
-              Instant.now().minusSeconds(8 * 24 * 60 * 60)
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad802"),
+          userId,
+          "cleanup-old-expired",
+          Instant.now().minusSeconds(8 * 24 * 60 * 60));
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad803"),
-              userId,
-              "cleanup-recent-expired",
-              Instant.now().minusSeconds(6 * 24 * 60 * 60)
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad803"),
+          userId,
+          "cleanup-recent-expired",
+          Instant.now().minusSeconds(6 * 24 * 60 * 60));
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad804"),
-              userId,
-              "cleanup-future",
-              Instant.now().plusSeconds(24 * 60 * 60)
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad804"),
+          userId,
+          "cleanup-future",
+          Instant.now().plusSeconds(24 * 60 * 60));
       entityManager.flush();
       entityManager.clear();
 
       // 2. Act
-      var deletedCount = refreshTokenJpaRepository.deleteExpiredTokensBefore(Instant.now().minusSeconds(7 * 24 * 60 * 60));
+      var deletedCount =
+          refreshTokenJpaRepository.deleteExpiredTokensBefore(
+              Instant.now().minusSeconds(7 * 24 * 60 * 60));
       entityManager.flush();
       entityManager.clear();
 
@@ -401,17 +460,15 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
       insertUser(userId, "cleanup-task@email.com");
 
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad902"),
-              userId,
-              "task-old-expired",
-              Instant.now().minusSeconds(8 * 24 * 60 * 60)
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad902"),
+          userId,
+          "task-old-expired",
+          Instant.now().minusSeconds(8 * 24 * 60 * 60));
       insertRefreshToken(
-              UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad903"),
-              userId,
-              "task-recent-expired",
-              Instant.now().minusSeconds(6 * 24 * 60 * 60)
-      );
+          UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ad903"),
+          userId,
+          "task-recent-expired",
+          Instant.now().minusSeconds(6 * 24 * 60 * 60));
       entityManager.flush();
       entityManager.clear();
 
@@ -427,66 +484,48 @@ class RefreshTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
   }
 
   private RefreshToken refreshToken(
-          UUID id,
-          UUID userId,
-          String tokenHash,
-          Instant revokedAt,
-          UUID replacedByTokenId
-  ) {
+      UUID id, UUID userId, String tokenHash, Instant revokedAt, UUID replacedByTokenId) {
     return RefreshToken.restore(
-            id,
-            userId,
-            tokenHash,
-            CREATED_AT,
-            EXPIRES_AT,
-            revokedAt,
-            replacedByTokenId
-    );
+        id, userId, tokenHash, CREATED_AT, EXPIRES_AT, revokedAt, replacedByTokenId);
   }
 
   private void insertUser(UUID userId, String email) {
     jdbcTemplate.update(
-            """
+        """
                     INSERT INTO users (id, name, email, password_hash, status, plan, email_verified)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-            userId,
-            "User Name",
-            email,
-            "password-hash",
-            "ACTIVE",
-            "FREE",
-            true
-    );
+        userId,
+        "User Name",
+        email,
+        "password-hash",
+        "ACTIVE",
+        "FREE",
+        true);
   }
 
   private void insertRefreshToken(UUID id, UUID userId, String tokenHash, Instant expiresAt) {
     jdbcTemplate.update(
-            """
+        """
                     INSERT INTO refresh_tokens (id, user_id, token_hash, created_at, expires_at)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-            id,
-            userId,
-            tokenHash,
-            Timestamp.from(CREATED_AT),
-            Timestamp.from(expiresAt)
-    );
+        id,
+        userId,
+        tokenHash,
+        Timestamp.from(CREATED_AT),
+        Timestamp.from(expiresAt));
   }
 
   private Instant revokedAt(String tokenHash) {
     return jdbcTemplate.queryForObject(
-            "SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?",
-            Instant.class,
-            tokenHash
-    );
+        "SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?", Instant.class, tokenHash);
   }
 
   private UUID replacedByTokenId(String tokenHash) {
     return jdbcTemplate.queryForObject(
-            "SELECT replaced_by_token_id FROM refresh_tokens WHERE token_hash = ?",
-            UUID.class,
-            tokenHash
-    );
+        "SELECT replaced_by_token_id FROM refresh_tokens WHERE token_hash = ?",
+        UUID.class,
+        tokenHash);
   }
 }

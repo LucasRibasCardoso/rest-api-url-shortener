@@ -17,8 +17,12 @@ public class FindUrlDetailsUseCaseImpl implements FindUrlDetailsUseCase {
 
   @Override
   public UrlDetailsResult execute(UrlDetailsCommand command) {
-    Url url = urlRepositoryPort.findByShortCode(command.shortCode())
-            .filter(candidate -> command.canReadAny() || candidate.getUserId().equals(command.requesterId()))
+    Url url =
+        urlRepositoryPort
+            .findByShortCode(command.shortCode())
+            .filter(
+                candidate ->
+                    command.canReadAny() || candidate.getUserId().equals(command.requesterId()))
             .orElseThrow(UrlNotFoundException::new);
 
     return new UrlDetailsResult(

@@ -31,7 +31,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 @DisplayName("Testes de Integração - Endpoint de login")
-class AuthLoginIntegrationTest extends AbstractIntegrationTest {
+class AuthLoginIT extends AbstractIntegrationTest {
 
   private static final String LOGIN_ENDPOINT = "/api/v1/auth/login";
   private static final String PASSWORD = "secure-password";
@@ -43,7 +43,7 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
   private final JwtDecoder jwtDecoder;
 
   @Autowired
-  AuthLoginIntegrationTest(
+  AuthLoginIT(
       UserTestDataFactory userTestDataFactory,
       RefreshTokenJpaRepository refreshTokenJpaRepository,
       SecureTokenGeneratorPort secureTokenGeneratorPort,
@@ -93,10 +93,7 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
     String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
     HttpCookie refreshCookie = HttpCookie.parse(setCookieHeader).getFirst();
     var cookieAttributes =
-        Arrays.stream(setCookieHeader.split(";"))
-            .skip(1)
-            .map(String::trim)
-            .toList();
+        Arrays.stream(setCookieHeader.split(";")).skip(1).map(String::trim).toList();
 
     assertThat(response.jsonPath().getMap("$")).doesNotContainKey("refreshToken");
     assertThat(rawRefreshToken).isNotBlank();
@@ -126,7 +123,8 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         .satisfies(
             refreshToken -> {
               assertThat(refreshToken.getUser().getId()).isEqualTo(user.getId());
-              assertThat(refreshToken.getTokenHash()).isEqualTo(secureTokenGeneratorPort.hashToken(rawRefreshToken));
+              assertThat(refreshToken.getTokenHash())
+                  .isEqualTo(secureTokenGeneratorPort.hashToken(rawRefreshToken));
               assertThat(refreshToken.getRevokedAt()).isNull();
               assertThat(refreshToken.getExpiresAt()).isAfter(refreshToken.getCreatedAt());
             });
@@ -249,5 +247,4 @@ class AuthLoginIntegrationTest extends AbstractIntegrationTest {
         .when()
         .post(LOGIN_ENDPOINT);
   }
-
 }

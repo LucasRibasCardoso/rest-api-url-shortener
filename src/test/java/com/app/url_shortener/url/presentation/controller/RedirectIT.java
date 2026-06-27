@@ -24,7 +24,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Redirecionamento de URL encurtada")
-class RedirectIntegrationTest extends AbstractIntegrationTest {
+class RedirectIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String REDIRECT_ENDPOINT = "/r";
@@ -36,7 +36,7 @@ class RedirectIntegrationTest extends AbstractIntegrationTest {
   private final StringRedisTemplate stringRedisTemplate;
 
   @Autowired
-  RedirectIntegrationTest(
+  RedirectIT(
       UserTestDataFactory userTestDataFactory,
       DynamoDbTable<UrlEntity> urlTable,
       StringRedisTemplate stringRedisTemplate) {

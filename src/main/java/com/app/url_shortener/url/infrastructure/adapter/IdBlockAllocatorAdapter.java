@@ -1,9 +1,9 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import com.app.url_shortener.shared.config.DynamoDbProperties;
 import com.app.url_shortener.url.application.port.output.IdBlockAllocatorPort;
 import com.app.url_shortener.url.domain.exception.CounterIdAllocationException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
-import com.app.url_shortener.shared.config.DynamoDbProperties;
 import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
 import java.util.Map;
 import org.springframework.stereotype.Repository;
@@ -75,11 +75,13 @@ public class IdBlockAllocatorAdapter implements IdBlockAllocatorPort {
 
   private CounterIdAllocationException buildCounterIdAllocationException(SdkException exception) {
     if (exception instanceof ConditionalCheckFailedException) {
-      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED, exception);
+      return new CounterIdAllocationException(
+          UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED, exception);
     }
 
     if (exception instanceof ProvisionedThroughputExceededException) {
-      return new CounterIdAllocationException(UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED, exception);
+      return new CounterIdAllocationException(
+          UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED, exception);
     }
 
     if (exception instanceof ResourceNotFoundException) {

@@ -31,7 +31,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Criação de URL encurtada")
-class UrlCreateIntegrationTest extends AbstractIntegrationTest {
+class UrlCreateIT extends AbstractIntegrationTest {
 
   private static final String CREATE_URL_ENDPOINT = "/api/v1/urls";
   private static final String PASSWORD = "secure-password";
@@ -43,7 +43,7 @@ class UrlCreateIntegrationTest extends AbstractIntegrationTest {
   private final ApplicationProperties applicationProperties;
 
   @Autowired
-  UrlCreateIntegrationTest(
+  UrlCreateIT(
       UserTestDataFactory userTestDataFactory,
       DynamoDbTable<UrlEntity> urlTable,
       StringRedisTemplate stringRedisTemplate,
@@ -139,7 +139,8 @@ class UrlCreateIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve retornar 409 quando a mesma chave de idempotência for usada com payload diferente")
+  @DisplayName(
+      "Deve retornar 409 quando a mesma chave de idempotência for usada com payload diferente")
   void shouldRejectSameIdempotencyKeyWhenPayloadIsDifferent() {
     // Arrange
     String email = "idempotency-conflict-url.integration@example.com";
@@ -294,25 +295,26 @@ class UrlCreateIntegrationTest extends AbstractIntegrationTest {
 
     // Act
     Response response =
-            given().contentType(ContentType.JSON).body(requestBody).when().post(CREATE_URL_ENDPOINT);
+        given().contentType(ContentType.JSON).body(requestBody).when().post(CREATE_URL_ENDPOINT);
 
     // Assert
     response
-            .then()
-            .log()
-            .ifValidationFails()
-            .statusCode(401)
-            .contentType("application/problem+json")
-            .body("title", is("Não autorizado"))
-            .body("type", is(ProblemType.UNAUTHORIZED))
-            .body("detail", is(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()))
-            .body("errorCode", is(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(401)
+        .contentType("application/problem+json")
+        .body("title", is("Não autorizado"))
+        .body("type", is(ProblemType.UNAUTHORIZED))
+        .body("detail", is(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()))
+        .body("errorCode", is(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
 
     assertThat(urlTable.scan().items()).isEmpty();
   }
 
   @Test
-  @DisplayName("Deve persistir apenas uma URL quando requisições concorrentes usam a mesma chave de idempotência")
+  @DisplayName(
+      "Deve persistir apenas uma URL quando requisições concorrentes usam a mesma chave de idempotência")
   void shouldPersistOnlyOneUrlWhenSameIdempotencyKeyAndPayloadAreConcurrent() throws Exception {
     // Arrange
     int workers = 8;

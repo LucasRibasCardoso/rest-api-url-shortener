@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class UrlEncoderAdapter implements UrlEncoderPort {
 
-  private static final String BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  private static final String BASE62_ALPHABET =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
   private final String salt;
   private final int minLength;

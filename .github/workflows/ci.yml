@@ -6,58 +6,67 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # 1. Testes Unitários
-  unit-tests:
+  format-check:
     uses: ./.github/workflows/reusable-test-runner.yml
     with:
-      maven_command: './mvnw -B test -Dgroups="unit"'
+      maven_command: './mvnw -B -ntp spotless:check'
 
-  # 2. Testes de Slice
+  unit-tests:
+    needs: format-check
+    uses: ./.github/workflows/reusable-test-runner.yml
+    with:
+      maven_command: './mvnw -B -ntp test -Dgroups="unit"'
+
   slice-tests:
     needs: unit-tests
     strategy:
-      fail-fast: false # Se o web-slice falhar, não cancela o jpa-slice e redis-slice
+      fail-fast: false
       matrix:
         slice: [ "web-slice", "jpa-slice", "redis-slice" ]
     uses: ./.github/workflows/reusable-test-runner.yml
     with:
-      maven_command: './mvnw -B test -Dgroups="${{ matrix.slice }}"'
+      maven_command: './mvnw -B -ntp test -Dgroups="${{ matrix.slice }}"'
 
-  # 3. Testes E2E
   integration-tests:
     needs: slice-tests
     uses: ./.github/workflows/reusable-test-runner.yml
     with:
-      maven_command: './mvnw -B verify -Dgroups="integration"'
+      maven_command: './mvnw -B -ntp -Dgroups="integration" verify'
 
-  # 3. Build e Push da Imagem
   build-and-push:
+    needs: integration-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: [ integration-tests ]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
+
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Baixar código-fonte
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Configurar JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
 
-      - name: Dar permissão de execução
+      - name: Dar permissão de execução ao Maven Wrapper
         run: chmod +x mvnw
 
-      - name: Build do JAR com Maven
-        run: ./mvnw -B -DskipTests clean package
+      - name: Gerar JAR
+        run: ./mvnw -B -ntp -DskipTests clean package
 
       - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
@@ -66,7 +75,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extrair metadados para Docker
+      - name: Extrair metadados Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -82,3 +91,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

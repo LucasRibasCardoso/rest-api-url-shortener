@@ -158,7 +158,9 @@ class EmailVerificationEventProcessorServiceImplTest {
           .willReturn(VerificationCode.of("123456"));
       given(emailVerificationSenderPort.sendEmailVerificationCode(EMAIL, "123456"))
           .willReturn(new EmailVerificationSendResult("provider-message-id"));
-      given(emailDispatchRepositoryPort.markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any()))
+      given(
+              emailDispatchRepositoryPort.markAsAccepted(
+                  eq(DISPATCH_ID), eq("provider-message-id"), any()))
           .willReturn(true);
 
       // 2. Act
@@ -170,7 +172,8 @@ class EmailVerificationEventProcessorServiceImplTest {
       verify(emailDispatchRepositoryPort).markAsSendingIfAvailable(eq(DISPATCH_ID), any(), any());
       verify(verificationCodeProtectorPort).decrypt(token.getEncryptedCode());
       verify(emailVerificationSenderPort).sendEmailVerificationCode(EMAIL, "123456");
-      verify(emailDispatchRepositoryPort).markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any());
+      verify(emailDispatchRepositoryPort)
+          .markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any());
       verifyNoMoreInteractions(
           userAccountRepositoryPort,
           emailVerificationPolicy,
@@ -212,7 +215,9 @@ class EmailVerificationEventProcessorServiceImplTest {
       given(userAccountRepositoryPort.findById(event.userId()))
           .willReturn(Optional.of(pendingUser(EMAIL)));
       given(emailDispatchVerificationService.findOrCreate(event))
-          .willReturn(new PreparedEmailVerificationDispatch(dispatch(EmailDispatchStatus.PENDING), expiredToken()));
+          .willReturn(
+              new PreparedEmailVerificationDispatch(
+                  dispatch(EmailDispatchStatus.PENDING), expiredToken()));
 
       // 2. Act
       service.process(event);
@@ -236,7 +241,9 @@ class EmailVerificationEventProcessorServiceImplTest {
       given(userAccountRepositoryPort.findById(event.userId()))
           .willReturn(Optional.of(pendingUser(EMAIL)));
       given(emailDispatchVerificationService.findOrCreate(event))
-          .willReturn(new PreparedEmailVerificationDispatch(dispatch(EmailDispatchStatus.PENDING), activeToken()));
+          .willReturn(
+              new PreparedEmailVerificationDispatch(
+                  dispatch(EmailDispatchStatus.PENDING), activeToken()));
       given(emailVerificationPolicy.sendingTimeout()).willReturn(Duration.ofMinutes(1));
       given(emailDispatchRepositoryPort.markAsSendingIfAvailable(eq(DISPATCH_ID), any(), any()))
           .willReturn(false);
@@ -292,7 +299,8 @@ class EmailVerificationEventProcessorServiceImplTest {
       var dispatch = dispatch(EmailDispatchStatus.PENDING);
       var token = activeToken();
       var decryptionFailure =
-          new VerificationCodeProtectionException(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
+          new VerificationCodeProtectionException(
+              IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
       given(userAccountRepositoryPort.findById(event.userId()))
           .willReturn(Optional.of(pendingUser(EMAIL)));
       given(emailDispatchVerificationService.findOrCreate(event))
@@ -336,7 +344,9 @@ class EmailVerificationEventProcessorServiceImplTest {
           .willReturn(VerificationCode.of("123456"));
       given(emailVerificationSenderPort.sendEmailVerificationCode(EMAIL, "123456"))
           .willReturn(new EmailVerificationSendResult("provider-message-id"));
-      given(emailDispatchRepositoryPort.markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any()))
+      given(
+              emailDispatchRepositoryPort.markAsAccepted(
+                  eq(DISPATCH_ID), eq("provider-message-id"), any()))
           .willReturn(false);
 
       // 2. Act
@@ -344,7 +354,8 @@ class EmailVerificationEventProcessorServiceImplTest {
 
       // 3. Assert
       throwableAssert.isInstanceOf(EmailDispatchStateConflictException.class);
-      verify(emailDispatchRepositoryPort).markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any());
+      verify(emailDispatchRepositoryPort)
+          .markAsAccepted(eq(DISPATCH_ID), eq("provider-message-id"), any());
     }
   }
 
@@ -367,14 +378,7 @@ class EmailVerificationEventProcessorServiceImplTest {
 
   private UserAccount activeUser() {
     return UserAccount.restore(
-        USER_ID,
-        "User",
-        EMAIL,
-        "password-hash",
-        UserStatus.ACTIVE,
-        PlanType.FREE,
-        true,
-        Set.of());
+        USER_ID, "User", EMAIL, "password-hash", UserStatus.ACTIVE, PlanType.FREE, true, Set.of());
   }
 
   private EmailDispatch dispatch(EmailDispatchStatus status) {

@@ -32,15 +32,18 @@ class IamErrorCodeTest {
       // 1. Arrange
       Map<IamErrorCode, String> messages =
           Map.ofEntries(
-              Map.entry(IamErrorCode.AUTH_DEFAULT_ROLE_NOT_FOUND, "Permissão padrão não encontrada."),
+              Map.entry(
+                  IamErrorCode.AUTH_DEFAULT_ROLE_NOT_FOUND, "Permissão padrão não encontrada."),
               Map.entry(IamErrorCode.AUTH_INVALID_CREDENTIALS, "Credenciais inválidas."),
-              Map.entry(IamErrorCode.AUTH_ACCOUNT_PENDING_VERIFICATION, "Conta pendente de verificação."),
+              Map.entry(
+                  IamErrorCode.AUTH_ACCOUNT_PENDING_VERIFICATION, "Conta pendente de verificação."),
               Map.entry(IamErrorCode.AUTH_ACCOUNT_LOCKED, "Conta bloqueada."),
               Map.entry(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID, "Refresh token inválido."),
               Map.entry(IamErrorCode.AUTH_REFRESH_TOKEN_EXPIRED, "Refresh token expirado."),
               Map.entry(IamErrorCode.AUTH_REFRESH_TOKEN_COMPROMISED, "Refresh token comprometido."),
               Map.entry(IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS, "Email já cadastrado."),
-              Map.entry(IamErrorCode.AUTH_INVALID_VERIFICATION_CODE, "Código de verificação inválido."),
+              Map.entry(
+                  IamErrorCode.AUTH_INVALID_VERIFICATION_CODE, "Código de verificação inválido."),
               Map.entry(
                   IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE,
                   "Código de verificação inválido ou expirado."),
@@ -73,7 +76,8 @@ class IamErrorCodeTest {
               Map.entry(
                   IamErrorCode.AUTH_ENCRYPTED_VERIFICATION_CODE_INVALID,
                   "Código de verificação criptografado inválido."),
-              Map.entry(IamErrorCode.AUTH_VERIFICATION_CODE_INVALID, "Código de verificação inválido."),
+              Map.entry(
+                  IamErrorCode.AUTH_VERIFICATION_CODE_INVALID, "Código de verificação inválido."),
               Map.entry(
                   IamErrorCode.AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND,
                   "Token de verificação de e-mail não encontrado."),
@@ -128,7 +132,8 @@ class IamErrorCodeTest {
 
       // 3. Assert
       assertThat(exception).isInstanceOf(NotFoundException.class);
-      assertThat(exception.getErrorCode()).isEqualTo(IamErrorCode.AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND);
+      assertThat(exception.getErrorCode())
+          .isEqualTo(IamErrorCode.AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND);
     }
 
     @Test
@@ -136,13 +141,15 @@ class IamErrorCodeTest {
     void shouldMapCodeProtectionFailureToInternalServerError() {
       // 1. Arrange
       var exception =
-          new VerificationCodeProtectionException(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
+          new VerificationCodeProtectionException(
+              IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
 
       // 2. Act
 
       // 3. Assert
       assertThat(exception).isInstanceOf(InternalServerErrorException.class);
-      assertThat(exception.getErrorCode()).isEqualTo(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
+      assertThat(exception.getErrorCode())
+          .isEqualTo(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED);
     }
 
     @Test

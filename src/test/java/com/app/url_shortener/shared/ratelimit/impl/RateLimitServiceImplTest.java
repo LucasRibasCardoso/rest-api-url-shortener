@@ -1,19 +1,29 @@
 package com.app.url_shortener.shared.ratelimit.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitPolicyProperties;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
-import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
-import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitDecision;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
 import com.app.url_shortener.shared.ratelimit.core.RateLimiterPort;
+import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKey;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKeyResolver;
+import com.app.url_shortener.shared.ratelimit.service.RateLimitServiceImpl;
 import java.time.Duration;
 import java.util.UUID;
-
-import com.app.url_shortener.shared.ratelimit.service.RateLimitServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -23,36 +33,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Serviço de Rate Limit")
 class RateLimitServiceImplTest {
 
-  @Mock
-  private RateLimiterPort rateLimiterPort;
+  @Mock private RateLimiterPort rateLimiterPort;
 
-  @Mock
-  private RateLimitProperties properties;
+  @Mock private RateLimitProperties properties;
 
-  @Mock
-  private RateLimitPolicyProperties policyProperties;
+  @Mock private RateLimitPolicyProperties policyProperties;
 
-  @Mock
-  private RateLimitKeyResolver keyResolver;
+  @Mock private RateLimitKeyResolver keyResolver;
 
-  @InjectMocks
-  private RateLimitServiceImpl service;
+  @InjectMocks private RateLimitServiceImpl service;
 
   @Nested
   @DisplayName("Cadastro")
@@ -101,8 +95,7 @@ class RateLimitServiceImplTest {
           .willReturn(RateLimitDecision.denied(0, Duration.ofMinutes(15).toNanos()));
 
       // 2. Act
-      var throwableAssert =
-          assertThatThrownBy(() -> service.checkRegister(clientIp, email));
+      var throwableAssert = assertThatThrownBy(() -> service.checkRegister(clientIp, email));
 
       // 3. Assert
       throwableAssert.isInstanceOf(TooManyRequestsException.class);
@@ -131,8 +124,7 @@ class RateLimitServiceImplTest {
           .willReturn(RateLimitDecision.denied(0, Duration.ofMinutes(15).toNanos()));
 
       // 2. Act
-      var throwableAssert =
-          assertThatThrownBy(() -> service.checkRegister(clientIp, email));
+      var throwableAssert = assertThatThrownBy(() -> service.checkRegister(clientIp, email));
 
       // 3. Assert
       throwableAssert.isInstanceOf(TooManyRequestsException.class);
@@ -155,13 +147,16 @@ class RateLimitServiceImplTest {
       var email = "user@example.com";
       var clientIp = "203.0.113.10";
       var emailKey = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_LOGIN, "hashed-email");
-      var ipAndEmailKey = RateLimitKey.createForIpAndEmail(RateLimitPolicy.AUTH_LOGIN, clientIp, "hashed-email");
+      var ipAndEmailKey =
+          RateLimitKey.createForIpAndEmail(RateLimitPolicy.AUTH_LOGIN, clientIp, "hashed-email");
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_LOGIN);
       given(keyResolver.loginByEmail(email)).willReturn(emailKey);
       given(keyResolver.loginByIpAndEmail(clientIp, email)).willReturn(ipAndEmailKey);
-      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_LOGIN, emailKey)).willReturn(RateLimitDecision.allowed(9));
-      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_LOGIN, ipAndEmailKey)).willReturn(RateLimitDecision.allowed(8));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_LOGIN, emailKey))
+          .willReturn(RateLimitDecision.allowed(9));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_LOGIN, ipAndEmailKey))
+          .willReturn(RateLimitDecision.allowed(8));
 
       // 2. Act & 3. Assert
       assertThatCode(() -> service.checkLogin(clientIp, email)).doesNotThrowAnyException();
@@ -169,7 +164,8 @@ class RateLimitServiceImplTest {
       verify(keyResolver).loginByIpAndEmail(clientIp, email);
       verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_LOGIN, emailKey);
       verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_LOGIN, ipAndEmailKey);
-      verify(rateLimiterPort, times(2)).consume(eq(RateLimitPolicy.AUTH_LOGIN), any(RateLimitKey.class));
+      verify(rateLimiterPort, times(2))
+          .consume(eq(RateLimitPolicy.AUTH_LOGIN), any(RateLimitKey.class));
       verifyNoMoreInteractions(keyResolver, rateLimiterPort);
     }
   }
@@ -186,8 +182,10 @@ class RateLimitServiceImplTest {
       var key = RateLimitKey.createForUserId(RateLimitPolicy.URL_SHORTEN_FREE, userId);
 
       givenPolicyEnabled(RateLimitPolicy.URL_SHORTEN_FREE);
-      given(keyResolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_FREE)).willReturn(key);
-      given(rateLimiterPort.consume(RateLimitPolicy.URL_SHORTEN_FREE, key)).willReturn(RateLimitDecision.allowed(9));
+      given(keyResolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_FREE))
+          .willReturn(key);
+      given(rateLimiterPort.consume(RateLimitPolicy.URL_SHORTEN_FREE, key))
+          .willReturn(RateLimitDecision.allowed(9));
 
       // 2. Act & 3. Assert
       assertThatCode(() -> service.checkShorten(userId, PlanType.FREE)).doesNotThrowAnyException();
@@ -204,11 +202,14 @@ class RateLimitServiceImplTest {
       var key = RateLimitKey.createForUserId(RateLimitPolicy.URL_SHORTEN_PREMIUM, userId);
 
       givenPolicyEnabled(RateLimitPolicy.URL_SHORTEN_PREMIUM);
-      given(keyResolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_PREMIUM)).willReturn(key);
-      given(rateLimiterPort.consume(RateLimitPolicy.URL_SHORTEN_PREMIUM, key)).willReturn(RateLimitDecision.allowed(99));
+      given(keyResolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_PREMIUM))
+          .willReturn(key);
+      given(rateLimiterPort.consume(RateLimitPolicy.URL_SHORTEN_PREMIUM, key))
+          .willReturn(RateLimitDecision.allowed(99));
 
       // 2. Act & 3. Assert
-      assertThatCode(() -> service.checkShorten(userId, PlanType.PREMIUM)).doesNotThrowAnyException();
+      assertThatCode(() -> service.checkShorten(userId, PlanType.PREMIUM))
+          .doesNotThrowAnyException();
       verify(keyResolver).shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_PREMIUM);
       verify(rateLimiterPort).consume(RateLimitPolicy.URL_SHORTEN_PREMIUM, key);
       verifyNoMoreInteractions(keyResolver, rateLimiterPort);
@@ -224,11 +225,13 @@ class RateLimitServiceImplTest {
     void shouldDelegateResendVerification() {
       // 1. Arrange
       var email = "user@example.com";
-      var key = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_RESEND_VERIFICATION, "hashed-email");
+      var key =
+          RateLimitKey.createForEmail(RateLimitPolicy.AUTH_RESEND_VERIFICATION, "hashed-email");
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_RESEND_VERIFICATION);
       given(keyResolver.resendVerificationByEmail(email)).willReturn(key);
-      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_RESEND_VERIFICATION, key)).willReturn(RateLimitDecision.allowed(4));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_RESEND_VERIFICATION, key))
+          .willReturn(RateLimitDecision.allowed(4));
 
       // 2. Act & 3. Assert
       assertThatCode(() -> service.checkResendVerification(email)).doesNotThrowAnyException();
@@ -246,7 +249,8 @@ class RateLimitServiceImplTest {
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_VERIFY_EMAIL);
       given(keyResolver.verifyEmailByEmail(email)).willReturn(key);
-      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_VERIFY_EMAIL, key)).willReturn(RateLimitDecision.allowed(4));
+      given(rateLimiterPort.consume(RateLimitPolicy.AUTH_VERIFY_EMAIL, key))
+          .willReturn(RateLimitDecision.allowed(4));
 
       // 2. Act & 3. Assert
       assertThatCode(() -> service.checkVerifyEmail(email)).doesNotThrowAnyException();
@@ -265,7 +269,8 @@ class RateLimitServiceImplTest {
     void shouldThrowTooManyRequestsWhenConsumptionIsDenied() {
       // 1. Arrange
       var email = "user@example.com";
-      var key = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_RESEND_VERIFICATION, "hashed-email");
+      var key =
+          RateLimitKey.createForEmail(RateLimitPolicy.AUTH_RESEND_VERIFICATION, "hashed-email");
       var retryAfter = Duration.ofSeconds(30);
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_RESEND_VERIFICATION);
@@ -279,7 +284,10 @@ class RateLimitServiceImplTest {
       // 3. Assert
       throwableAssert
           .isInstanceOf(TooManyRequestsException.class)
-          .satisfies(exception -> assertThat(((TooManyRequestsException) exception).getRetryAfterInSeconds()).isEqualTo(30));
+          .satisfies(
+              exception ->
+                  assertThat(((TooManyRequestsException) exception).getRetryAfterInSeconds())
+                      .isEqualTo(30));
       verify(keyResolver).resendVerificationByEmail(email);
       verify(rateLimiterPort).consume(RateLimitPolicy.AUTH_RESEND_VERIFICATION, key);
       verifyNoMoreInteractions(keyResolver, rateLimiterPort);
@@ -296,7 +304,8 @@ class RateLimitServiceImplTest {
       // 1. Arrange
       var email = "user@example.com";
       var key = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_VERIFY_EMAIL, "hashed-email");
-      var exception = new RateLimitInfrastructureException(new RuntimeException("redis unavailable"));
+      var exception =
+          new RateLimitInfrastructureException(new RuntimeException("redis unavailable"));
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_VERIFY_EMAIL);
       given(policyProperties.failOpen()).willReturn(false);
@@ -319,7 +328,8 @@ class RateLimitServiceImplTest {
       // 1. Arrange
       var email = "user@example.com";
       var key = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_VERIFY_EMAIL, "hashed-email");
-      var exception = new RateLimitInfrastructureException(new RuntimeException("redis unavailable"));
+      var exception =
+          new RateLimitInfrastructureException(new RuntimeException("redis unavailable"));
 
       givenPolicyEnabled(RateLimitPolicy.AUTH_VERIFY_EMAIL);
       given(policyProperties.failOpen()).willReturn(true);
@@ -362,7 +372,8 @@ class RateLimitServiceImplTest {
       var key = RateLimitKey.createForEmail(RateLimitPolicy.AUTH_VERIFY_EMAIL, "hashed-email");
 
       given(properties.enabled()).willReturn(true);
-      given(properties.getPolicyProperties(RateLimitPolicy.AUTH_VERIFY_EMAIL)).willReturn(policyProperties);
+      given(properties.getPolicyProperties(RateLimitPolicy.AUTH_VERIFY_EMAIL))
+          .willReturn(policyProperties);
       given(policyProperties.enabled()).willReturn(false);
       given(keyResolver.verifyEmailByEmail(email)).willReturn(key);
 

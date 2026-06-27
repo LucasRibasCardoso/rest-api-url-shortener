@@ -52,7 +52,9 @@ class UrlCollectionResultTest {
       urls.add(rankingItemResult("fG4hI"));
 
       // 3. Assert
-      assertThat(result.urls()).extracting(UrlRankingItemResult::shortCode).containsExactly("aB3dE");
+      assertThat(result.urls())
+          .extracting(UrlRankingItemResult::shortCode)
+          .containsExactly("aB3dE");
       assertThatThrownBy(() -> result.urls().add(rankingItemResult("fG4hI")))
           .isInstanceOf(UnsupportedOperationException.class);
     }

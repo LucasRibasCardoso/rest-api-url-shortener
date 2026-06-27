@@ -70,7 +70,9 @@ class IamDtoToStringTest {
     void shouldNotExposeAccessTokenInLoginResponseDto() {
       // 1. Arrange
       var accessToken = "jwt-access-token";
-      var user = new AuthenticatedUserResponseDto(UUID.randomUUID(), "User Name", "user@email.com", "FREE", List.of("USER"));
+      var user =
+          new AuthenticatedUserResponseDto(
+              UUID.randomUUID(), "User Name", "user@email.com", "FREE", List.of("USER"));
       var dto = new LoginResponseDto(accessToken, "Bearer", 900L, user);
 
       // 2. Act

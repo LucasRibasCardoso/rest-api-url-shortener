@@ -1,12 +1,20 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlRedirectEventPublisherPort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import com.app.url_shortener.url.domain.model.Url;
@@ -24,30 +32,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Caso de Uso de Resolução de URL")
 class ResolveUrlUseCaseImplTest {
 
-  @Mock
-  private RedirectCachePort redirectCachePort;
+  @Mock private RedirectCachePort redirectCachePort;
 
-  @Mock
-  private UrlRepositoryPort urlRepositoryPort;
+  @Mock private UrlRepositoryPort urlRepositoryPort;
 
-  @Mock
-  private UrlRedirectEventPublisherPort urlRedirectEventPublisherPort;
+  @Mock private UrlRedirectEventPublisherPort urlRedirectEventPublisherPort;
 
-  @InjectMocks
-  private ResolveUrlUseCaseImpl resolveUrlUseCase;
+  @InjectMocks private ResolveUrlUseCaseImpl resolveUrlUseCase;
 
   @Nested
   @DisplayName("Execução")

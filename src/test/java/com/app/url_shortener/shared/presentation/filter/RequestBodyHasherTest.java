@@ -1,14 +1,13 @@
 package com.app.url_shortener.shared.presentation.filter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.shared.idempotency.impl.RequestBodyHasher;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.nio.charset.StandardCharsets;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - RequestBodyHasher")
@@ -30,7 +29,8 @@ class RequestBodyHasherTest {
       var result = hasher.sha256Hex(body);
 
       // 3. Assert
-      assertThat(result).isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+      assertThat(result)
+          .isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
 
     @Test
@@ -43,7 +43,8 @@ class RequestBodyHasherTest {
       var result = hasher.sha256Hex(body);
 
       // 3. Assert
-      assertThat(result).isEqualTo("5dc5c505a79bfc2eb22d0e45eff415c6ecf0c965c3d53d6e3e02c1bda74b0927");
+      assertThat(result)
+          .isEqualTo("5dc5c505a79bfc2eb22d0e45eff415c6ecf0c965c3d53d6e3e02c1bda74b0927");
     }
   }
 }

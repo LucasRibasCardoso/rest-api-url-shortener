@@ -23,10 +23,7 @@ class AwsSesEmailVerificationPropertiesTest {
       // 1. Arrange
       var properties =
           new AwsSesEmailVerificationProperties(
-              null,
-              "no-reply@example.com",
-              "Confirme seu e-mail",
-              Duration.ofSeconds(10));
+              null, "no-reply@example.com", "Confirme seu e-mail", Duration.ofSeconds(10));
 
       // 2. Act
       var violations = validate(properties);

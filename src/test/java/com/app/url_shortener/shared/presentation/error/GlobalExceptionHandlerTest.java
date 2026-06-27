@@ -1,5 +1,11 @@
 package com.app.url_shortener.shared.presentation.error;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsException;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidRefreshTokenException;
@@ -16,6 +22,12 @@ import com.app.url_shortener.shared.exception.internalservererror.InternalServer
 import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -41,29 +53,14 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - GlobalExceptionHandler")
 class GlobalExceptionHandlerTest {
 
-  @Mock
-  private ProblemDetailFactory problemDetailFactory;
+  @Mock private ProblemDetailFactory problemDetailFactory;
 
-  @InjectMocks
-  private GlobalExceptionHandler handler;
+  @InjectMocks private GlobalExceptionHandler handler;
 
   @Nested
   @DisplayName("Mapeamento de exceções")
@@ -76,13 +73,14 @@ class GlobalExceptionHandlerTest {
       var exception = new InvalidCredentialsException();
       var problemDetail = problemDetail(HttpStatus.BAD_REQUEST);
 
-      given(problemDetailFactory.create(
-              HttpStatus.BAD_REQUEST,
-              "Validação",
-              exception.getMessage(),
-              ProblemType.VALIDATION,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.BAD_REQUEST,
+                  "Validação",
+                  exception.getMessage(),
+                  ProblemType.VALIDATION,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleDomainValidation(exception);
@@ -90,13 +88,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.BAD_REQUEST,
               "Validação",
               IamErrorCode.AUTH_INVALID_CREDENTIALS.getMessage(),
               ProblemType.VALIDATION,
-              IamErrorCode.AUTH_INVALID_CREDENTIALS
-      );
+              IamErrorCode.AUTH_INVALID_CREDENTIALS);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -107,13 +105,14 @@ class GlobalExceptionHandlerTest {
       var exception = new EmailAlreadyRegisteredException();
       var problemDetail = problemDetail(HttpStatus.CONFLICT);
 
-      given(problemDetailFactory.create(
-              HttpStatus.CONFLICT,
-              "Conflito",
-              exception.getMessage(),
-              ProblemType.CONFLICT,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.CONFLICT,
+                  "Conflito",
+                  exception.getMessage(),
+                  ProblemType.CONFLICT,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleConflict(exception);
@@ -121,13 +120,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.CONFLICT,
               "Conflito",
               IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getMessage(),
               ProblemType.CONFLICT,
-              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS
-      );
+              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -138,13 +137,14 @@ class GlobalExceptionHandlerTest {
       var exception = new UrlNotFoundException();
       var problemDetail = problemDetail(HttpStatus.NOT_FOUND);
 
-      given(problemDetailFactory.create(
-              HttpStatus.NOT_FOUND,
-              "Não encontrado",
-              exception.getMessage(),
-              ProblemType.NOT_FOUND,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.NOT_FOUND,
+                  "Não encontrado",
+                  exception.getMessage(),
+                  ProblemType.NOT_FOUND,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleEntityNotFound(exception);
@@ -152,13 +152,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.NOT_FOUND,
               "Não encontrado",
               UrlErrorCode.URL_NOT_FOUND.getMessage(),
               ProblemType.NOT_FOUND,
-              UrlErrorCode.URL_NOT_FOUND
-      );
+              UrlErrorCode.URL_NOT_FOUND);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -169,13 +169,14 @@ class GlobalExceptionHandlerTest {
       var exception = new InvalidRefreshTokenException();
       var problemDetail = problemDetail(HttpStatus.UNAUTHORIZED);
 
-      given(problemDetailFactory.create(
-              HttpStatus.UNAUTHORIZED,
-              "Não autorizado",
-              exception.getMessage(),
-              ProblemType.UNAUTHORIZED,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.UNAUTHORIZED,
+                  "Não autorizado",
+                  exception.getMessage(),
+                  ProblemType.UNAUTHORIZED,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleUnauthorized(exception);
@@ -183,13 +184,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.UNAUTHORIZED,
               "Não autorizado",
               IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage(),
               ProblemType.UNAUTHORIZED,
-              IamErrorCode.AUTH_REFRESH_TOKEN_INVALID
-      );
+              IamErrorCode.AUTH_REFRESH_TOKEN_INVALID);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -200,13 +201,14 @@ class GlobalExceptionHandlerTest {
       var exception = new UserAccountLockedException();
       var problemDetail = problemDetail(HttpStatus.FORBIDDEN);
 
-      given(problemDetailFactory.create(
-              HttpStatus.FORBIDDEN,
-              "Proibido",
-              exception.getMessage(),
-              ProblemType.FORBIDDEN,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.FORBIDDEN,
+                  "Proibido",
+                  exception.getMessage(),
+                  ProblemType.FORBIDDEN,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleForbidden(exception);
@@ -214,13 +216,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.FORBIDDEN,
               "Proibido",
               IamErrorCode.AUTH_ACCOUNT_LOCKED.getMessage(),
               ProblemType.FORBIDDEN,
-              IamErrorCode.AUTH_ACCOUNT_LOCKED
-      );
+              IamErrorCode.AUTH_ACCOUNT_LOCKED);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -231,31 +233,31 @@ class GlobalExceptionHandlerTest {
       var exception = new TestTooManyRequestsException(Duration.ofSeconds(30));
       var problemDetail = problemDetail(HttpStatus.TOO_MANY_REQUESTS);
 
-      given(problemDetailFactory.create(
-              HttpStatus.TOO_MANY_REQUESTS,
-              "Muitas requisições",
-              exception.getMessage(),
-              ProblemType.TOO_MANY_REQUESTS,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.TOO_MANY_REQUESTS,
+                  "Muitas requisições",
+                  exception.getMessage(),
+                  ProblemType.TOO_MANY_REQUESTS,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleTooManyRequests(exception);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(result.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS),
-              () -> assertThat(result.getBody()).isSameAs(problemDetail),
-              () -> assertThat(result.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("30")
-      );
+          () -> assertThat(result.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS),
+          () -> assertThat(result.getBody()).isSameAs(problemDetail),
+          () -> assertThat(result.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("30"));
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.TOO_MANY_REQUESTS,
               "Muitas requisições",
               TestErrorCode.RATE_LIMITED.getMessage(),
               ProblemType.TOO_MANY_REQUESTS,
-              TestErrorCode.RATE_LIMITED
-      );
+              TestErrorCode.RATE_LIMITED);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -266,13 +268,14 @@ class GlobalExceptionHandlerTest {
       var exception = new TestTooManyRequestsException(Duration.ofMillis(1500));
       var problemDetail = problemDetail(HttpStatus.TOO_MANY_REQUESTS);
 
-      given(problemDetailFactory.create(
-              HttpStatus.TOO_MANY_REQUESTS,
-              "Muitas requisições",
-              exception.getMessage(),
-              ProblemType.TOO_MANY_REQUESTS,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.TOO_MANY_REQUESTS,
+                  "Muitas requisições",
+                  exception.getMessage(),
+                  ProblemType.TOO_MANY_REQUESTS,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleTooManyRequests(exception);
@@ -280,13 +283,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("2");
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.TOO_MANY_REQUESTS,
               "Muitas requisições",
               TestErrorCode.RATE_LIMITED.getMessage(),
               ProblemType.TOO_MANY_REQUESTS,
-              TestErrorCode.RATE_LIMITED
-      );
+              TestErrorCode.RATE_LIMITED);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -298,13 +301,14 @@ class GlobalExceptionHandlerTest {
       var status = HttpStatusCode.valueOf(422);
       var problemDetail = problemDetail(status);
 
-      given(problemDetailFactory.create(
-              status,
-              "Negócio",
-              exception.getMessage(),
-              ProblemType.BUSINESS,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  status,
+                  "Negócio",
+                  exception.getMessage(),
+                  ProblemType.BUSINESS,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleBusinessException(exception);
@@ -312,30 +316,32 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               status,
               "Negócio",
               TestErrorCode.BUSINESS_RULE.getMessage(),
               ProblemType.BUSINESS,
-              TestErrorCode.BUSINESS_RULE
-      );
+              TestErrorCode.BUSINESS_RULE);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
     @Test
-    @DisplayName("Deve mapear InternalServerErrorException para 500 e ProblemType de infraestrutura")
+    @DisplayName(
+        "Deve mapear InternalServerErrorException para 500 e ProblemType de infraestrutura")
     void shouldMapInternalServerErrorExceptionToInternalServerError() {
       // 1. Arrange
       var exception = new TestInternalServerErrorException();
       var problemDetail = problemDetail(HttpStatus.INTERNAL_SERVER_ERROR);
 
-      given(problemDetailFactory.create(
-              HttpStatus.INTERNAL_SERVER_ERROR,
-              "Erro interno",
-              exception.getErrorCode().getMessage(),
-              ProblemType.INFRASTRUCTURE,
-              exception.getErrorCode()
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.INTERNAL_SERVER_ERROR,
+                  "Erro interno",
+                  exception.getErrorCode().getMessage(),
+                  ProblemType.INFRASTRUCTURE,
+                  exception.getErrorCode()))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleInternalServerError(exception);
@@ -343,13 +349,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.INTERNAL_SERVER_ERROR,
               "Erro interno",
               TestErrorCode.INTERNAL_FAILURE.getMessage(),
               ProblemType.INFRASTRUCTURE,
-              TestErrorCode.INTERNAL_FAILURE
-      );
+              TestErrorCode.INTERNAL_FAILURE);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -359,19 +365,20 @@ class GlobalExceptionHandlerTest {
       // 1. Arrange
       var exception = methodArgumentNotValidException();
       var problemDetail = problemDetail(HttpStatus.BAD_REQUEST);
-      var expectedErrors = List.of(
+      var expectedErrors =
+          List.of(
               Map.of("field", "email", "message", "must be a well-formed email address"),
-              Map.of("field", "name", "message", "Invalid value")
-      );
+              Map.of("field", "name", "message", "Invalid value"));
 
-      given(problemDetailFactory.createValidationProblem(
-              HttpStatus.BAD_REQUEST,
-              "Validação",
-              CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
-              ProblemType.VALIDATION,
-              CommonErrorCode.REQUEST_VALIDATION_FAILED,
-              expectedErrors
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.createValidationProblem(
+                  HttpStatus.BAD_REQUEST,
+                  "Validação",
+                  CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
+                  ProblemType.VALIDATION,
+                  CommonErrorCode.REQUEST_VALIDATION_FAILED,
+                  expectedErrors))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleMethodArgumentNotValid(exception);
@@ -379,14 +386,14 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).createValidationProblem(
+      verify(problemDetailFactory)
+          .createValidationProblem(
               HttpStatus.BAD_REQUEST,
               "Validação",
               CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
               ProblemType.VALIDATION,
               CommonErrorCode.REQUEST_VALIDATION_FAILED,
-              expectedErrors
-      );
+              expectedErrors);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -396,18 +403,19 @@ class GlobalExceptionHandlerTest {
       // 1. Arrange
       var exception = handlerMethodValidationException();
       var problemDetail = problemDetail(HttpStatus.BAD_REQUEST);
-      var expectedErrors = List.of(
-              Map.of("field", "rankingSize", "message", "O tamanho do ranking deve ser 3 ou 10")
-      );
+      var expectedErrors =
+          List.of(
+              Map.of("field", "rankingSize", "message", "O tamanho do ranking deve ser 3 ou 10"));
 
-      given(problemDetailFactory.createValidationProblem(
-              HttpStatus.BAD_REQUEST,
-              "Validação",
-              CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
-              ProblemType.VALIDATION,
-              CommonErrorCode.REQUEST_VALIDATION_FAILED,
-              expectedErrors
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.createValidationProblem(
+                  HttpStatus.BAD_REQUEST,
+                  "Validação",
+                  CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
+                  ProblemType.VALIDATION,
+                  CommonErrorCode.REQUEST_VALIDATION_FAILED,
+                  expectedErrors))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleHandlerMethodValidation(exception);
@@ -415,31 +423,33 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).createValidationProblem(
+      verify(problemDetailFactory)
+          .createValidationProblem(
               HttpStatus.BAD_REQUEST,
               "Validação",
               CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
               ProblemType.VALIDATION,
               CommonErrorCode.REQUEST_VALIDATION_FAILED,
-              expectedErrors
-      );
+              expectedErrors);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
     @Test
-    @DisplayName("Deve mapear falha técnica de dependência para 503 e ProblemType de infraestrutura")
+    @DisplayName(
+        "Deve mapear falha técnica de dependência para 503 e ProblemType de infraestrutura")
     void shouldMapTechnicalDependencyFailureToServiceUnavailable() {
       // 1. Arrange
       var exception = new DataAccessResourceFailureException("database unavailable");
       var problemDetail = problemDetail(HttpStatus.SERVICE_UNAVAILABLE);
 
-      given(problemDetailFactory.create(
-              HttpStatus.SERVICE_UNAVAILABLE,
-              "Infraestrutura",
-              CommonErrorCode.DEPENDENCY_FAILURE.getMessage(),
-              ProblemType.INFRASTRUCTURE,
-              CommonErrorCode.DEPENDENCY_FAILURE
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.SERVICE_UNAVAILABLE,
+                  "Infraestrutura",
+                  CommonErrorCode.DEPENDENCY_FAILURE.getMessage(),
+                  ProblemType.INFRASTRUCTURE,
+                  CommonErrorCode.DEPENDENCY_FAILURE))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleTechnicalDependencyFailure(exception);
@@ -447,13 +457,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.SERVICE_UNAVAILABLE,
               "Infraestrutura",
               CommonErrorCode.DEPENDENCY_FAILURE.getMessage(),
               ProblemType.INFRASTRUCTURE,
-              CommonErrorCode.DEPENDENCY_FAILURE
-      );
+              CommonErrorCode.DEPENDENCY_FAILURE);
       verifyNoMoreInteractions(problemDetailFactory);
     }
 
@@ -464,13 +474,14 @@ class GlobalExceptionHandlerTest {
       var exception = new RuntimeException("unexpected");
       var problemDetail = problemDetail(HttpStatus.INTERNAL_SERVER_ERROR);
 
-      given(problemDetailFactory.create(
-              HttpStatus.INTERNAL_SERVER_ERROR,
-              "Erro interno inesperado",
-              CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
-              ProblemType.INFRASTRUCTURE,
-              CommonErrorCode.INTERNAL_SERVER_ERROR
-      )).willReturn(problemDetail);
+      given(
+              problemDetailFactory.create(
+                  HttpStatus.INTERNAL_SERVER_ERROR,
+                  "Erro interno inesperado",
+                  CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
+                  ProblemType.INFRASTRUCTURE,
+                  CommonErrorCode.INTERNAL_SERVER_ERROR))
+          .willReturn(problemDetail);
 
       // 2. Act
       var result = handler.handleUnexpected(exception);
@@ -478,13 +489,13 @@ class GlobalExceptionHandlerTest {
       // 3. Assert
       assertThat(result).isSameAs(problemDetail);
 
-      verify(problemDetailFactory).create(
+      verify(problemDetailFactory)
+          .create(
               HttpStatus.INTERNAL_SERVER_ERROR,
               "Erro interno inesperado",
               CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
               ProblemType.INFRASTRUCTURE,
-              CommonErrorCode.INTERNAL_SERVER_ERROR
-      );
+              CommonErrorCode.INTERNAL_SERVER_ERROR);
       verifyNoMoreInteractions(problemDetailFactory);
     }
   }
@@ -502,25 +513,23 @@ class GlobalExceptionHandlerTest {
       var status = HttpStatus.CONFLICT;
 
       // 2. Act
-      var problemDetail = factory.create(
+      var problemDetail =
+          factory.create(
               status,
               "Conflito",
               "Email já cadastrado.",
               ProblemType.CONFLICT,
-              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS
-      );
+              IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(problemDetail.getStatus()).isEqualTo(status.value()),
-              () -> assertThat(problemDetail.getTitle()).isEqualTo("Conflito"),
-              () -> assertThat(problemDetail.getDetail()).isEqualTo("Email já cadastrado."),
-              () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.CONFLICT)),
-              () -> assertThat(problemDetail.getProperties()).containsEntry(
-                      "errorCode",
-                      IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getCode()
-              )
-      );
+          () -> assertThat(problemDetail.getStatus()).isEqualTo(status.value()),
+          () -> assertThat(problemDetail.getTitle()).isEqualTo("Conflito"),
+          () -> assertThat(problemDetail.getDetail()).isEqualTo("Email já cadastrado."),
+          () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.CONFLICT)),
+          () ->
+              assertThat(problemDetail.getProperties())
+                  .containsEntry("errorCode", IamErrorCode.AUTH_EMAIL_ALREADY_EXISTS.getCode()));
     }
 
     @Test
@@ -530,27 +539,27 @@ class GlobalExceptionHandlerTest {
       var instance = "/api/v1/urls";
 
       // 2. Act
-      var problemDetail = factory.createWithInstance(
+      var problemDetail =
+          factory.createWithInstance(
               HttpStatus.UNAUTHORIZED,
               "Não autorizado",
               CommonErrorCode.AUTH_UNAUTHORIZED.getMessage(),
               ProblemType.UNAUTHORIZED,
               CommonErrorCode.AUTH_UNAUTHORIZED,
-              instance
-      );
+              instance);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value()),
-              () -> assertThat(problemDetail.getTitle()).isEqualTo("Não autorizado"),
-              () -> assertThat(problemDetail.getDetail()).isEqualTo(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()),
-              () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.UNAUTHORIZED)),
-              () -> assertThat(problemDetail.getInstance()).isEqualTo(URI.create(instance)),
-              () -> assertThat(problemDetail.getProperties()).containsEntry(
-                      "errorCode",
-                      CommonErrorCode.AUTH_UNAUTHORIZED.getCode()
-              )
-      );
+          () -> assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value()),
+          () -> assertThat(problemDetail.getTitle()).isEqualTo("Não autorizado"),
+          () ->
+              assertThat(problemDetail.getDetail())
+                  .isEqualTo(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()),
+          () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.UNAUTHORIZED)),
+          () -> assertThat(problemDetail.getInstance()).isEqualTo(URI.create(instance)),
+          () ->
+              assertThat(problemDetail.getProperties())
+                  .containsEntry("errorCode", CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
     }
 
     @Test
@@ -560,26 +569,24 @@ class GlobalExceptionHandlerTest {
       var errors = List.of(Map.of("field", "email", "message", "must be valid"));
 
       // 2. Act
-      var problemDetail = factory.createValidationProblem(
+      var problemDetail =
+          factory.createValidationProblem(
               HttpStatus.BAD_REQUEST,
               "Validação",
               CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage(),
               ProblemType.VALIDATION,
               CommonErrorCode.REQUEST_VALIDATION_FAILED,
-              errors
-      );
+              errors);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value()),
-              () -> assertThat(problemDetail.getTitle()).isEqualTo("Validação"),
-              () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.VALIDATION)),
-              () -> assertThat(problemDetail.getProperties()).containsEntry(
-                      "errorCode",
-                      CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()
-              ),
-              () -> assertThat(problemDetail.getProperties()).containsEntry("errors", errors)
-      );
+          () -> assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value()),
+          () -> assertThat(problemDetail.getTitle()).isEqualTo("Validação"),
+          () -> assertThat(problemDetail.getType()).isEqualTo(URI.create(ProblemType.VALIDATION)),
+          () ->
+              assertThat(problemDetail.getProperties())
+                  .containsEntry("errorCode", CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()),
+          () -> assertThat(problemDetail.getProperties()).containsEntry("errors", errors));
     }
   }
 
@@ -588,11 +595,13 @@ class GlobalExceptionHandlerTest {
   class ProblemDetailResponseWriterTests {
 
     @Test
-    @DisplayName("Deve configurar resposta e serializar ProblemDetail como application/problem+json")
+    @DisplayName(
+        "Deve configurar resposta e serializar ProblemDetail como application/problem+json")
     void shouldConfigureResponseAndSerializeProblemDetailAsProblemJson() throws Exception {
       // 1. Arrange
       var response = new MockHttpServletResponse();
-      var problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Campo inválido.");
+      var problemDetail =
+          ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Campo inválido.");
       problemDetail.setTitle("Validação");
       problemDetail.setType(URI.create(ProblemType.VALIDATION));
       problemDetail.setProperty("errorCode", CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode());
@@ -605,15 +614,17 @@ class GlobalExceptionHandlerTest {
       var body = response.getContentAsString(StandardCharsets.UTF_8);
 
       assertAll(
-              () -> assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value()),
-              () -> assertThat(response.getContentType()).startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE),
-              () -> assertThat(response.getCharacterEncoding()).isEqualTo(StandardCharsets.UTF_8.name()),
-              () -> assertThat(body).contains("\"status\":400"),
-              () -> assertThat(body).contains("\"title\":\"Validação\""),
-              () -> assertThat(body).contains("\"detail\":\"Campo inválido.\""),
-              () -> assertThat(body).contains("\"type\":\"/errors/validation\""),
-              () -> assertThat(body).contains("\"errorCode\":\"REQUEST_VALIDATION_FAILED\"")
-      );
+          () -> assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value()),
+          () ->
+              assertThat(response.getContentType())
+                  .startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE),
+          () ->
+              assertThat(response.getCharacterEncoding()).isEqualTo(StandardCharsets.UTF_8.name()),
+          () -> assertThat(body).contains("\"status\":400"),
+          () -> assertThat(body).contains("\"title\":\"Validação\""),
+          () -> assertThat(body).contains("\"detail\":\"Campo inválido.\""),
+          () -> assertThat(body).contains("\"type\":\"/errors/validation\""),
+          () -> assertThat(body).contains("\"errorCode\":\"REQUEST_VALIDATION_FAILED\""));
     }
   }
 
@@ -621,14 +632,12 @@ class GlobalExceptionHandlerTest {
     return ProblemDetail.forStatus(status);
   }
 
-  private static MethodArgumentNotValidException methodArgumentNotValidException() throws Exception {
+  private static MethodArgumentNotValidException methodArgumentNotValidException()
+      throws Exception {
     var target = new ValidationTarget();
     var bindingResult = new BeanPropertyBindingResult(target, "validationTarget");
-    bindingResult.addError(new FieldError(
-            "validationTarget",
-            "email",
-            "must be a well-formed email address"
-    ));
+    bindingResult.addError(
+        new FieldError("validationTarget", "email", "must be a well-formed email address"));
     bindingResult.addError(new FieldError("validationTarget", "name", null));
 
     return new MethodArgumentNotValidException(methodParameter(), bindingResult);
@@ -639,28 +648,18 @@ class GlobalExceptionHandlerTest {
     return new MethodParameter(method, 0);
   }
 
-  private static HandlerMethodValidationException handlerMethodValidationException() throws Exception {
+  private static HandlerMethodValidationException handlerMethodValidationException()
+      throws Exception {
     Method method = ValidationController.class.getDeclaredMethod("ranking", int.class);
     var methodParameter = new MethodParameter(method, 0);
-    var error = new DefaultMessageSourceResolvable(
-            new String[]{"ValidRankingSize"},
-            null,
-            "O tamanho do ranking deve ser 3 ou 10"
-    );
-    var parameterResult = new ParameterValidationResult(
-            methodParameter,
-            2,
-            List.of(error),
-            null,
-            null,
-            null,
-            (resolvable, targetType) -> null
-    );
-    MethodValidationResult result = MethodValidationResult.create(
-            new ValidationController(),
-            method,
-            List.of(parameterResult)
-    );
+    var error =
+        new DefaultMessageSourceResolvable(
+            new String[] {"ValidRankingSize"}, null, "O tamanho do ranking deve ser 3 ou 10");
+    var parameterResult =
+        new ParameterValidationResult(
+            methodParameter, 2, List.of(error), null, null, null, (resolvable, targetType) -> null);
+    MethodValidationResult result =
+        MethodValidationResult.create(new ValidationController(), method, List.of(parameterResult));
 
     return new HandlerMethodValidationException(result);
   }
@@ -718,11 +717,9 @@ class GlobalExceptionHandlerTest {
   private static class ValidationController {
 
     @SuppressWarnings("unused")
-    void create(ValidationTarget target) {
-    }
+    void create(ValidationTarget target) {}
 
     @SuppressWarnings("unused")
-    void ranking(int rankingSize) {
-    }
+    void ranking(int rankingSize) {}
   }
 }

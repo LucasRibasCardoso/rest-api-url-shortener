@@ -1,10 +1,19 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.app.url_shortener.url.application.command.UrlDetailsCommand;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
 import com.app.url_shortener.url.domain.exception.UrlNotFoundException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -14,26 +23,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Caso de Uso de Detalhes de URL")
 class FindUrlDetailsUseCaseImplTest {
 
-  @Mock
-  private UrlRepositoryPort urlRepositoryPort;
+  @Mock private UrlRepositoryPort urlRepositoryPort;
 
-  @InjectMocks
-  private FindUrlDetailsUseCaseImpl findUrlDetailsUseCase;
+  @InjectMocks private FindUrlDetailsUseCaseImpl findUrlDetailsUseCase;
 
   @Nested
   @DisplayName("Execução")
@@ -152,7 +149,8 @@ class FindUrlDetailsUseCaseImplTest {
     }
 
     @Test
-    @DisplayName("Deve retornar os detalhes de URL deletada quando o solicitante puder ler qualquer URL")
+    @DisplayName(
+        "Deve retornar os detalhes de URL deletada quando o solicitante puder ler qualquer URL")
     void shouldReturnDeletedUrlDetailsWhenRequesterCanReadAny() {
       // 1. Arrange
       var ownerId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
@@ -228,8 +226,18 @@ class FindUrlDetailsUseCaseImplTest {
     }
   }
 
-  private static Url activeUrl(UUID userId, String shortCode, String originalUrl, Instant createdAt) {
+  private static Url activeUrl(
+      UUID userId, String shortCode, String originalUrl, Instant createdAt) {
     return Url.restore(
-        userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt, 0, null);
+        userId,
+        shortCode,
+        originalUrl,
+        createdAt,
+        UrlStatus.ACTIVE,
+        null,
+        null,
+        createdAt,
+        0,
+        null);
   }
 }

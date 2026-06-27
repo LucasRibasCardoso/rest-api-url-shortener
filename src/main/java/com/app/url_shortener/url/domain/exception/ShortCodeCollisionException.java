@@ -7,6 +7,4 @@ public class ShortCodeCollisionException extends ConflictException {
   public ShortCodeCollisionException() {
     super(UrlErrorCode.URL_SHORT_CODE_COLLISION);
   }
-
 }
-

@@ -1,14 +1,24 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
 import com.app.url_shortener.url.application.result.UrlRankingItemResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
+import com.app.url_shortener.url.infrastructure.cursor.DynamoDbCursorCodec;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import com.app.url_shortener.url.infrastructure.mapper.UrlMapper;
-import com.app.url_shortener.url.infrastructure.cursor.DynamoDbCursorCodec;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -30,17 +40,6 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Adaptador de Repositório de URL")
@@ -49,39 +48,31 @@ class UrlRepositoryAdapterTest {
 
   private static final UUID USER_ID = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
 
-  @Mock
-  private DynamoDbTable<UrlEntity> urlTable;
+  @Mock private DynamoDbTable<UrlEntity> urlTable;
 
-  @Mock
-  private DynamoDbClient dynamoDbClient;
+  @Mock private DynamoDbClient dynamoDbClient;
 
-  @Mock
-  private UrlMapper urlMapper;
+  @Mock private UrlMapper urlMapper;
 
-  @Mock
-  private DynamoDbCursorCodec cursorCodec;
+  @Mock private DynamoDbCursorCodec cursorCodec;
 
-  @Mock
-  private DynamoDbIndex<UrlEntity> userIndex;
+  @Mock private DynamoDbIndex<UrlEntity> userIndex;
 
-  @Mock
-  private PageIterable<UrlEntity> pageIterable;
+  @Mock private PageIterable<UrlEntity> pageIterable;
 
-  @Mock
-  private Page<UrlEntity> page;
+  @Mock private Page<UrlEntity> page;
 
-  @Mock
-  private Page<UrlEntity> secondPage;
+  @Mock private Page<UrlEntity> secondPage;
 
-  @InjectMocks
-  private UrlRepositoryAdapter adapter;
+  @InjectMocks private UrlRepositoryAdapter adapter;
 
   @Nested
   @DisplayName("Persistência")
   class SaveTests {
 
     @Test
-    @DisplayName("Deve mapear domínio e salvar entidade com condição contra colisão de código curto")
+    @DisplayName(
+        "Deve mapear domínio e salvar entidade com condição contra colisão de código curto")
     void shouldMapDomainAndSaveEntityWithShortCodeCollisionCondition() {
       // 1. Arrange
       var url = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
@@ -99,8 +90,7 @@ class UrlRepositoryAdapterTest {
       var request = (PutItemEnhancedRequest<UrlEntity>) requestCaptor.getValue();
       assertThat(request.item()).isSameAs(entity);
       assertThat(request.conditionExpression().expression()).isEqualTo("attribute_not_exists(#pk)");
-      assertThat(request.conditionExpression().expressionNames())
-              .containsEntry("#pk", "shortCode");
+      assertThat(request.conditionExpression().expressionNames()).containsEntry("#pk", "shortCode");
       verifyNoMoreInteractions(urlMapper, urlTable);
     }
 
@@ -115,8 +105,7 @@ class UrlRepositoryAdapterTest {
       doThrow(exception).when(urlTable).putItem(any(PutItemEnhancedRequest.class));
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> adapter.save(url))
-              .isInstanceOf(ShortCodeCollisionException.class);
+      assertThatThrownBy(() -> adapter.save(url)).isInstanceOf(ShortCodeCollisionException.class);
       verify(urlMapper).toEntity(url);
       verify(urlTable).putItem(any(PutItemEnhancedRequest.class));
       verifyNoMoreInteractions(urlMapper, urlTable);
@@ -268,7 +257,8 @@ class UrlRepositoryAdapterTest {
       // 3. Assert
       var requestCaptor = ArgumentCaptor.forClass(UpdateItemRequest.class);
       verify(dynamoDbClient).updateItem(requestCaptor.capture());
-      assertThatCounterAndTimestampRequest(requestCaptor.getValue(), shortCode, delta, lastAccessedAt);
+      assertThatCounterAndTimestampRequest(
+          requestCaptor.getValue(), shortCode, delta, lastAccessedAt);
       verify(urlTable).tableName();
       verifyNoMoreInteractions(dynamoDbClient, urlTable);
     }
@@ -280,7 +270,8 @@ class UrlRepositoryAdapterTest {
       var shortCode = "aB3dE";
       var delta = 2L;
       var lastAccessedAt = Instant.parse("2026-06-06T12:30:45Z");
-      var conditionalFailure = ConditionalCheckFailedException.builder().message("newer timestamp").build();
+      var conditionalFailure =
+          ConditionalCheckFailedException.builder().message("newer timestamp").build();
       when(urlTable.tableName()).thenReturn("url");
       when(dynamoDbClient.updateItem(any(UpdateItemRequest.class)))
           .thenThrow(conditionalFailure)
@@ -292,8 +283,10 @@ class UrlRepositoryAdapterTest {
       // 3. Assert
       var requestCaptor = ArgumentCaptor.forClass(UpdateItemRequest.class);
       verify(dynamoDbClient, times(2)).updateItem(requestCaptor.capture());
-      assertThatCounterAndTimestampRequest(requestCaptor.getAllValues().get(0), shortCode, delta, lastAccessedAt);
-      assertThatCounterOnlyRequest(requestCaptor.getAllValues().get(1), shortCode, delta, lastAccessedAt);
+      assertThatCounterAndTimestampRequest(
+          requestCaptor.getAllValues().get(0), shortCode, delta, lastAccessedAt);
+      assertThatCounterOnlyRequest(
+          requestCaptor.getAllValues().get(1), shortCode, delta, lastAccessedAt);
       verify(urlTable, times(2)).tableName();
       verifyNoMoreInteractions(dynamoDbClient, urlTable);
     }
@@ -302,7 +295,8 @@ class UrlRepositoryAdapterTest {
     @DisplayName("Deve propagar falha condicional quando URL não existir")
     void shouldPropagateConditionalFailureWhenUrlDoesNotExist() {
       // 1. Arrange
-      var conditionalFailure = ConditionalCheckFailedException.builder().message("missing url").build();
+      var conditionalFailure =
+          ConditionalCheckFailedException.builder().message("missing url").build();
       when(urlTable.tableName()).thenReturn("url");
       when(dynamoDbClient.updateItem(any(UpdateItemRequest.class))).thenThrow(conditionalFailure);
 
@@ -328,8 +322,7 @@ class UrlRepositoryAdapterTest {
       // 2. Act & 3. Assert
       assertThatThrownBy(
               () ->
-                  adapter.incrementAccessCount(
-                      "aB3dE", 1L, Instant.parse("2026-06-06T12:30:45Z")))
+                  adapter.incrementAccessCount("aB3dE", 1L, Instant.parse("2026-06-06T12:30:45Z")))
           .isSameAs(exception);
       verify(dynamoDbClient).updateItem(any(UpdateItemRequest.class));
       verify(urlTable).tableName();
@@ -387,10 +380,22 @@ class UrlRepositoryAdapterTest {
       String cursor = null;
       var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
-      var firstUrl = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
-      var secondUrl = activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
-      var firstListItem = new UrlListItemResult("https://google.com", "aB3dE", Instant.parse("2026-05-07T10:00:00Z"), UrlStatus.ACTIVE);
-      var secondListItem = new UrlListItemResult("https://spring.io", "fG4hI", Instant.parse("2026-05-08T11:30:00Z"), UrlStatus.ACTIVE);
+      var firstUrl =
+          activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var secondUrl =
+          activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
+      var firstListItem =
+          new UrlListItemResult(
+              "https://google.com",
+              "aB3dE",
+              Instant.parse("2026-05-07T10:00:00Z"),
+              UrlStatus.ACTIVE);
+      var secondListItem =
+          new UrlListItemResult(
+              "https://spring.io",
+              "fG4hI",
+              Instant.parse("2026-05-08T11:30:00Z"),
+              UrlStatus.ACTIVE);
       when(urlTable.index("user-status-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
@@ -423,9 +428,9 @@ class UrlRepositoryAdapterTest {
       assertThat(requestCaptor.getValue().exclusiveStartKey()).isNull();
       assertThat(requestCaptor.getValue().filterExpression()).isNull();
       assertThat(requestCaptor.getValue().queryConditional())
-          .isEqualTo(QueryConditional.sortBeginsWith(key -> key
-              .partitionValue(USER_ID.toString())
-              .sortValue("ACTIVE#")));
+          .isEqualTo(
+              QueryConditional.sortBeginsWith(
+                  key -> key.partitionValue(USER_ID.toString()).sortValue("ACTIVE#")));
       verify(urlMapper).toDomain(firstEntity);
       verify(urlMapper).toDomain(secondEntity);
       verify(urlMapper).toListItemResult(firstUrl);
@@ -457,9 +462,9 @@ class UrlRepositoryAdapterTest {
       assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
       assertThat(requestCaptor.getValue().filterExpression()).isNull();
       assertThat(requestCaptor.getValue().queryConditional())
-          .isEqualTo(QueryConditional.sortBeginsWith(key -> key
-              .partitionValue(USER_ID.toString())
-              .sortValue("DELETED#")));
+          .isEqualTo(
+              QueryConditional.sortBeginsWith(
+                  key -> key.partitionValue(USER_ID.toString()).sortValue("DELETED#")));
       verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
 
@@ -470,10 +475,22 @@ class UrlRepositoryAdapterTest {
       var limit = 10;
       var firstEntity = urlEntity("aB3dE", "https://google.com", "2026-05-07T10:00");
       var secondEntity = urlEntity("fG4hI", "https://spring.io", "2026-05-08T11:30");
-      var firstUrl = activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
-      var secondUrl = activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
-      var firstListItem = new UrlListItemResult("https://google.com", "aB3dE", Instant.parse("2026-05-07T10:00:00Z"), UrlStatus.ACTIVE);
-      var secondListItem = new UrlListItemResult("https://spring.io", "fG4hI", Instant.parse("2026-05-08T11:30:00Z"), UrlStatus.ACTIVE);
+      var firstUrl =
+          activeUrl("aB3dE", "https://google.com", Instant.parse("2026-05-07T10:00:00Z"));
+      var secondUrl =
+          activeUrl("fG4hI", "https://spring.io", Instant.parse("2026-05-08T11:30:00Z"));
+      var firstListItem =
+          new UrlListItemResult(
+              "https://google.com",
+              "aB3dE",
+              Instant.parse("2026-05-07T10:00:00Z"),
+              UrlStatus.ACTIVE);
+      var secondListItem =
+          new UrlListItemResult(
+              "https://spring.io",
+              "fG4hI",
+              Instant.parse("2026-05-08T11:30:00Z"),
+              UrlStatus.ACTIVE);
       when(urlTable.index("user-index")).thenReturn(userIndex);
       when(userIndex.query(any(QueryEnhancedRequest.class))).thenReturn(pageIterable);
       when(pageIterable.iterator()).thenReturn(List.of(page).iterator());
@@ -556,9 +573,8 @@ class UrlRepositoryAdapterTest {
       verify(urlTable).index("user-status-index");
       verify(userIndex).query(requestCaptor.capture());
       assertThat(requestCaptor.getValue().limit()).isEqualTo(limit);
-      assertThat(requestCaptor.getValue().exclusiveStartKey()).containsEntry(
-              "shortCode",
-              AttributeValue.builder().s("aB3dE").build());
+      assertThat(requestCaptor.getValue().exclusiveStartKey())
+          .containsEntry("shortCode", AttributeValue.builder().s("aB3dE").build());
       verify(cursorCodec).decode(cursor);
       verifyNoMoreInteractions(urlTable, userIndex, pageIterable, page, urlMapper, cursorCodec);
     }
@@ -703,16 +719,25 @@ class UrlRepositoryAdapterTest {
 
   private UrlEntity urlEntity(String shortCode, String originalUrl, String createdAt) {
     return UrlEntity.builder()
-            .shortCode(shortCode)
-            .originalUrl(originalUrl)
-            .createdAt(Instant.parse(createdAt + ":00Z"))
-            .userId(USER_ID)
-            .build();
+        .shortCode(shortCode)
+        .originalUrl(originalUrl)
+        .createdAt(Instant.parse(createdAt + ":00Z"))
+        .userId(USER_ID)
+        .build();
   }
 
   private Url activeUrl(String shortCode, String originalUrl, Instant createdAt) {
     return Url.restore(
-        USER_ID, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt, 0, null);
+        USER_ID,
+        shortCode,
+        originalUrl,
+        createdAt,
+        UrlStatus.ACTIVE,
+        null,
+        null,
+        createdAt,
+        0,
+        null);
   }
 
   private Consumer<GetItemEnhancedRequest.Builder> anyGetItemRequestConsumer() {
@@ -724,8 +749,7 @@ class UrlRepositoryAdapterTest {
   }
 
   private void assertThatGetItemRequestUsesShortCode(
-          Consumer<GetItemEnhancedRequest.Builder> requestConsumer,
-          String shortCode) {
+      Consumer<GetItemEnhancedRequest.Builder> requestConsumer, String shortCode) {
     var requestBuilder = GetItemEnhancedRequest.builder();
     requestConsumer.accept(requestBuilder);
     var request = requestBuilder.build();
@@ -737,7 +761,8 @@ class UrlRepositoryAdapterTest {
   private void assertThatCounterAndTimestampRequest(
       UpdateItemRequest request, String shortCode, long delta, Instant lastAccessedAt) {
     assertThat(request.tableName()).isEqualTo("url");
-    assertThat(request.key()).containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
+    assertThat(request.key())
+        .containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
     assertThat(request.updateExpression())
         .isEqualTo("SET #lastAccessedAt = :lastAccessedAt ADD #accessCount :delta");
     assertThat(request.conditionExpression())
@@ -749,7 +774,8 @@ class UrlRepositoryAdapterTest {
   private void assertThatCounterOnlyRequest(
       UpdateItemRequest request, String shortCode, long delta, Instant lastAccessedAt) {
     assertThat(request.tableName()).isEqualTo("url");
-    assertThat(request.key()).containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
+    assertThat(request.key())
+        .containsEntry("shortCode", AttributeValue.builder().s(shortCode).build());
     assertThat(request.updateExpression()).isEqualTo("ADD #accessCount :delta");
     assertThat(request.conditionExpression())
         .isEqualTo("attribute_exists(#pk) AND #lastAccessedAt > :lastAccessedAt");

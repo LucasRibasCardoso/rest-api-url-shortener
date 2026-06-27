@@ -53,7 +53,8 @@ public class DynamoDbCursorCodec {
     }
   }
 
-  private Map<String, Map<String, String>> toSerializableMap(Map<String, AttributeValue> lastEvaluatedKey) {
+  private Map<String, Map<String, String>> toSerializableMap(
+      Map<String, AttributeValue> lastEvaluatedKey) {
     var result = new LinkedHashMap<String, Map<String, String>>();
 
     lastEvaluatedKey.forEach((key, value) -> result.put(key, toSerializableValue(value)));
@@ -71,7 +72,8 @@ public class DynamoDbCursorCodec {
     }
 
     if (value.b() != null) {
-      return Map.of("B", Base64.getUrlEncoder().withoutPadding().encodeToString(value.b().asByteArray()));
+      return Map.of(
+          "B", Base64.getUrlEncoder().withoutPadding().encodeToString(value.b().asByteArray()));
     }
 
     throw new IllegalArgumentException("Unsupported cursor attribute value type.");

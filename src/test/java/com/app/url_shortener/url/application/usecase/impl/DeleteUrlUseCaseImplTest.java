@@ -1,5 +1,11 @@
 package com.app.url_shortener.url.application.usecase.impl;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.app.url_shortener.url.application.command.DeleteUrlCommand;
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
@@ -20,25 +26,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Caso de Uso de Exclusão de URL")
 class DeleteUrlUseCaseImplTest {
 
-  @Mock
-  private UrlRepositoryPort urlRepositoryPort;
+  @Mock private UrlRepositoryPort urlRepositoryPort;
 
-  @Mock
-  private RedirectCachePort redirectCachePort;
+  @Mock private RedirectCachePort redirectCachePort;
 
-  @InjectMocks
-  private DeleteUrlUseCaseImpl deleteUrlUseCase;
+  @InjectMocks private DeleteUrlUseCaseImpl deleteUrlUseCase;
 
   @Nested
   @DisplayName("Execução")
@@ -128,13 +125,14 @@ class DeleteUrlUseCaseImplTest {
 
       // 2. Act & 3. Assert
       assertThatThrownBy(() -> deleteUrlUseCase.execute(command))
-              .isInstanceOf(UrlNotFoundException.class);
+          .isInstanceOf(UrlNotFoundException.class);
       verify(urlRepositoryPort).findByShortCode(shortCode);
       verifyNoMoreInteractions(urlRepositoryPort, redirectCachePort);
     }
 
     @Test
-    @DisplayName("Deve lançar UrlDeleteForbiddenException quando o solicitante não puder excluir a URL")
+    @DisplayName(
+        "Deve lançar UrlDeleteForbiddenException quando o solicitante não puder excluir a URL")
     void shouldThrowUrlDeleteForbiddenExceptionWhenRequesterCannotDeleteUrl() {
       // 1. Arrange
       var ownerId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");

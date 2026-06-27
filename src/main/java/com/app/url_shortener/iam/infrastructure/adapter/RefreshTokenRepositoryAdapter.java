@@ -44,10 +44,12 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort
   }
 
   @Override
-  public int markTokenAsRotatedIfActive(String oldTokenHash, Instant rotatedAt, UUID replacedByTokenId) {
+  public int markTokenAsRotatedIfActive(
+      String oldTokenHash, Instant rotatedAt, UUID replacedByTokenId) {
     RefreshTokenEntity replacedByTokenReference =
         entityManager.getReference(RefreshTokenEntity.class, replacedByTokenId);
 
-    return refreshTokenJpaRepository.markTokenAsRotatedIfActive(oldTokenHash, rotatedAt, replacedByTokenReference);
+    return refreshTokenJpaRepository.markTokenAsRotatedIfActive(
+        oldTokenHash, rotatedAt, replacedByTokenReference);
   }
 }

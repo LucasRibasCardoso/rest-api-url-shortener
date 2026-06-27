@@ -40,19 +40,14 @@ public class RoleEntity {
   @ManyToMany(fetch = FetchType.LAZY)
   @Column(nullable = false, length = 120)
   @JoinTable(
-          name = "role_permissions",
-          joinColumns = @JoinColumn(name = "role_id"),
-          inverseJoinColumns = @JoinColumn(name = "permission_id"))
+      name = "role_permissions",
+      joinColumns = @JoinColumn(name = "role_id"),
+      inverseJoinColumns = @JoinColumn(name = "permission_id"))
   private Set<PermissionEntity> permissions = new HashSet<>();
 
-  public RoleEntity() {
-  }
+  public RoleEntity() {}
 
-  public RoleEntity(
-          UUID id,
-          String name,
-          boolean isDefault,
-          Set<PermissionEntity> permissions) {
+  public RoleEntity(UUID id, String name, boolean isDefault, Set<PermissionEntity> permissions) {
     this.id = id;
     this.name = name;
     this.isDefault = isDefault;

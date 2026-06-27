@@ -1,13 +1,13 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.url.infrastructure.config.HashidsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Adaptador de Codificação de URL")
@@ -68,9 +68,7 @@ class UrlEncoderAdapterTest {
       var result = adapter.encode(id);
 
       // 3. Assert
-      assertThat(result)
-          .isEqualTo("5O6zO")
-          .hasSizeGreaterThanOrEqualTo(MIN_LENGTH);
+      assertThat(result).isEqualTo("5O6zO").hasSizeGreaterThanOrEqualTo(MIN_LENGTH);
     }
   }
 }

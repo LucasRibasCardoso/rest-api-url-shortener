@@ -106,7 +106,8 @@ class EmailDispatchVerificationServiceImplTest {
       var event = event(EmailDispatchReason.REGISTER);
       executeTransactions();
 
-      given(emailDispatchRepositoryPort.findByEventId(event.eventId())).willReturn(Optional.empty());
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty());
       given(emailVerificationPolicy.codeTtl()).willReturn(CODE_TTL);
       given(verificationCodeProtectorPort.hash(any(VerificationCode.class)))
           .willReturn("verification-code-hash");
@@ -130,7 +131,8 @@ class EmailDispatchVerificationServiceImplTest {
       assertThat(savedToken.getEmail()).isEqualTo(event.email());
       assertThat(savedToken.getHashedCode()).isEqualTo("verification-code-hash");
       assertThat(savedToken.getEncryptedCode()).isEqualTo("encrypted-code");
-      assertThat(savedToken.getExpiresAt()).isAfterOrEqualTo(Instant.now().plus(CODE_TTL).minusSeconds(5));
+      assertThat(savedToken.getExpiresAt())
+          .isAfterOrEqualTo(Instant.now().plus(CODE_TTL).minusSeconds(5));
 
       assertThat(savedDispatch.getEventId()).isEqualTo(event.eventId());
       assertThat(savedDispatch.getUserId()).isEqualTo(event.userId());
@@ -155,7 +157,8 @@ class EmailDispatchVerificationServiceImplTest {
       var token = token(UUID.fromString("019a22c5-0987-7af5-88d6-2df3aeb30202"));
       var duplicateOpenTokenException = new DuplicateOpenEmailVerificationTokenException();
 
-      given(emailDispatchRepositoryPort.findByEventId(event.eventId())).willReturn(Optional.empty());
+      given(emailDispatchRepositoryPort.findByEventId(event.eventId()))
+          .willReturn(Optional.empty());
       given(transactionTemplate.execute(any()))
           .willThrow(duplicateOpenTokenException)
           .willAnswer(invocation -> executeTransaction(invocation.getArgument(0)));
@@ -221,7 +224,8 @@ class EmailDispatchVerificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Deve relançar colisão de eventId quando o dispatch concorrente não for encontrado")
+    @DisplayName(
+        "Deve relançar colisão de eventId quando o dispatch concorrente não for encontrado")
     void shouldRethrowDuplicateEventWhenConcurrentDispatchCannotBeFound() {
       // 1. Arrange
       var event = event(EmailDispatchReason.REGISTER);
@@ -239,7 +243,8 @@ class EmailDispatchVerificationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Deve relançar colisão de token aberto quando o token concorrente não for encontrado")
+    @DisplayName(
+        "Deve relançar colisão de token aberto quando o token concorrente não for encontrado")
     void shouldRethrowDuplicateOpenTokenWhenConcurrentTokenCannotBeFound() {
       // 1. Arrange
       var event = event(EmailDispatchReason.RESEND);

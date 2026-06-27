@@ -1,8 +1,11 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.app.url_shortener.config.BaseRedisSliceTest;
-import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
@@ -15,42 +18,37 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.TestPropertySource;
 import tools.jackson.databind.ObjectMapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 @Tag("redis-slice")
 @Import({
-    RedirectCacheAdapter.class,
-    RedirectCacheAdapterObjectMapperTestConfig.class,
-    RedirectCacheAdapterPropertiesTestConfig.class
+  RedirectCacheAdapter.class,
+  RedirectCacheAdapterObjectMapperTestConfig.class,
+  RedirectCacheAdapterPropertiesTestConfig.class
 })
-@TestPropertySource(properties = {
-    "app.url.redirect-cache.ttl.active=15m",
-    "app.url.redirect-cache.ttl.deleted=1h",
-    "app.url.redirect-cache.ttl.not-found=5m"
-})
+@TestPropertySource(
+    properties = {
+      "app.url.redirect-cache.ttl.active=15m",
+      "app.url.redirect-cache.ttl.deleted=1h",
+      "app.url.redirect-cache.ttl.not-found=5m"
+    })
 @DisplayName("Slice Redis - Cache de Redirect de URL")
 class RedirectCacheAdapterTest extends BaseRedisSliceTest {
 
   private static final String KEY_PREFIX = "url:redirect:";
   private static final String KEY_PATTERN = KEY_PREFIX + "*";
 
-  @Autowired
-  private RedirectCacheAdapter adapter;
+  @Autowired private RedirectCacheAdapter adapter;
 
-  @Autowired
-  private StringRedisTemplate redisTemplate;
+  @Autowired private StringRedisTemplate redisTemplate;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {

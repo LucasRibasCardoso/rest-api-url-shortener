@@ -1,14 +1,22 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import com.app.url_shortener.shared.config.DynamoDbProperties;
 import com.app.url_shortener.url.domain.exception.CounterIdAllocationException;
 import com.app.url_shortener.url.domain.exception.UrlErrorCode;
-import com.app.url_shortener.shared.config.DynamoDbProperties;
 import com.app.url_shortener.url.infrastructure.config.IdGeneratorProperties;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -24,15 +32,6 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Adaptador DynamoDB de Contador de IDs")
@@ -41,8 +40,7 @@ class IdBlockAllocatorAdapterTest {
   private static final String COUNTER_TABLE_NAME = "url-counters";
   private static final String COUNTER_NAME = "url-id";
 
-  @Mock
-  private DynamoDbClient dynamoDbClient;
+  @Mock private DynamoDbClient dynamoDbClient;
 
   private IdBlockAllocatorAdapter adapter;
 
@@ -56,7 +54,8 @@ class IdBlockAllocatorAdapterTest {
             "secret-key",
             new DynamoDbProperties.Tables("url", COUNTER_TABLE_NAME));
     var idGeneratorProperties = new IdGeneratorProperties(100L, COUNTER_NAME);
-    adapter = new IdBlockAllocatorAdapter(dynamoDbClient, dynamoDbProperties, idGeneratorProperties);
+    adapter =
+        new IdBlockAllocatorAdapter(dynamoDbClient, dynamoDbProperties, idGeneratorProperties);
   }
 
   @Nested
@@ -130,9 +129,7 @@ class IdBlockAllocatorAdapterTest {
           .thenThrow(cause);
 
       // 2. Act & 3. Assert
-      assertCounterIdAllocationException(
-          cause,
-          UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED);
+      assertCounterIdAllocationException(cause, UrlErrorCode.COUNTER_ID_CONDITIONAL_CHECK_FAILED);
     }
 
     @Test
@@ -144,9 +141,7 @@ class IdBlockAllocatorAdapterTest {
           .thenThrow(cause);
 
       // 2. Act & 3. Assert
-      assertCounterIdAllocationException(
-          cause,
-          UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED);
+      assertCounterIdAllocationException(cause, UrlErrorCode.COUNTER_ID_THROUGHPUT_EXCEEDED);
     }
 
     @Test
@@ -158,9 +153,7 @@ class IdBlockAllocatorAdapterTest {
           .thenThrow(cause);
 
       // 2. Act & 3. Assert
-      assertCounterIdAllocationException(
-          cause,
-          UrlErrorCode.COUNTER_ID_TABLE_NOT_FOUND);
+      assertCounterIdAllocationException(cause, UrlErrorCode.COUNTER_ID_TABLE_NOT_FOUND);
     }
 
     @Test
@@ -172,9 +165,7 @@ class IdBlockAllocatorAdapterTest {
           .thenThrow(cause);
 
       // 2. Act & 3. Assert
-      assertCounterIdAllocationException(
-          cause,
-          UrlErrorCode.COUNTER_ID_DYNAMODB_FAILURE);
+      assertCounterIdAllocationException(cause, UrlErrorCode.COUNTER_ID_DYNAMODB_FAILURE);
     }
 
     @Test
@@ -186,9 +177,7 @@ class IdBlockAllocatorAdapterTest {
           .thenThrow(cause);
 
       // 2. Act & 3. Assert
-      assertCounterIdAllocationException(
-          cause,
-          UrlErrorCode.COUNTER_ID_CLIENT_FAILURE);
+      assertCounterIdAllocationException(cause, UrlErrorCode.COUNTER_ID_CLIENT_FAILURE);
     }
   }
 

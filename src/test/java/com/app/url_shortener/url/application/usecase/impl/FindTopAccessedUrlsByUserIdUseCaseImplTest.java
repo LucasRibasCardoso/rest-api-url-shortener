@@ -27,11 +27,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Caso de Uso de Ranking de URLs")
 class FindTopAccessedUrlsByUserIdUseCaseImplTest {
 
-  @Mock
-  private UrlRepositoryPort urlRepositoryPort;
+  @Mock private UrlRepositoryPort urlRepositoryPort;
 
-  @InjectMocks
-  private FindTopAccessedUrlsByUserIdUseCaseImpl findTopAccessedUrlsByUserIdUseCase;
+  @InjectMocks private FindTopAccessedUrlsByUserIdUseCaseImpl findTopAccessedUrlsByUserIdUseCase;
 
   @Nested
   @DisplayName("Execução")
@@ -55,7 +53,8 @@ class FindTopAccessedUrlsByUserIdUseCaseImplTest {
                   Instant.parse("2026-06-08T10:00:00Z")));
       var rankingResult = new UrlRankingResult(urls);
 
-      when(urlRepositoryPort.findTopAccessedActiveByUserId(userId, rankingSize)).thenReturn(rankingResult);
+      when(urlRepositoryPort.findTopAccessedActiveByUserId(userId, rankingSize))
+          .thenReturn(rankingResult);
 
       // 2. Act
       var result = findTopAccessedUrlsByUserIdUseCase.execute(command);

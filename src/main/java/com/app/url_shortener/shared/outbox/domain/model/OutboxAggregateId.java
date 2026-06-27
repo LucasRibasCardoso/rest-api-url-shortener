@@ -16,7 +16,8 @@ public record OutboxAggregateId(String value) {
     }
 
     if (value.length() > MAX_LENGTH) {
-      throw new IllegalArgumentException("aggregateId must not exceed " + MAX_LENGTH + " characters");
+      throw new IllegalArgumentException(
+          "aggregateId must not exceed " + MAX_LENGTH + " characters");
     }
   }
 

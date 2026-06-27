@@ -26,16 +26,16 @@ public class Bucket4jRedisConfig {
   private static final Duration BUCKET_EXPIRATION_MARGIN = Duration.ofSeconds(10);
 
   /**
-   * Cria o bean que fornece a conexão Lettuce utilizada pelo Bucket4j.
-   * Detecta se o cliente nativo do Lettuce é standalone ou cluster e retorna
-   * um wrapper com a conexão apropriada. Lança IllegalStateException quando
-   * o tipo de cliente não é suportado.
+   * Cria o bean que fornece a conexão Lettuce utilizada pelo Bucket4j. Detecta se o cliente nativo
+   * do Lettuce é standalone ou cluster e retorna um wrapper com a conexão apropriada. Lança
+   * IllegalStateException quando o tipo de cliente não é suportado.
    *
    * @param connectionFactory factory do Spring Data Redis para obter o cliente nativo
    * @return wrapper contendo a conexão standalone ou cluster para uso do Bucket4j
    */
   @Bean
-  public Bucket4jRedisConnection bucket4jRedisConnection(LettuceConnectionFactory connectionFactory) {
+  public Bucket4jRedisConnection bucket4jRedisConnection(
+      LettuceConnectionFactory connectionFactory) {
 
     AbstractRedisClient nativeClient = connectionFactory.getRequiredNativeClient();
     RedisCodec<String, byte[]> codec = RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE);
@@ -48,19 +48,22 @@ public class Bucket4jRedisConfig {
       return Bucket4jRedisConnection.cluster(redisClusterClient.connect(codec));
     }
 
-    throw new IllegalStateException("Unsupported Lettuce native client for Bucket4j rate limit: " + nativeClient.getClass().getName());
+    throw new IllegalStateException(
+        "Unsupported Lettuce native client for Bucket4j rate limit: "
+            + nativeClient.getClass().getName());
   }
 
   /**
-   * Cria o bean do ProxyManager do Bucket4j, configurado para usar a conexão Redis
-   * fornecida. Configura estratégia de expiração baseada no refill, número máximo de
-   * tentativas CAS e timeout de requisição para operação robusta sob concorrência.
+   * Cria o bean do ProxyManager do Bucket4j, configurado para usar a conexão Redis fornecida.
+   * Configura estratégia de expiração baseada no refill, número máximo de tentativas CAS e timeout
+   * de requisição para operação robusta sob concorrência.
    *
    * @param redisConnection wrapper com a conexão Lettuce (standalone ou cluster)
    * @return LettuceBasedProxyManager configurado para ser usado pelo Bucket4j
    */
   @Bean
-  public LettuceBasedProxyManager<String> bucket4jProxyManager(Bucket4jRedisConnection redisConnection) {
+  public LettuceBasedProxyManager<String> bucket4jProxyManager(
+      Bucket4jRedisConnection redisConnection) {
 
     if (redisConnection.standaloneConnection() != null) {
       return Bucket4jLettuce.casBasedBuilder(redisConnection.standaloneConnection())
@@ -81,11 +84,10 @@ public class Bucket4jRedisConfig {
     throw new IllegalStateException("Bucket4j Redis connection was not initialized");
   }
 
-
   /**
-   * Cria um bean que fecha a conexão Redis quando a aplicação é encerrada.
-   * Verifica se a conexão é standalone ou cluster e a fecha corretamente,
-   * liberando os recursos de forma segura durante o shutdown do Spring.
+   * Cria um bean que fecha a conexão Redis quando a aplicação é encerrada. Verifica se a conexão é
+   * standalone ou cluster e a fecha corretamente, liberando os recursos de forma segura durante o
+   * shutdown do Spring.
    *
    * @param redisConnection a conexão Redis configurada para o Bucket4j
    * @return um DisposableBean que fecha a conexão ao encerrar a aplicação
@@ -107,26 +109,25 @@ public class Bucket4jRedisConfig {
     };
   }
 
-
   /**
-   * Cria a estratégia de expiração usada pelo Bucket4j.
-   * Baseia a expiração no tempo necessário para encher o bucket até o máximo.
+   * Cria a estratégia de expiração usada pelo Bucket4j. Baseia a expiração no tempo necessário para
+   * encher o bucket até o máximo.
    *
    * @return estratégia de expiração para o Bucket4j
    */
   private ExpirationAfterWriteStrategy expirationAfterWriteStrategy() {
-    return ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(BUCKET_EXPIRATION_MARGIN);
+    return ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(
+        BUCKET_EXPIRATION_MARGIN);
   }
 
   /**
-   * Wrapper que encapsula a conexão Lettuce utilizada pelo Bucket4j.
-   * Garante que apenas uma das conexões (standalone ou cluster) esteja presente.
-   * Use os métodos de fábrica para instanciar.
+   * Wrapper que encapsula a conexão Lettuce utilizada pelo Bucket4j. Garante que apenas uma das
+   * conexões (standalone ou cluster) esteja presente. Use os métodos de fábrica para instanciar.
    *
-   * @param standaloneConnection conexão Lettuce standalone; deve ser {@code null} quando 
-   *                             {@code clusterConnection} estiver presente
-   * @param clusterConnection    conexão Lettuce em modo cluster; deve ser {@code null}
-   *                             quando {@code standaloneConnection} estiver presente
+   * @param standaloneConnection conexão Lettuce standalone; deve ser {@code null} quando {@code
+   *     clusterConnection} estiver presente
+   * @param clusterConnection conexão Lettuce em modo cluster; deve ser {@code null} quando {@code
+   *     standaloneConnection} estiver presente
    */
   public record Bucket4jRedisConnection(
       StatefulRedisConnection<String, byte[]> standaloneConnection,
@@ -141,11 +142,13 @@ public class Bucket4jRedisConfig {
       }
     }
 
-    public static Bucket4jRedisConnection standalone(StatefulRedisConnection<String, byte[]> connection) {
+    public static Bucket4jRedisConnection standalone(
+        StatefulRedisConnection<String, byte[]> connection) {
       return new Bucket4jRedisConnection(connection, null);
     }
 
-    public static Bucket4jRedisConnection cluster(StatefulRedisClusterConnection<String, byte[]> connection) {
+    public static Bucket4jRedisConnection cluster(
+        StatefulRedisClusterConnection<String, byte[]> connection) {
       return new Bucket4jRedisConnection(null, connection);
     }
   }

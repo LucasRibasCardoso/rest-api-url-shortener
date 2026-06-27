@@ -19,7 +19,8 @@ public class OutboxEventQueueResolver {
     String queueName = queues == null ? null : queues.get(eventType.value());
 
     if (queueName == null || queueName.isBlank()) {
-      throw new IllegalStateException("No SQS queue configured for outbox event type: " + eventType.value());
+      throw new IllegalStateException(
+          "No SQS queue configured for outbox event type: " + eventType.value());
     }
 
     return queueName.trim();

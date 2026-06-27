@@ -5,9 +5,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.app.url_shortener.shared.config.AwsSqsProperties;
 import com.app.url_shortener.url.application.event.UrlRedirectedEvent;
 import com.app.url_shortener.url.infrastructure.messaging.UrlRedirectEventPublisherAdapter;
-import com.app.url_shortener.shared.config.AwsSqsProperties;
 import io.awspring.cloud.sqs.operations.SendResult;
 import io.awspring.cloud.sqs.operations.SqsAsyncOperations;
 import java.time.Instant;
@@ -31,8 +31,7 @@ class UrlRedirectEventPublisherAdapterTest {
 
   private static final String URL_REDIRECT_EVENTS_QUEUE = "url-redirect-events";
 
-  @Mock
-  private SqsAsyncOperations sqsAsyncOperations;
+  @Mock private SqsAsyncOperations sqsAsyncOperations;
 
   private UrlRedirectEventPublisherAdapter adapter;
 
@@ -94,13 +93,15 @@ class UrlRedirectEventPublisherAdapterTest {
       adapter.publish(event);
 
       // 3. Assert
-      assertThatCode(() -> resultFuture.completeExceptionally(exception)).doesNotThrowAnyException();
+      assertThatCode(() -> resultFuture.completeExceptionally(exception))
+          .doesNotThrowAnyException();
       verify(sqsAsyncOperations).sendAsync(URL_REDIRECT_EVENTS_QUEUE, event);
       verifyNoMoreInteractions(sqsAsyncOperations);
     }
 
     @Test
-    @DisplayName("Deve finalizar sem exceção quando publicação assíncrona for concluída com sucesso")
+    @DisplayName(
+        "Deve finalizar sem exceção quando publicação assíncrona for concluída com sucesso")
     void shouldCompleteWithoutExceptionWhenAsyncPublicationSucceeds() {
       // 1. Arrange
       var event = event();

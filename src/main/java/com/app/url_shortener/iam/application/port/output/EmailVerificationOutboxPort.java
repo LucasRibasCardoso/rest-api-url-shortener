@@ -5,5 +5,6 @@ import java.util.UUID;
 
 public interface EmailVerificationOutboxPort {
 
-  void publishEmailVerificationRequestedEvent(UUID userId, String email, EmailDispatchReason reason);
+  void publishEmailVerificationRequestedEvent(
+      UUID userId, String email, EmailDispatchReason reason);
 }

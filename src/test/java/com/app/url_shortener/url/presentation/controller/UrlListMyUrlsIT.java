@@ -29,7 +29,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Listagem das próprias URLs")
-class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
+class UrlListMyUrlsIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String MY_URLS_ENDPOINT = URLS_ENDPOINT + "/me";
@@ -41,7 +41,7 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
   private final JwtTokenService jwtTokenService;
 
   @Autowired
-  UrlListMyUrlsIntegrationTest(
+  UrlListMyUrlsIT(
       UserTestDataFactory userTestDataFactory,
       DynamoDbTable<UrlEntity> urlTable,
       ApplicationProperties applicationProperties,
@@ -64,11 +64,20 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession otherSession = login(otherEmail, PASSWORD, "login-my-list-other-url");
 
     CreatedUrl ownerFirst =
-        createUrl(ownerSession.accessToken(), "https://example.com/my-list-owner-1", "create-my-list-owner-1");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/my-list-owner-1",
+            "create-my-list-owner-1");
     CreatedUrl ownerSecond =
-        createUrl(ownerSession.accessToken(), "https://example.com/my-list-owner-2", "create-my-list-owner-2");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/my-list-owner-2",
+            "create-my-list-owner-2");
     CreatedUrl otherUrl =
-        createUrl(otherSession.accessToken(), "https://example.com/my-list-other", "create-my-list-other");
+        createUrl(
+            otherSession.accessToken(),
+            "https://example.com/my-list-other",
+            "create-my-list-other");
 
     // Act
     Response response = requestMyUrls(ownerSession.accessToken());
@@ -86,13 +95,13 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     List<String> statuses = response.jsonPath().getList("urls.status", String.class);
     List<String> shortUrls = response.jsonPath().getList("urls.shortUrl", String.class);
 
-    assertThat(shortCodes).containsExactlyInAnyOrder(ownerFirst.shortCode(), ownerSecond.shortCode());
+    assertThat(shortCodes)
+        .containsExactlyInAnyOrder(ownerFirst.shortCode(), ownerSecond.shortCode());
     assertThat(shortCodes).doesNotContain(otherUrl.shortCode());
     assertThat(statuses).containsOnly(UrlStatus.ACTIVE.name());
     assertThat(shortUrls)
         .containsExactlyInAnyOrder(
-            shortUrl(ownerFirst.shortCode()),
-            shortUrl(ownerSecond.shortCode()));
+            shortUrl(ownerFirst.shortCode()), shortUrl(ownerSecond.shortCode()));
     assertThat(findByShortCode(ownerFirst.shortCode()).getUserId()).isEqualTo(owner.getId());
   }
 
@@ -129,9 +138,11 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession session = login(email, PASSWORD, "login-my-list-deleted-url");
 
     CreatedUrl activeUrl =
-        createUrl(session.accessToken(), "https://example.com/my-list-active", "create-my-list-active");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-active", "create-my-list-active");
     CreatedUrl deletedUrl =
-        createUrl(session.accessToken(), "https://example.com/my-list-deleted", "create-my-list-deleted");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-deleted", "create-my-list-deleted");
     deleteUrl(session.accessToken(), deletedUrl.shortCode());
 
     // Act
@@ -158,9 +169,15 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession session = login(email, PASSWORD, "login-my-list-all-url");
 
     CreatedUrl activeUrl =
-        createUrl(session.accessToken(), "https://example.com/my-list-all-active", "create-my-list-all-active");
+        createUrl(
+            session.accessToken(),
+            "https://example.com/my-list-all-active",
+            "create-my-list-all-active");
     CreatedUrl deletedUrl =
-        createUrl(session.accessToken(), "https://example.com/my-list-all-deleted", "create-my-list-all-deleted");
+        createUrl(
+            session.accessToken(),
+            "https://example.com/my-list-all-deleted",
+            "create-my-list-all-deleted");
     deleteUrl(session.accessToken(), deletedUrl.shortCode());
 
     // Act
@@ -185,11 +202,14 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession session = login(email, PASSWORD, "login-my-list-pagination-url");
 
     CreatedUrl first =
-        createUrl(session.accessToken(), "https://example.com/my-list-page-1", "create-my-list-page-1");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-page-1", "create-my-list-page-1");
     CreatedUrl second =
-        createUrl(session.accessToken(), "https://example.com/my-list-page-2", "create-my-list-page-2");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-page-2", "create-my-list-page-2");
     CreatedUrl third =
-        createUrl(session.accessToken(), "https://example.com/my-list-page-3", "create-my-list-page-3");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-page-3", "create-my-list-page-3");
 
     Response firstPage =
         requestMyUrls(session.accessToken(), 2, "ACTIVE", null)
@@ -216,7 +236,8 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
         .body("nextCursor", is((String) null));
 
     List<String> firstPageShortCodes = firstPage.jsonPath().getList("urls.shortCode", String.class);
-    List<String> secondPageShortCodes = secondPage.jsonPath().getList("urls.shortCode", String.class);
+    List<String> secondPageShortCodes =
+        secondPage.jsonPath().getList("urls.shortCode", String.class);
     var allReturnedShortCodes = new HashSet<String>();
     allReturnedShortCodes.addAll(firstPageShortCodes);
     allReturnedShortCodes.addAll(secondPageShortCodes);
@@ -236,11 +257,14 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession session = login(email, PASSWORD, "login-my-list-order-url");
 
     CreatedUrl first =
-        createUrl(session.accessToken(), "https://example.com/my-list-order-1", "create-my-list-order-1");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-order-1", "create-my-list-order-1");
     CreatedUrl second =
-        createUrl(session.accessToken(), "https://example.com/my-list-order-2", "create-my-list-order-2");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-order-2", "create-my-list-order-2");
     CreatedUrl third =
-        createUrl(session.accessToken(), "https://example.com/my-list-order-3", "create-my-list-order-3");
+        createUrl(
+            session.accessToken(), "https://example.com/my-list-order-3", "create-my-list-order-3");
 
     // Act
     Response response = requestMyUrls(session.accessToken());
@@ -249,7 +273,8 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
     response.then().log().ifValidationFails().statusCode(200).contentType(ContentType.JSON);
 
     List<String> shortCodes = response.jsonPath().getList("urls.shortCode", String.class);
-    assertThat(shortCodes).containsExactly(third.shortCode(), second.shortCode(), first.shortCode());
+    assertThat(shortCodes)
+        .containsExactly(third.shortCode(), second.shortCode(), first.shortCode());
   }
 
   @Test
@@ -323,11 +348,13 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve retornar 403 quando usuário autenticado não tiver permissão de listagem própria")
+  @DisplayName(
+      "Deve retornar 403 quando usuário autenticado não tiver permissão de listagem própria")
   void shouldReturnForbiddenWhenAuthenticatedUserDoesNotHaveListOwnAuthority() {
     // Arrange
     UserEntity user =
-        userTestDataFactory.createActiveUser("my-list-without-authority-url.integration@example.com", PASSWORD);
+        userTestDataFactory.createActiveUser(
+            "my-list-without-authority-url.integration@example.com", PASSWORD);
     String accessTokenWithoutListOwnAuthority =
         jwtTokenService.generateAccessToken(
             new JwtAccessTokenSubject(user.getId(), PlanType.FREE.name(), List.of("url:read:own")));
@@ -366,9 +393,7 @@ class UrlListMyUrlsIntegrationTest extends AbstractIntegrationTest {
             .response();
 
     return new CreatedUrl(
-        response.path("shortCode"),
-        response.path("originalUrl"),
-        response.path("createdAt"));
+        response.path("shortCode"), response.path("originalUrl"), response.path("createdAt"));
   }
 
   private void deleteUrl(String accessToken, String shortCode) {

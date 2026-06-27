@@ -1,12 +1,11 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.port.output.RedirectCachePort;
-import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.application.port.output.model.RedirectCacheEntry;
+import com.app.url_shortener.url.application.port.output.model.RedirectCacheStatus;
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.Optional;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

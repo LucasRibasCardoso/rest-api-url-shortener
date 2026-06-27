@@ -1,11 +1,10 @@
 package com.app.url_shortener.iam.presentation.dto.response;
 
 public record LoginResponseDto(
-        String accessToken,
-        String tokenType,
-        Long expiresInSeconds,
-        AuthenticatedUserResponseDto user
-) {
+    String accessToken,
+    String tokenType,
+    Long expiresInSeconds,
+    AuthenticatedUserResponseDto user) {
 
   @Override
   public String toString() {

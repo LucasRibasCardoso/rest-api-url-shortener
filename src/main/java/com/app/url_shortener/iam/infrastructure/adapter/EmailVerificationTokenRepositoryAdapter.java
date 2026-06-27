@@ -17,7 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
-public class EmailVerificationTokenRepositoryAdapter implements EmailVerificationTokenRepositoryPort {
+public class EmailVerificationTokenRepositoryAdapter
+    implements EmailVerificationTokenRepositoryPort {
 
   private final EmailVerificationTokenPersistenceMapper verificationTokenMapper;
   private final EmailVerificationTokenJpaRepository verificationTokenJpaRepository;
@@ -27,7 +28,8 @@ public class EmailVerificationTokenRepositoryAdapter implements EmailVerificatio
   public EmailVerificationToken save(EmailVerificationToken token) {
     try {
       EmailVerificationTokenEntity entity = verificationTokenMapper.toEntity(token);
-      EmailVerificationTokenEntity entitySaved = verificationTokenJpaRepository.saveAndFlush(entity);
+      EmailVerificationTokenEntity entitySaved =
+          verificationTokenJpaRepository.saveAndFlush(entity);
       return verificationTokenMapper.toDomain(entitySaved);
     } catch (DataIntegrityViolationException exception) {
       throw dataIntegrityExceptionTranslator.translate(exception);
@@ -47,7 +49,8 @@ public class EmailVerificationTokenRepositoryAdapter implements EmailVerificatio
   }
 
   @Override
-  public Optional<EmailVerificationToken> findActiveByUserIdAndEmail(UUID userId, String email, Instant now) {
+  public Optional<EmailVerificationToken> findActiveByUserIdAndEmail(
+      UUID userId, String email, Instant now) {
     return verificationTokenJpaRepository
         .findActiveByUserIdAndEmail(userId, email, now)
         .map(verificationTokenMapper::toDomain);

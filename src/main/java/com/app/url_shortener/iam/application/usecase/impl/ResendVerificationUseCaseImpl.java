@@ -11,17 +11,17 @@ import com.app.url_shortener.iam.application.usecase.ResendVerificationUseCase;
 import com.app.url_shortener.iam.domain.enums.EmailDispatchReason;
 import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase {
 
-  private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
+  private static final String RESPONSE_MESSAGE =
+      "Enviamos um novo código de verificação para o seu e-mail.";
 
   private final CheckAuthRateLimitPort checkAuthRateLimitPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
@@ -35,16 +35,12 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
     checkAuthRateLimitPort.checkResendVerification(command.email());
 
     Optional<UserAccount> userAccountOptional =
-            userAccountRepositoryPort
-            .findByEmail(command.email())
-            .filter(UserAccount::isPending);
+        userAccountRepositoryPort.findByEmail(command.email()).filter(UserAccount::isPending);
 
     if (userAccountOptional.isPresent()) {
       UserAccount userAccount = userAccountOptional.get();
       emailVerificationEventPort.publishEmailVerificationRequestedEvent(
-              userAccount.getId(),
-              userAccount.getEmail(),
-              EmailDispatchReason.RESEND);
+          userAccount.getId(), userAccount.getEmail(), EmailDispatchReason.RESEND);
 
       reserveResendCooldown(userAccount.getEmail());
     }

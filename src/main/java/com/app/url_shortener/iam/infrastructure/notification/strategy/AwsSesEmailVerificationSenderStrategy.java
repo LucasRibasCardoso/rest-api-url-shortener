@@ -20,9 +20,7 @@ import software.amazon.awssdk.services.ses.model.*;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "app.iam.email-verification.sender",
-    havingValue = "ses")
+@ConditionalOnProperty(name = "app.iam.email-verification.sender", havingValue = "ses")
 public class AwsSesEmailVerificationSenderStrategy implements EmailVerificationSenderPort {
 
   private static final String CHARSET = StandardCharsets.UTF_8.name();
@@ -66,10 +64,7 @@ public class AwsSesEmailVerificationSenderStrategy implements EmailVerificationS
         Message.builder()
             .subject(content(properties.subject()))
             .body(
-                Body.builder()
-                    .text(content(textBody(code)))
-                    .html(content(htmlBody(code)))
-                    .build())
+                Body.builder().text(content(textBody(code))).html(content(htmlBody(code))).build())
             .build();
 
     return SendEmailRequest.builder()

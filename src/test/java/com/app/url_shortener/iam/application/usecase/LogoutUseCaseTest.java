@@ -1,5 +1,9 @@
 package com.app.url_shortener.iam.application.usecase;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+
 import com.app.url_shortener.iam.application.command.LogoutCommand;
 import com.app.url_shortener.iam.application.port.output.RefreshTokenRepositoryPort;
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
@@ -16,23 +20,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Caso de Uso Logout")
 class LogoutUseCaseTest {
 
-  @Mock
-  private SecureTokenGeneratorPort secureTokenGeneratorPort;
+  @Mock private SecureTokenGeneratorPort secureTokenGeneratorPort;
 
-  @Mock
-  private RefreshTokenRepositoryPort refreshTokenRepositoryPort;
+  @Mock private RefreshTokenRepositoryPort refreshTokenRepositoryPort;
 
-  @InjectMocks
-  private LogoutUseCaseImpl logoutUseCase;
+  @InjectMocks private LogoutUseCaseImpl logoutUseCase;
 
   @Nested
   @DisplayName("Execução do Logout")
@@ -87,8 +84,8 @@ class LogoutUseCaseTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Refresh token inválido.");
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Refresh token inválido.");
 
       verify(secureTokenGeneratorPort).hashToken(rawRefreshToken);
       verifyNoInteractions(refreshTokenRepositoryPort);

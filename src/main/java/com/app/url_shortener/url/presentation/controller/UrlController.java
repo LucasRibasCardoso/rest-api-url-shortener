@@ -56,7 +56,8 @@ public class UrlController {
   public ResponseEntity<UrlResponseDto> shortenUrl(
       @Valid @RequestBody ShortenUrlRequestDto request,
       @AuthenticationPrincipal UserPrincipal user) {
-    ShortenUrlCommand command = urlWebMapper.toShortenUrlCommand(request, user.getId(), user.getPlan());
+    ShortenUrlCommand command =
+        urlWebMapper.toShortenUrlCommand(request, user.getId(), user.getPlan());
     ShortenUrlResult result = shortenUrlUseCase.execute(command);
     UrlResponseDto response = urlWebMapper.toUrlResponse(result, baseUrl);
     return ResponseEntity.created(URI.create(response.shortUrl())).body(response);
@@ -67,7 +68,8 @@ public class UrlController {
   public ResponseEntity<UrlDetailsResponseDto> findUrlDetails(
       @PathVariable String shortCode, @AuthenticationPrincipal UserPrincipal user) {
     boolean canReadAny = hasAuthority(user, "url:read:any");
-    UrlDetailsCommand command = urlWebMapper.toUrlDetailsCommand(user.getId(), shortCode, canReadAny);
+    UrlDetailsCommand command =
+        urlWebMapper.toUrlDetailsCommand(user.getId(), shortCode, canReadAny);
     UrlDetailsResult result = findUrlDetailsUseCase.execute(command);
     UrlDetailsResponseDto response = urlWebMapper.toUrlDetailsResponse(result);
     return ResponseEntity.ok(response);
@@ -78,7 +80,8 @@ public class UrlController {
   public ResponseEntity<Void> deleteUrl(
       @PathVariable String shortCode, @AuthenticationPrincipal UserPrincipal user) {
     boolean canDeleteAny = hasAuthority(user, "url:delete:any");
-    DeleteUrlCommand command = urlWebMapper.toDeleteUrlCommand(user.getId(), shortCode, canDeleteAny);
+    DeleteUrlCommand command =
+        urlWebMapper.toDeleteUrlCommand(user.getId(), shortCode, canDeleteAny);
     deleteUrlUseCase.execute(command);
     return ResponseEntity.noContent().build();
   }

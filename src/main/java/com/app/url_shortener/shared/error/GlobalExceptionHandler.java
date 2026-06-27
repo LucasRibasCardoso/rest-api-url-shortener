@@ -145,8 +145,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ProblemDetail handleHandlerMethodValidation(HandlerMethodValidationException exception) {
     List<Map<String, String>> errors =
         exception.getParameterValidationResults().stream()
-            .flatMap(parameterResult -> parameterResult.getResolvableErrors().stream()
-                .map(error -> toParameterError(parameterResult, error)))
+            .flatMap(
+                parameterResult ->
+                    parameterResult.getResolvableErrors().stream()
+                        .map(error -> toParameterError(parameterResult, error)))
             .toList();
 
     return problemDetailFactory.createValidationProblem(
@@ -210,7 +212,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     return Map.of(
         "field",
-        parameterName == null ? "arg" + parameterResult.getMethodParameter().getParameterIndex() : parameterName,
+        parameterName == null
+            ? "arg" + parameterResult.getMethodParameter().getParameterIndex()
+            : parameterName,
         "message",
         error.getDefaultMessage() == null ? "Invalid value" : error.getDefaultMessage());
   }

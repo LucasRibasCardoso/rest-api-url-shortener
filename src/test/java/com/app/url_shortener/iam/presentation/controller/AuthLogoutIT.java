@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 
 @DisplayName("Testes de Integração - Endpoint de logout")
-class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
+class AuthLogoutIT extends AbstractIntegrationTest {
 
   private static final String LOGOUT_ENDPOINT = "/api/v1/auth/logout";
   private static final String PASSWORD = "secure-password";
@@ -33,7 +33,7 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
   private final SecureTokenGeneratorPort secureTokenGeneratorPort;
 
   @Autowired
-  AuthLogoutIntegrationTest(
+  AuthLogoutIT(
       UserTestDataFactory userTestDataFactory,
       RefreshTokenJpaRepository refreshTokenJpaRepository,
       SecureTokenGeneratorPort secureTokenGeneratorPort) {
@@ -46,7 +46,8 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
   @DisplayName("Deve retornar 204, revogar o refresh token e expirar o cookie")
   void shouldRevokeRefreshTokenAndExpireCookieForAuthenticatedUser() {
     // Arrange
-    UserEntity user = userTestDataFactory.createActiveUser("logout-success.integration@example.com", PASSWORD);
+    UserEntity user =
+        userTestDataFactory.createActiveUser("logout-success.integration@example.com", PASSWORD);
     AuthenticatedSession session = login(user.getEmail(), PASSWORD, "login-before-logout");
     String refreshTokenHash = secureTokenGeneratorPort.hashToken(session.refreshToken());
 
@@ -62,7 +63,8 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
         .statusCode(204)
         .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()));
 
-    RefreshTokenEntity savedToken = refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+    RefreshTokenEntity savedToken =
+        refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
     assertThat(savedToken.getRevokedAt()).isNotNull();
     assertThat(response.asString()).isEmpty();
     assertExpiredRefreshTokenCookie(response);
@@ -72,12 +74,16 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
   @DisplayName("Deve retornar 401 sem revogar o refresh token quando não houver autenticação")
   void shouldRejectUnauthenticatedLogoutWithoutRevokingRefreshToken() {
     // Arrange
-    UserEntity user = userTestDataFactory.createActiveUser("logout-unauthenticated.integration@example.com", PASSWORD);
-    AuthenticatedSession session = login(user.getEmail(), PASSWORD, "login-before-unauthenticated-logout");
+    UserEntity user =
+        userTestDataFactory.createActiveUser(
+            "logout-unauthenticated.integration@example.com", PASSWORD);
+    AuthenticatedSession session =
+        login(user.getEmail(), PASSWORD, "login-before-unauthenticated-logout");
     String refreshTokenHash = secureTokenGeneratorPort.hashToken(session.refreshToken());
 
     // Act
-    Response response = logoutWithoutAuthorization(session.refreshToken(), "logout-without-authorization");
+    Response response =
+        logoutWithoutAuthorization(session.refreshToken(), "logout-without-authorization");
 
     // Assert
     response
@@ -92,7 +98,8 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
         .body("detail", is(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()))
         .body("errorCode", is(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
 
-    RefreshTokenEntity savedToken = refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+    RefreshTokenEntity savedToken =
+        refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
     assertThat(savedToken.getRevokedAt()).isNull();
   }
 
@@ -100,8 +107,11 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
   @DisplayName("Deve retornar 204 e expirar o cookie quando o refresh token estiver ausente")
   void shouldExpireCookieWithoutRevokingTokenWhenRefreshTokenCookieIsMissing() {
     // Arrange
-    UserEntity user = userTestDataFactory.createActiveUser("logout-without-cookie.integration@example.com", PASSWORD);
-    AuthenticatedSession session = login(user.getEmail(), PASSWORD, "login-before-logout-without-cookie");
+    UserEntity user =
+        userTestDataFactory.createActiveUser(
+            "logout-without-cookie.integration@example.com", PASSWORD);
+    AuthenticatedSession session =
+        login(user.getEmail(), PASSWORD, "login-before-logout-without-cookie");
     String refreshTokenHash = secureTokenGeneratorPort.hashToken(session.refreshToken());
 
     // Act
@@ -115,7 +125,8 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
         .statusCode(204)
         .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()));
 
-    RefreshTokenEntity savedToken = refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
+    RefreshTokenEntity savedToken =
+        refreshTokenJpaRepository.findByTokenHash(refreshTokenHash).orElseThrow();
 
     assertThat(savedToken.getRevokedAt()).isNull();
     assertExpiredRefreshTokenCookie(response);
@@ -125,14 +136,18 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
   @DisplayName("Deve retornar 204 e expirar o cookie quando o refresh token for desconhecido")
   void shouldExpireCookieWithoutRevokingTokenWhenRefreshTokenCookieIsUnknown() {
     // Arrange
-    UserEntity user = userTestDataFactory.createActiveUser("logout-unknown-token.integration@example.com", PASSWORD);
-    AuthenticatedSession session = login(user.getEmail(), PASSWORD, "login-before-logout-unknown-token");
+    UserEntity user =
+        userTestDataFactory.createActiveUser(
+            "logout-unknown-token.integration@example.com", PASSWORD);
+    AuthenticatedSession session =
+        login(user.getEmail(), PASSWORD, "login-before-logout-unknown-token");
     String knownRefreshTokenHash = secureTokenGeneratorPort.hashToken(session.refreshToken());
     String unknownRefreshToken = "unknown-refresh-token";
     String unknownRefreshTokenHash = secureTokenGeneratorPort.hashToken(unknownRefreshToken);
 
     // Act
-    Response response = logout(session.accessToken(), unknownRefreshToken, "logout-unknown-refresh-cookie");
+    Response response =
+        logout(session.accessToken(), unknownRefreshToken, "logout-unknown-refresh-cookie");
 
     // Assert
     response
@@ -142,7 +157,8 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
         .statusCode(204)
         .header(HttpHeaders.SET_COOKIE, not(blankOrNullString()));
 
-    RefreshTokenEntity savedToken = refreshTokenJpaRepository.findByTokenHash(knownRefreshTokenHash).orElseThrow();
+    RefreshTokenEntity savedToken =
+        refreshTokenJpaRepository.findByTokenHash(knownRefreshTokenHash).orElseThrow();
 
     assertThat(refreshTokenJpaRepository.findByTokenHash(unknownRefreshTokenHash)).isEmpty();
     assertThat(refreshTokenJpaRepository.count()).isEqualTo(1);
@@ -175,10 +191,7 @@ class AuthLogoutIntegrationTest extends AbstractIntegrationTest {
     String setCookieHeader = response.header(HttpHeaders.SET_COOKIE);
     HttpCookie expiredCookie = HttpCookie.parse(setCookieHeader).getFirst();
     var cookieAttributes =
-        Arrays.stream(setCookieHeader.split(";"))
-            .skip(1)
-            .map(String::trim)
-            .toList();
+        Arrays.stream(setCookieHeader.split(";")).skip(1).map(String::trim).toList();
 
     assertThat(expiredCookie.getName()).isEqualTo("refreshToken");
     assertThat(expiredCookie.getValue()).isEmpty();

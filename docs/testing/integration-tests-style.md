@@ -28,7 +28,7 @@ application.
 - Create tests under `src/test/java` in the package of the primary entrypoint under test.
 - All integration tests must extend
   `src/test/java/com/app/url_shortener/config/AbstractIntegrationTest.java`.
-- Class names must end with `IntegrationTest`.
+- Class names must end with `IT`.
 - The inherited `@Tag("integration")` is the canonical integration-test tag. Do not duplicate it.
 - Do not declare containers or duplicate `@DynamicPropertySource` in concrete test classes.
 - Do not use `MockMvc`; use REST Assured for application HTTP requests.
@@ -94,7 +94,7 @@ Example:
 private final UserTestDataFactory userTestDataFactory;
 
 @Autowired
-TargetIntegrationTest(UserTestDataFactory userTestDataFactory) {
+TargetIT(UserTestDataFactory userTestDataFactory) {
   this.userTestDataFactory = userTestDataFactory;
 }
 
@@ -251,7 +251,7 @@ context caching.
 
 ## Naming and Organization
 
-- Name classes after the behavior or entrypoint, ending in `IntegrationTest`.
+- Name classes after the behavior or entrypoint, ending in `IT`.
 - In HTTP tests, include the expected HTTP status code in `@DisplayName`, for example:
   `@DisplayName("Deve retornar 201 ao cadastrar usuário")`. Infrastructure-flow tests without an
   HTTP response do not need a status code in the display name.
@@ -262,26 +262,27 @@ context caching.
 
 ## Maven Execution
 
-The current Maven configuration does not separate `*IntegrationTest` classes from Surefire by
-default. Because the name ends in `Test`, these classes are currently included in the `test` phase.
-The configured Failsafe plugin does not automatically select `*IntegrationTest`.
+The Maven build separates test categories by class-name convention:
 
-Use these commands with the current build:
+- unit and slice tests end with `Test` and run through Surefire in the `test` phase;
+- full integration tests end with `IT` and run through Failsafe in the `integration-test` and
+  `verify` phases.
+
+Use these commands:
 
 ```bash
+# Smallest relevant unit or slice test
+./mvnw -Dtest=TargetTest test
+
 # Smallest relevant integration test
-./mvnw -Dtest=TargetIntegrationTest test
+./mvnw -Dit.test=TargetIT verify
 
-# All tests tagged as integration
-./mvnw -Dgroups=integration test
-
-# Complete project validation under the current build configuration
+# Complete project validation
 ./mvnw clean verify
 ```
 
-Do not assume that `mvn verify` runs integration tests exclusively through Failsafe until the POM is
-explicitly configured to exclude `**/*IntegrationTest.java` from Surefire and include that pattern
-in Failsafe.
+Do not name full integration tests `*IntegrationTest`; that suffix matches Surefire's default
+`*Test` selection and bypasses the intended Failsafe lifecycle.
 
 ## Definition of Done
 

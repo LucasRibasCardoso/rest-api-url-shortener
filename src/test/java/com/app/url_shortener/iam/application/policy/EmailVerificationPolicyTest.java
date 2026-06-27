@@ -31,17 +31,33 @@ class EmailVerificationPolicyTest {
 
   private static java.util.stream.Stream<Arguments> invalidPolicies() {
     return java.util.stream.Stream.of(
-        Arguments.of(null, VALID_SENDING_TIMEOUT, VALID_RESEND_COOLDOWN, "codeTtl must not be null"),
+        Arguments.of(
+            null, VALID_SENDING_TIMEOUT, VALID_RESEND_COOLDOWN, "codeTtl must not be null"),
         Arguments.of(VALID_TTL, null, VALID_RESEND_COOLDOWN, "sendingTimeout must not be null"),
         Arguments.of(VALID_TTL, VALID_SENDING_TIMEOUT, null, "resendCooldown must not be null"),
-        Arguments.of(Duration.ZERO, VALID_SENDING_TIMEOUT, VALID_RESEND_COOLDOWN, "codeTtl must be positive"),
         Arguments.of(
-            Duration.ofSeconds(-1), VALID_SENDING_TIMEOUT, VALID_RESEND_COOLDOWN, "codeTtl must be positive"),
-        Arguments.of(VALID_TTL, Duration.ZERO, VALID_RESEND_COOLDOWN, "sendingTimeout must be positive"),
+            Duration.ZERO,
+            VALID_SENDING_TIMEOUT,
+            VALID_RESEND_COOLDOWN,
+            "codeTtl must be positive"),
         Arguments.of(
-            VALID_TTL, Duration.ofSeconds(-1), VALID_RESEND_COOLDOWN, "sendingTimeout must be positive"),
-        Arguments.of(VALID_TTL, VALID_SENDING_TIMEOUT, Duration.ZERO, "resendCooldown must be positive"),
+            Duration.ofSeconds(-1),
+            VALID_SENDING_TIMEOUT,
+            VALID_RESEND_COOLDOWN,
+            "codeTtl must be positive"),
         Arguments.of(
-            VALID_TTL, VALID_SENDING_TIMEOUT, Duration.ofSeconds(-1), "resendCooldown must be positive"));
+            VALID_TTL, Duration.ZERO, VALID_RESEND_COOLDOWN, "sendingTimeout must be positive"),
+        Arguments.of(
+            VALID_TTL,
+            Duration.ofSeconds(-1),
+            VALID_RESEND_COOLDOWN,
+            "sendingTimeout must be positive"),
+        Arguments.of(
+            VALID_TTL, VALID_SENDING_TIMEOUT, Duration.ZERO, "resendCooldown must be positive"),
+        Arguments.of(
+            VALID_TTL,
+            VALID_SENDING_TIMEOUT,
+            Duration.ofSeconds(-1),
+            "resendCooldown must be positive"));
   }
 }

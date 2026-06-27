@@ -1,5 +1,10 @@
 package com.app.url_shortener.shared.ratelimit.key;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -11,11 +16,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Resolvedor de IP do Cliente")
@@ -25,11 +25,9 @@ class ClientIpResolverTest {
   private static final String X_REAL_IP = "X-Real-IP";
   private static final String UNKNOWN_CLIENT_IP = "unknown-client-ip";
 
-  @Mock
-  private HttpServletRequest request;
+  @Mock private HttpServletRequest request;
 
-  @InjectMocks
-  private ClientIpResolver resolver;
+  @InjectMocks private ClientIpResolver resolver;
 
   @Nested
   @DisplayName("X-Forwarded-For")
@@ -54,7 +52,8 @@ class ClientIpResolverTest {
     @DisplayName("Deve retornar primeiro IPv6 válido do X-Forwarded-For")
     void shouldReturnFirstValidIpv6FromForwardedFor() {
       // 1. Arrange
-      given(request.getHeader(X_FORWARDED_FOR)).willReturn("example.com, 2001:db8::1, 203.0.113.10");
+      given(request.getHeader(X_FORWARDED_FOR))
+          .willReturn("example.com, 2001:db8::1, 203.0.113.10");
 
       // 2. Act
       var result = resolver.resolve(request);

@@ -215,9 +215,7 @@ class UrlTest {
               createdAt.plusSeconds(180));
 
       // 2. Act & 3. Assert
-      assertThat(firstUrl)
-          .isEqualTo(secondUrl)
-          .hasSameHashCodeAs(secondUrl);
+      assertThat(firstUrl).isEqualTo(secondUrl).hasSameHashCodeAs(secondUrl);
     }
 
     @Test
@@ -234,8 +232,18 @@ class UrlTest {
     }
   }
 
-  private static Url activeUrl(UUID userId, String shortCode, String originalUrl, Instant createdAt) {
+  private static Url activeUrl(
+      UUID userId, String shortCode, String originalUrl, Instant createdAt) {
     return Url.restore(
-        userId, shortCode, originalUrl, createdAt, UrlStatus.ACTIVE, null, null, createdAt, 0, null);
+        userId,
+        shortCode,
+        originalUrl,
+        createdAt,
+        UrlStatus.ACTIVE,
+        null,
+        null,
+        createdAt,
+        0,
+        null);
   }
 }

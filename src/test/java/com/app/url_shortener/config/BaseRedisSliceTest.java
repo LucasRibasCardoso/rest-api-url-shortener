@@ -17,5 +17,4 @@ public abstract class BaseRedisSliceTest {
   static void registerProperties(DynamicPropertyRegistry registry) {
     RedisContainerSupport.registerRedisProperties(registry);
   }
-
 }

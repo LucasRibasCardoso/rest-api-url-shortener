@@ -24,7 +24,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Detalhes de URL encurtada")
-class UrlDetailsIntegrationTest extends AbstractIntegrationTest {
+class UrlDetailsIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String PASSWORD = "secure-password";
@@ -33,8 +33,7 @@ class UrlDetailsIntegrationTest extends AbstractIntegrationTest {
   private final DynamoDbTable<UrlEntity> urlTable;
 
   @Autowired
-  UrlDetailsIntegrationTest(
-      UserTestDataFactory userTestDataFactory, DynamoDbTable<UrlEntity> urlTable) {
+  UrlDetailsIT(UserTestDataFactory userTestDataFactory, DynamoDbTable<UrlEntity> urlTable) {
     this.userTestDataFactory = userTestDataFactory;
     this.urlTable = urlTable;
   }

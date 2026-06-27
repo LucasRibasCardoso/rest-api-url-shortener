@@ -7,9 +7,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record EmailVerificationRequestedPayload(
-    UUID userId,
-    String email,
-    EmailDispatchReason reason) {
+    UUID userId, String email, EmailDispatchReason reason) {
 
   public EmailVerificationRequestedPayload {
     Objects.requireNonNull(userId, "userId must not be null");

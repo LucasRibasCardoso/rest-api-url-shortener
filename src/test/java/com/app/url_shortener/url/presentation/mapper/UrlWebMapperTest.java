@@ -1,14 +1,20 @@
 package com.app.url_shortener.url.presentation.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
-import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -16,13 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -50,8 +49,7 @@ class UrlWebMapperTest {
       assertAll(
           () -> assertThat(command.userId()).isEqualTo(userId),
           () -> assertThat(command.originalUrl()).isEqualTo("https://google.com"),
-          () -> assertThat(command.planType()).isEqualTo(planType)
-      );
+          () -> assertThat(command.planType()).isEqualTo(planType));
     }
 
     @Test
@@ -69,8 +67,7 @@ class UrlWebMapperTest {
       assertAll(
           () -> assertThat(command.requesterId()).isEqualTo(requesterId),
           () -> assertThat(command.shortCode()).isEqualTo("aB3dE"),
-          () -> assertThat(command.canReadAny()).isTrue()
-      );
+          () -> assertThat(command.canReadAny()).isTrue());
     }
 
     @Test
@@ -88,8 +85,7 @@ class UrlWebMapperTest {
       assertAll(
           () -> assertThat(command.requesterId()).isEqualTo(requesterId),
           () -> assertThat(command.shortCode()).isEqualTo("aB3dE"),
-          () -> assertThat(command.canDeleteAny()).isTrue()
-      );
+          () -> assertThat(command.canDeleteAny()).isTrue());
     }
 
     @Test
@@ -109,8 +105,7 @@ class UrlWebMapperTest {
           () -> assertThat(command.userId()).isEqualTo(userId),
           () -> assertThat(command.limit()).isEqualTo(limit),
           () -> assertThat(command.cursor()).isEqualTo("next-page-cursor"),
-          () -> assertThat(command.status()).isEqualTo(status)
-      );
+          () -> assertThat(command.status()).isEqualTo(status));
     }
 
     @Test
@@ -162,8 +157,7 @@ class UrlWebMapperTest {
           () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
           () -> assertThat(response.createdAt()).isEqualTo(createdAt),
-          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE)
-      );
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE));
     }
 
     @Test
@@ -174,17 +168,18 @@ class UrlWebMapperTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var updatedAt = Instant.parse("2026-05-11T10:00:00Z");
       var lastAccessedAt = Instant.parse("2026-05-11T09:00:00Z");
-      var result = new UrlDetailsResult(
-          "aB3dE",
-          "https://google.com",
-          userId,
-          UrlStatus.ACTIVE,
-          createdAt,
-          updatedAt,
-          null,
-          null,
-          42,
-          lastAccessedAt);
+      var result =
+          new UrlDetailsResult(
+              "aB3dE",
+              "https://google.com",
+              userId,
+              UrlStatus.ACTIVE,
+              createdAt,
+              updatedAt,
+              null,
+              null,
+              42,
+              lastAccessedAt);
 
       // 2. Act
       var response = mapper.toUrlDetailsResponse(result);
@@ -200,8 +195,7 @@ class UrlWebMapperTest {
           () -> assertThat(response.deletedAt()).isNull(),
           () -> assertThat(response.deletedBy()).isNull(),
           () -> assertThat(response.accessCount()).isEqualTo(42),
-          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt)
-      );
+          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt));
     }
 
     @Test
@@ -213,17 +207,18 @@ class UrlWebMapperTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
       var lastAccessedAt = Instant.parse("2026-05-11T09:00:00Z");
-      var result = new UrlDetailsResult(
-          "aB3dE",
-          "https://google.com",
-          userId,
-          UrlStatus.DELETED,
-          createdAt,
-          deletedAt,
-          deletedAt,
-          deletedBy,
-          10,
-          lastAccessedAt);
+      var result =
+          new UrlDetailsResult(
+              "aB3dE",
+              "https://google.com",
+              userId,
+              UrlStatus.DELETED,
+              createdAt,
+              deletedAt,
+              deletedAt,
+              deletedBy,
+              10,
+              lastAccessedAt);
 
       // 2. Act
       var response = mapper.toUrlDetailsResponse(result);
@@ -239,8 +234,7 @@ class UrlWebMapperTest {
           () -> assertThat(response.deletedAt()).isEqualTo(deletedAt),
           () -> assertThat(response.deletedBy()).isEqualTo(deletedBy),
           () -> assertThat(response.accessCount()).isEqualTo(10),
-          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt)
-      );
+          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt));
     }
 
     @Test
@@ -249,10 +243,14 @@ class UrlWebMapperTest {
       // 1. Arrange
       var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
       var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
-      var result = new UrlPageResult(List.of(
-          new UrlListItemResult("https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
-          new UrlListItemResult("https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)
-      ), "next-page-cursor");
+      var result =
+          new UrlPageResult(
+              List.of(
+                  new UrlListItemResult(
+                      "https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
+                  new UrlListItemResult(
+                      "https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)),
+              "next-page-cursor");
       var baseUrl = "https://sho.rt";
 
       // 2. Act
@@ -271,8 +269,7 @@ class UrlWebMapperTest {
           () -> assertThat(response.urls().get(1).shortCode()).isEqualTo("fG4hI"),
           () -> assertThat(response.urls().get(1).shortUrl()).isEqualTo("https://sho.rt/r/fG4hI"),
           () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt),
-          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED)
-      );
+          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED));
     }
   }
 

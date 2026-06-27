@@ -7,4 +7,3 @@ public interface ResendVerificationUseCase {
 
   ResendVerificationResult execute(ResendVerificationCommand command);
 }
-

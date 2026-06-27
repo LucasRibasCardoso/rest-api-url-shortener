@@ -22,7 +22,8 @@ public final class PostgresContainerSupport {
           .withEnv("POSTGRES_USER", USERNAME)
           .withEnv("POSTGRES_PASSWORD", PASSWORD)
           .withExposedPorts(5432)
-          .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 1));
+          .waitingFor(
+              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 1));
 
   static {
     POSTGRES_CONTAINER.start();
@@ -61,8 +62,6 @@ public final class PostgresContainerSupport {
   private static String jdbcUrl() {
     return String.format(
         "jdbc:postgresql://%s:%d/%s",
-        POSTGRES_CONTAINER.getHost(),
-        POSTGRES_CONTAINER.getMappedPort(5432),
-        DATABASE_NAME);
+        POSTGRES_CONTAINER.getHost(), POSTGRES_CONTAINER.getMappedPort(5432), DATABASE_NAME);
   }
 }

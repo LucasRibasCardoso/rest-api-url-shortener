@@ -18,11 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Scheduler Publisher Outbox")
 class OutboxPublisherSchedulerTest {
 
-  @Mock
-  private OutboxPublisherService outboxPublisherService;
+  @Mock private OutboxPublisherService outboxPublisherService;
 
-  @InjectMocks
-  private OutboxPublisherScheduler scheduler;
+  @InjectMocks private OutboxPublisherScheduler scheduler;
 
   @Nested
   @DisplayName("Publicação agendada")

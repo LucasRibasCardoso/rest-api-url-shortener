@@ -43,14 +43,11 @@ class OutboxEventPublisherAdapterTest {
 
   private static final String QUEUE_NAME = "email-verification-queue";
 
-  @Mock
-  private SqsTemplate sqsTemplate;
+  @Mock private SqsTemplate sqsTemplate;
 
-  @Mock
-  private OutboxEventQueueResolver queueResolver;
+  @Mock private OutboxEventQueueResolver queueResolver;
 
-  @Captor
-  private ArgumentCaptor<OutboxMessageEnvelope> envelopeCaptor;
+  @Captor private ArgumentCaptor<OutboxMessageEnvelope> envelopeCaptor;
 
   private OutboxEventPublisherAdapter adapter;
 
@@ -140,9 +137,7 @@ class OutboxEventPublisherAdapterTest {
       var event = event(validPayload());
       var exception = new IllegalStateException("SQS unavailable");
       given(queueResolver.resolve(event.getEventType())).willReturn(QUEUE_NAME);
-      doThrow(exception)
-          .when(sqsTemplate)
-          .send(eq(QUEUE_NAME), any(OutboxMessageEnvelope.class));
+      doThrow(exception).when(sqsTemplate).send(eq(QUEUE_NAME), any(OutboxMessageEnvelope.class));
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> adapter.publish(event));

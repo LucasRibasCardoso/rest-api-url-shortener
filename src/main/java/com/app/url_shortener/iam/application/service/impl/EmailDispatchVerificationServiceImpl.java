@@ -117,8 +117,7 @@ public class EmailDispatchVerificationServiceImpl implements EmailDispatchVerifi
   }
 
   private EmailDispatch createDispatchForEvent(
-      EmailVerificationRequestedEvent event,
-      EmailVerificationToken token) {
+      EmailVerificationRequestedEvent event, EmailVerificationToken token) {
     return transactionTemplate.execute(
         status -> {
           Instant now = Instant.now();

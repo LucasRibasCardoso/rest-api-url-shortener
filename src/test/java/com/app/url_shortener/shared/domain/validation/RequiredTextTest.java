@@ -50,8 +50,7 @@ class RequiredTextTest {
       // 1. Arrange
 
       // 2. Act
-      var throwableAssert =
-          assertThatThrownBy(() -> RequiredText.normalize(blankValue, "field"));
+      var throwableAssert = assertThatThrownBy(() -> RequiredText.normalize(blankValue, "field"));
 
       // 3. Assert
       throwableAssert

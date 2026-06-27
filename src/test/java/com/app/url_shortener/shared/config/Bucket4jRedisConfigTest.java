@@ -1,5 +1,9 @@
 package com.app.url_shortener.shared.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+
 import com.app.url_shortener.config.BaseRedisSliceTest;
 import com.app.url_shortener.shared.ratelimit.config.Bucket4jRedisConfig;
 import io.github.bucket4j.Bandwidth;
@@ -19,10 +23,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-
 @Tag("redis-slice")
 @Import(Bucket4jRedisConfig.class)
 @DisplayName("Slice Redis - Configuração Bucket4j")
@@ -31,14 +31,11 @@ class Bucket4jRedisConfigTest extends BaseRedisSliceTest {
   private static final String KEY_PREFIX = "bucket4j-config-test:";
   private static final String KEY_PATTERN = KEY_PREFIX + "*";
 
-  @Autowired
-  private Bucket4jRedisConfig.Bucket4jRedisConnection redisConnection;
+  @Autowired private Bucket4jRedisConfig.Bucket4jRedisConnection redisConnection;
 
-  @Autowired
-  private LettuceBasedProxyManager<String> proxyManager;
+  @Autowired private LettuceBasedProxyManager<String> proxyManager;
 
-  @Autowired
-  private StringRedisTemplate redisTemplate;
+  @Autowired private StringRedisTemplate redisTemplate;
 
   @BeforeEach
   void setUp() {
@@ -85,12 +82,18 @@ class Bucket4jRedisConfigTest extends BaseRedisSliceTest {
     void shouldRejectWrapperWithStandaloneAndClusterConnections() {
       // 1. Arrange
       @SuppressWarnings("unchecked")
-      var standaloneConnection = (StatefulRedisConnection<String, byte[]>) mock(StatefulRedisConnection.class);
+      var standaloneConnection =
+          (StatefulRedisConnection<String, byte[]>) mock(StatefulRedisConnection.class);
       @SuppressWarnings("unchecked")
-      var clusterConnection = (StatefulRedisClusterConnection<String, byte[]>) mock(StatefulRedisClusterConnection.class);
+      var clusterConnection =
+          (StatefulRedisClusterConnection<String, byte[]>)
+              mock(StatefulRedisClusterConnection.class);
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> new Bucket4jRedisConfig.Bucket4jRedisConnection(standaloneConnection, clusterConnection))
+      assertThatThrownBy(
+              () ->
+                  new Bucket4jRedisConfig.Bucket4jRedisConnection(
+                      standaloneConnection, clusterConnection))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessage("Only one Bucket4j Redis connection can be used");
     }
@@ -134,10 +137,7 @@ class Bucket4jRedisConfigTest extends BaseRedisSliceTest {
 
   private BucketConfiguration bucketConfiguration() {
     return BucketConfiguration.builder()
-            .addLimit(Bandwidth.builder()
-                    .capacity(2)
-                    .refillGreedy(2, Duration.ofMinutes(1))
-                    .build())
-            .build();
+        .addLimit(Bandwidth.builder().capacity(2).refillGreedy(2, Duration.ofMinutes(1)).build())
+        .build();
   }
 }

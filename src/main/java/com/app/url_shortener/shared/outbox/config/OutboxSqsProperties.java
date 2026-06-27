@@ -8,5 +8,4 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties(prefix = "app.outbox.sqs")
-public record OutboxSqsProperties(
-    @NotEmpty Map<@NotBlank String, @NotBlank String> queues) {}
+public record OutboxSqsProperties(@NotEmpty Map<@NotBlank String, @NotBlank String> queues) {}

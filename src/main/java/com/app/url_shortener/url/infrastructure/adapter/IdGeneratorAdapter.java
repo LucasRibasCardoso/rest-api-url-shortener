@@ -12,7 +12,8 @@ public class IdGeneratorAdapter implements IdGeneratorPort {
   private final long blockSize;
   private IdBlock currentIdBlock;
 
-  public IdGeneratorAdapter(IdBlockAllocatorPort idBlockAllocatorPort, IdGeneratorProperties properties) {
+  public IdGeneratorAdapter(
+      IdBlockAllocatorPort idBlockAllocatorPort, IdGeneratorProperties properties) {
     this.idBlockAllocatorPort = idBlockAllocatorPort;
     this.blockSize = properties.blockSize();
     this.currentIdBlock = IdBlock.requiringAllocation(blockSize);

@@ -21,7 +21,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
     },
     indexes = {
       @Index(name = "idx_email_dispatches_user_id", columnList = "user_id"),
-      @Index(name = "idx_email_dispatches_verification_token_id", columnList = "verification_token_id"),
+      @Index(
+          name = "idx_email_dispatches_verification_token_id",
+          columnList = "verification_token_id"),
       @Index(name = "idx_email_dispatches_status", columnList = "status"),
       @Index(name = "idx_email_dispatches_user_email", columnList = "user_id, email"),
       @Index(

@@ -1,9 +1,18 @@
 package com.app.url_shortener.security.principal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -14,29 +23,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - CustomUserDetailsService")
 class CustomUserDetailsServiceTest {
 
-  @Mock
-  private UserJpaRepository userRepository;
+  @Mock private UserJpaRepository userRepository;
 
-  @Mock
-  private UserPrincipalFactory userPrincipalFactory;
+  @Mock private UserPrincipalFactory userPrincipalFactory;
 
-  @InjectMocks
-  private CustomUserDetailsService service;
+  @InjectMocks private CustomUserDetailsService service;
 
   @Nested
   @DisplayName("Carregamento por Email")
@@ -51,7 +47,8 @@ class CustomUserDetailsServiceTest {
       var user = userEntity(normalizedEmail);
       var principal = userPrincipal(user);
 
-      given(userRepository.findByEmailWithRolesAndPermissions(normalizedEmail)).willReturn(Optional.of(user));
+      given(userRepository.findByEmailWithRolesAndPermissions(normalizedEmail))
+          .willReturn(Optional.of(user));
       given(userPrincipalFactory.from(user)).willReturn(principal);
 
       // 2. Act
@@ -77,9 +74,7 @@ class CustomUserDetailsServiceTest {
       var throwableAssert = assertThatThrownBy(() -> service.loadUserByUsername(email));
 
       // 3. Assert
-      throwableAssert
-              .isInstanceOf(UsernameNotFoundException.class)
-              .hasMessage("User not found");
+      throwableAssert.isInstanceOf(UsernameNotFoundException.class).hasMessage("User not found");
 
       verify(userRepository).findByEmailWithRolesAndPermissions(email);
       verifyNoInteractions(userPrincipalFactory);
@@ -98,9 +93,7 @@ class CustomUserDetailsServiceTest {
       var throwableAssert = assertThatThrownBy(() -> service.loadUserByUsername(email));
 
       // 3. Assert
-      throwableAssert
-              .isInstanceOf(UsernameNotFoundException.class)
-              .hasMessage("User not found");
+      throwableAssert.isInstanceOf(UsernameNotFoundException.class).hasMessage("User not found");
 
       verify(userRepository).findByEmailWithRolesAndPermissions(null);
       verifyNoInteractions(userPrincipalFactory);
@@ -110,28 +103,26 @@ class CustomUserDetailsServiceTest {
 
   private static UserEntity userEntity(String email) {
     return new UserEntity(
-            UUID.randomUUID(),
-            "John Doe",
-            email,
-            "password-hash",
-            UserStatus.ACTIVE,
-            PlanType.FREE,
-            true,
-            null,
-            null,
-            Set.of()
-    );
+        UUID.randomUUID(),
+        "John Doe",
+        email,
+        "password-hash",
+        UserStatus.ACTIVE,
+        PlanType.FREE,
+        true,
+        null,
+        null,
+        Set.of());
   }
 
   private static UserPrincipal userPrincipal(UserEntity user) {
     return new UserPrincipal(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            user.getPasswordHash(),
-            user.getPlan(),
-            user.getStatus(),
-            List.of()
-    );
+        user.getId(),
+        user.getName(),
+        user.getEmail(),
+        user.getPasswordHash(),
+        user.getPlan(),
+        user.getStatus(),
+        List.of());
   }
 }

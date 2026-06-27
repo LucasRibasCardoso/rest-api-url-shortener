@@ -147,10 +147,12 @@ class VerificationCodeProtectorAdapterTest {
     void shouldTranslateEncryptionFailure() {
       // 1. Arrange
       var adapter = adapter();
-      given(textEncryptor.encrypt("123456")).willThrow(new IllegalStateException("encrypt failure"));
+      given(textEncryptor.encrypt("123456"))
+          .willThrow(new IllegalStateException("encrypt failure"));
 
       // 2. Act
-      var throwableAssert = assertThatThrownBy(() -> adapter.encrypt(VerificationCode.of("123456")));
+      var throwableAssert =
+          assertThatThrownBy(() -> adapter.encrypt(VerificationCode.of("123456")));
 
       // 3. Assert
       throwableAssert
@@ -205,7 +207,8 @@ class VerificationCodeProtectorAdapterTest {
     void shouldTranslateDecryptionFailure() {
       // 1. Arrange
       var adapter = adapter();
-      given(textEncryptor.decrypt("encrypted-code")).willThrow(new IllegalStateException("decrypt failure"));
+      given(textEncryptor.decrypt("encrypted-code"))
+          .willThrow(new IllegalStateException("decrypt failure"));
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> adapter.decrypt("encrypted-code"));
@@ -222,7 +225,8 @@ class VerificationCodeProtectorAdapterTest {
   }
 
   private VerificationCodeProtectorAdapter adapter() {
-    return new VerificationCodeProtectorAdapter(new SecretKeySpec(HMAC_SECRET, HMAC_ALGORITHM), textEncryptor);
+    return new VerificationCodeProtectorAdapter(
+        new SecretKeySpec(HMAC_SECRET, HMAC_ALGORITHM), textEncryptor);
   }
 
   private String expectedHash(VerificationCode code) throws Exception {

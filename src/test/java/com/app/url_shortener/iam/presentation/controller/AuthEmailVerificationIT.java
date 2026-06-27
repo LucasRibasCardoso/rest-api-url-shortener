@@ -33,10 +33,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @DisplayName("Testes de Integração - Endpoint de verificação de e-mail")
-class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
+class AuthEmailVerificationIT extends AbstractIntegrationTest {
 
   private static final String VERIFY_EMAIL_ENDPOINT = "/api/v1/auth/verify-email";
-  private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String SUCCESS_MESSAGE =
+      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
   private static final String VALID_CODE = "123456";
   private static final String INVALID_CODE = "654321";
   private static final String PASSWORD = "secure-password";
@@ -49,7 +50,7 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
   private final JdbcTemplate jdbcTemplate;
 
   @Autowired
-  AuthEmailVerificationIntegrationTest(
+  AuthEmailVerificationIT(
       UserTestDataFactory userTestDataFactory,
       VerificationCodeProtectorPort verificationCodeProtectorPort,
       EmailVerificationTokenRepositoryPort emailVerificationTokenRepositoryPort,
@@ -224,7 +225,8 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .body("errorCode", is(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
 
     UserEntity savedUser = userJpaRepository.findByEmailWithRoles(email).orElseThrow();
-    EmailVerificationTokenEntity savedToken = emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
+    EmailVerificationTokenEntity savedToken =
+        emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
 
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.PENDING_EMAIL_VERIFICATION);
     assertThat(savedUser.isEmailVerified()).isFalse();
@@ -277,7 +279,9 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
 
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
     assertThat(savedUser.isEmailVerified()).isTrue();
-    assertThat(savedUser.getRoles()).singleElement().satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
+    assertThat(savedUser.getRoles())
+        .singleElement()
+        .satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
     assertThat(savedToken.getConsumedAt()).isNotNull();
     assertThat(savedToken.getRevokedAt()).isNull();
     assertThat(savedToken.getFailedAttempts()).isZero();
@@ -311,7 +315,9 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
     EmailVerificationTokenEntity savedToken =
         emailVerificationTokenJpaRepository.findById(token.getId()).orElseThrow();
 
-    assertThat(results).extracting(VerificationHttpResult::statusCode).containsExactlyInAnyOrder(200, 400);
+    assertThat(results)
+        .extracting(VerificationHttpResult::statusCode)
+        .containsExactlyInAnyOrder(200, 400);
     assertThat(results)
         .filteredOn(result -> result.statusCode() == 400)
         .singleElement()
@@ -319,7 +325,9 @@ class AuthEmailVerificationIntegrationTest extends AbstractIntegrationTest {
         .isEqualTo(IamErrorCode.AUTH_INVALID_OR_EXPIRED_VERIFICATION_CODE.getCode());
     assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
     assertThat(savedUser.isEmailVerified()).isTrue();
-    assertThat(savedUser.getRoles()).singleElement().satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
+    assertThat(savedUser.getRoles())
+        .singleElement()
+        .satisfies(role -> assertThat(role.getName()).isEqualTo("USER"));
     assertThat(savedToken.getConsumedAt()).isNotNull();
     assertThat(savedToken.getRevokedAt()).isNull();
     assertThat(savedToken.getFailedAttempts()).isZero();

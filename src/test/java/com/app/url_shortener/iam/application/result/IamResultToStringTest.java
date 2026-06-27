@@ -68,9 +68,7 @@ class IamResultToStringTest {
       var text = issuedAccessToken.toString();
 
       // 3. Assert
-      assertThat(text)
-          .doesNotContain(accessToken)
-          .contains("[REDACTED]");
+      assertThat(text).doesNotContain(accessToken).contains("[REDACTED]");
     }
   }
 }

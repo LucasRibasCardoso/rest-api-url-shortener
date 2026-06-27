@@ -22,7 +22,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class UrlSafetyValidator {
 
-  private static final Set<String> INTERNAL_DOMAIN_SUFFIXES = Set.of(".local", ".internal", ".lan", ".home", ".corp");
+  private static final Set<String> INTERNAL_DOMAIN_SUFFIXES =
+      Set.of(".local", ".internal", ".lan", ".home", ".corp");
 
   public void validate(String originalUrl) {
     URI uri = parseUri(originalUrl);
@@ -113,7 +114,8 @@ public class UrlSafetyValidator {
   }
 
   private boolean hasPunycodeLabel(String host) {
-    // Detecta labels punycode apenas no início de labels, por exemplo xn--example ou www.xn--example.
+    // Detecta labels punycode apenas no início de labels, por exemplo xn--example ou
+    // www.xn--example.
     for (String label : host.split("\\.")) {
       if (label.startsWith("xn--")) {
         return true;

@@ -1,18 +1,17 @@
 package com.app.url_shortener.url.infrastructure.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.url.domain.model.Url;
 import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Mapper de URL")
@@ -65,7 +64,8 @@ class UrlMapperTest {
       assertThat(result.getAccessCount()).isEqualTo(42);
       assertThat(result.getLastAccessedAt()).isEqualTo(lastAccessedAt);
       assertThat(result.getCreatedAtShortCodeGsi()).isEqualTo("2026-05-07T10:15:30Z#aB3dE");
-      assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("ACTIVE#2026-05-07T10:15:30Z#aB3dE");
+      assertThat(result.getStatusCreatedAtShortCodeGsi())
+          .isEqualTo("ACTIVE#2026-05-07T10:15:30Z#aB3dE");
       assertThat(result.getActiveRankingUserIdGsi()).isEqualTo(USER_ID.toString());
     }
 
@@ -94,7 +94,8 @@ class UrlMapperTest {
 
       // 3. Assert
       assertThat(result.getActiveRankingUserIdGsi()).isNull();
-      assertThat(result.getStatusCreatedAtShortCodeGsi()).isEqualTo("DELETED#2026-05-07T10:15:30Z#aB3dE");
+      assertThat(result.getStatusCreatedAtShortCodeGsi())
+          .isEqualTo("DELETED#2026-05-07T10:15:30Z#aB3dE");
     }
 
     @Test

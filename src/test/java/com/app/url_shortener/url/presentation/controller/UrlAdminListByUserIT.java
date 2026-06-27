@@ -27,7 +27,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Listagem administrativa de URLs por usuário")
-class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
+class UrlAdminListByUserIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String PASSWORD = "secure-password";
@@ -37,7 +37,7 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
   private final ApplicationProperties applicationProperties;
 
   @Autowired
-  UrlAdminListByUserIntegrationTest(
+  UrlAdminListByUserIT(
       UserTestDataFactory userTestDataFactory,
       DynamoDbTable<UrlEntity> urlTable,
       ApplicationProperties applicationProperties) {
@@ -61,11 +61,20 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession adminSession = login(adminEmail, PASSWORD, "login-admin-list-admin-url");
 
     CreatedUrl ownerFirst =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-owner-1", "create-admin-list-owner-1");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-owner-1",
+            "create-admin-list-owner-1");
     CreatedUrl ownerSecond =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-owner-2", "create-admin-list-owner-2");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-owner-2",
+            "create-admin-list-owner-2");
     CreatedUrl otherUrl =
-        createUrl(otherSession.accessToken(), "https://example.com/admin-list-other", "create-admin-list-other");
+        createUrl(
+            otherSession.accessToken(),
+            "https://example.com/admin-list-other",
+            "create-admin-list-other");
 
     // Act
     Response response = requestAdminList(adminSession.accessToken(), owner.getId());
@@ -83,13 +92,13 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     List<String> statuses = response.jsonPath().getList("urls.status", String.class);
     List<String> shortUrls = response.jsonPath().getList("urls.shortUrl", String.class);
 
-    assertThat(shortCodes).containsExactlyInAnyOrder(ownerFirst.shortCode(), ownerSecond.shortCode());
+    assertThat(shortCodes)
+        .containsExactlyInAnyOrder(ownerFirst.shortCode(), ownerSecond.shortCode());
     assertThat(shortCodes).doesNotContain(otherUrl.shortCode());
     assertThat(statuses).containsOnly(UrlStatus.ACTIVE.name());
     assertThat(shortUrls)
         .containsExactlyInAnyOrder(
-            shortUrl(ownerFirst.shortCode()),
-            shortUrl(ownerSecond.shortCode()));
+            shortUrl(ownerFirst.shortCode()), shortUrl(ownerSecond.shortCode()));
     assertThat(findByShortCode(ownerFirst.shortCode()).getUserId()).isEqualTo(owner.getId());
   }
 
@@ -101,7 +110,8 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     String adminEmail = "admin-list-empty-admin-url.integration@example.com";
     UserEntity owner = userTestDataFactory.createActiveUser(ownerEmail, PASSWORD);
     userTestDataFactory.createAdminUser(adminEmail, PASSWORD);
-    AuthenticatedSession adminSession = login(adminEmail, PASSWORD, "login-admin-list-empty-admin-url");
+    AuthenticatedSession adminSession =
+        login(adminEmail, PASSWORD, "login-admin-list-empty-admin-url");
 
     // Act
     Response response = requestAdminList(adminSession.accessToken(), owner.getId());
@@ -152,17 +162,26 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     String adminEmail = "admin-list-deleted-admin-url.integration@example.com";
     UserEntity owner = userTestDataFactory.createActiveUser(ownerEmail, PASSWORD);
     userTestDataFactory.createAdminUser(adminEmail, PASSWORD);
-    AuthenticatedSession ownerSession = login(ownerEmail, PASSWORD, "login-admin-list-deleted-owner-url");
-    AuthenticatedSession adminSession = login(adminEmail, PASSWORD, "login-admin-list-deleted-admin-url");
+    AuthenticatedSession ownerSession =
+        login(ownerEmail, PASSWORD, "login-admin-list-deleted-owner-url");
+    AuthenticatedSession adminSession =
+        login(adminEmail, PASSWORD, "login-admin-list-deleted-admin-url");
 
     CreatedUrl activeUrl =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-active", "create-admin-list-active");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-active",
+            "create-admin-list-active");
     CreatedUrl deletedUrl =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-deleted", "create-admin-list-deleted");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-deleted",
+            "create-admin-list-deleted");
     deleteUrl(ownerSession.accessToken(), deletedUrl.shortCode());
 
     // Act
-    Response response = requestAdminList(adminSession.accessToken(), owner.getId(), null, "DELETED", null);
+    Response response =
+        requestAdminList(adminSession.accessToken(), owner.getId(), null, "DELETED", null);
 
     // Assert
     response.then().log().ifValidationFails().statusCode(200).contentType(ContentType.JSON);
@@ -184,17 +203,26 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     String adminEmail = "admin-list-all-admin-url.integration@example.com";
     UserEntity owner = userTestDataFactory.createActiveUser(ownerEmail, PASSWORD);
     userTestDataFactory.createAdminUser(adminEmail, PASSWORD);
-    AuthenticatedSession ownerSession = login(ownerEmail, PASSWORD, "login-admin-list-all-owner-url");
-    AuthenticatedSession adminSession = login(adminEmail, PASSWORD, "login-admin-list-all-admin-url");
+    AuthenticatedSession ownerSession =
+        login(ownerEmail, PASSWORD, "login-admin-list-all-owner-url");
+    AuthenticatedSession adminSession =
+        login(adminEmail, PASSWORD, "login-admin-list-all-admin-url");
 
     CreatedUrl activeUrl =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-all-active", "create-admin-list-all-active");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-all-active",
+            "create-admin-list-all-active");
     CreatedUrl deletedUrl =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-all-deleted", "create-admin-list-all-deleted");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-all-deleted",
+            "create-admin-list-all-deleted");
     deleteUrl(ownerSession.accessToken(), deletedUrl.shortCode());
 
     // Act
-    Response response = requestAdminList(adminSession.accessToken(), owner.getId(), null, "ALL", null);
+    Response response =
+        requestAdminList(adminSession.accessToken(), owner.getId(), null, "ALL", null);
 
     // Assert
     response.then().log().ifValidationFails().statusCode(200).contentType(ContentType.JSON);
@@ -220,11 +248,20 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
         login(adminEmail, PASSWORD, "login-admin-list-pagination-admin-url");
 
     CreatedUrl first =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-page-1", "create-admin-list-page-1");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-page-1",
+            "create-admin-list-page-1");
     CreatedUrl second =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-page-2", "create-admin-list-page-2");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-page-2",
+            "create-admin-list-page-2");
     CreatedUrl third =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-page-3", "create-admin-list-page-3");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-page-3",
+            "create-admin-list-page-3");
 
     Response firstPage =
         requestAdminList(adminSession.accessToken(), owner.getId(), 2, "ACTIVE", null)
@@ -239,7 +276,8 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     String nextCursor = firstPage.path("nextCursor");
 
     // Act
-    Response secondPage = requestAdminList(adminSession.accessToken(), owner.getId(), 2, "ACTIVE", nextCursor);
+    Response secondPage =
+        requestAdminList(adminSession.accessToken(), owner.getId(), 2, "ACTIVE", nextCursor);
 
     // Assert
     secondPage
@@ -251,7 +289,8 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
         .body("nextCursor", is((String) null));
 
     List<String> firstPageShortCodes = firstPage.jsonPath().getList("urls.shortCode", String.class);
-    List<String> secondPageShortCodes = secondPage.jsonPath().getList("urls.shortCode", String.class);
+    List<String> secondPageShortCodes =
+        secondPage.jsonPath().getList("urls.shortCode", String.class);
     var allReturnedShortCodes = new HashSet<String>();
     allReturnedShortCodes.addAll(firstPageShortCodes);
     allReturnedShortCodes.addAll(secondPageShortCodes);
@@ -270,15 +309,26 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     String adminEmail = "admin-list-order-admin-url.integration@example.com";
     UserEntity owner = userTestDataFactory.createActiveUser(ownerEmail, PASSWORD);
     userTestDataFactory.createAdminUser(adminEmail, PASSWORD);
-    AuthenticatedSession ownerSession = login(ownerEmail, PASSWORD, "login-admin-list-order-owner-url");
-    AuthenticatedSession adminSession = login(adminEmail, PASSWORD, "login-admin-list-order-admin-url");
+    AuthenticatedSession ownerSession =
+        login(ownerEmail, PASSWORD, "login-admin-list-order-owner-url");
+    AuthenticatedSession adminSession =
+        login(adminEmail, PASSWORD, "login-admin-list-order-admin-url");
 
     CreatedUrl first =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-order-1", "create-admin-list-order-1");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-order-1",
+            "create-admin-list-order-1");
     CreatedUrl second =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-order-2", "create-admin-list-order-2");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-order-2",
+            "create-admin-list-order-2");
     CreatedUrl third =
-        createUrl(ownerSession.accessToken(), "https://example.com/admin-list-order-3", "create-admin-list-order-3");
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/admin-list-order-3",
+            "create-admin-list-order-3");
 
     // Act
     Response response = requestAdminList(adminSession.accessToken(), owner.getId());
@@ -287,7 +337,8 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     response.then().log().ifValidationFails().statusCode(200).contentType(ContentType.JSON);
 
     List<String> shortCodes = response.jsonPath().getList("urls.shortCode", String.class);
-    assertThat(shortCodes).containsExactly(third.shortCode(), second.shortCode(), first.shortCode());
+    assertThat(shortCodes)
+        .containsExactly(third.shortCode(), second.shortCode(), first.shortCode());
   }
 
   @Test
@@ -295,13 +346,16 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
   void shouldReturnBadRequestWhenCursorIsInvalid() {
     // Arrange
     String adminEmail = "admin-list-invalid-cursor-admin-url.integration@example.com";
-    UserEntity owner = userTestDataFactory.createActiveUser("admin-list-invalid-cursor-owner-url.integration@example.com", PASSWORD);
+    UserEntity owner =
+        userTestDataFactory.createActiveUser(
+            "admin-list-invalid-cursor-owner-url.integration@example.com", PASSWORD);
     userTestDataFactory.createAdminUser(adminEmail, PASSWORD);
     AuthenticatedSession adminSession =
         login(adminEmail, PASSWORD, "login-admin-list-invalid-cursor-admin-url");
 
     // Act
-    Response response = requestAdminList(adminSession.accessToken(), owner.getId(), null, "ACTIVE", "invalid");
+    Response response =
+        requestAdminList(adminSession.accessToken(), owner.getId(), null, "ACTIVE", "invalid");
 
     // Assert
     response
@@ -370,7 +424,8 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
     // Arrange
     String requesterEmail = "admin-list-forbidden-requester-url.integration@example.com";
     UserEntity targetUser =
-        userTestDataFactory.createActiveUser("admin-list-forbidden-target-url.integration@example.com", PASSWORD);
+        userTestDataFactory.createActiveUser(
+            "admin-list-forbidden-target-url.integration@example.com", PASSWORD);
     userTestDataFactory.createActiveUser(requesterEmail, PASSWORD);
     AuthenticatedSession requesterSession =
         login(requesterEmail, PASSWORD, "login-admin-list-forbidden-requester-url");
@@ -409,9 +464,7 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
             .response();
 
     return new CreatedUrl(
-        response.path("shortCode"),
-        response.path("originalUrl"),
-        response.path("createdAt"));
+        response.path("shortCode"), response.path("originalUrl"), response.path("createdAt"));
   }
 
   private void deleteUrl(String accessToken, String shortCode) {
@@ -430,11 +483,7 @@ class UrlAdminListByUserIntegrationTest extends AbstractIntegrationTest {
   }
 
   private Response requestAdminList(
-      String accessToken,
-      UUID userId,
-      Integer limit,
-      String status,
-      String cursor) {
+      String accessToken, UUID userId, Integer limit, String status, String cursor) {
     var request = given().header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
 
     if (limit != null) {

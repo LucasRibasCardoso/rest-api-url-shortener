@@ -6,12 +6,11 @@ import com.app.url_shortener.iam.domain.model.Permission;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
 import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.PermissionPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.mapper.RolePersistenceMapper;
 import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.UUID;
-
-import com.app.url_shortener.iam.infrastructure.mapper.PermissionPersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.mapper.RolePersistenceMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -34,11 +33,8 @@ class RolePersistenceMapperTest {
       // 1. Arrange
       var roleId = UUID.randomUUID();
       var permissionId = UUID.randomUUID();
-      var permissionEntity = new PermissionEntity(
-              permissionId,
-              "url:create",
-              "Criar URLs encurtadas"
-      );
+      var permissionEntity =
+          new PermissionEntity(permissionId, "url:create", "Criar URLs encurtadas");
       var entity = new RoleEntity(roleId, "ADMIN", true, Set.of(permissionEntity));
 
       // 2. Act
@@ -50,8 +46,9 @@ class RolePersistenceMapperTest {
       assertThat(domain.getName()).isEqualTo("ADMIN");
       assertThat(domain.isDefault()).isTrue();
       assertThat(domain.getPermissions())
-              .singleElement()
-              .satisfies(permission -> {
+          .singleElement()
+          .satisfies(
+              permission -> {
                 assertThat(permission.getId()).isEqualTo(permissionId);
                 assertThat(permission.getName()).isEqualTo("url:create");
                 assertThat(permission.getDescription()).isEqualTo("Criar URLs encurtadas");
@@ -63,11 +60,8 @@ class RolePersistenceMapperTest {
     void shouldMapRoleEntityToDomainWithoutPermissions() {
       // 1. Arrange
       var roleId = UUID.randomUUID();
-      var permissionEntity = new PermissionEntity(
-              UUID.randomUUID(),
-              "url:create",
-              "Criar URLs encurtadas"
-      );
+      var permissionEntity =
+          new PermissionEntity(UUID.randomUUID(), "url:create", "Criar URLs encurtadas");
       var entity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
 
       // 2. Act
@@ -105,11 +99,7 @@ class RolePersistenceMapperTest {
       // 1. Arrange
       var roleId = UUID.randomUUID();
       var permissionId = UUID.randomUUID();
-      var permission = Permission.restore(
-              permissionId,
-              "url:read",
-              "Consultar URLs encurtadas"
-      );
+      var permission = Permission.restore(permissionId, "url:read", "Consultar URLs encurtadas");
       var domain = Role.restore(roleId, "USER", false, Set.of(permission));
 
       // 2. Act
@@ -123,11 +113,13 @@ class RolePersistenceMapperTest {
       assertThat(entity.getCreatedAt()).isNull();
       assertThat(entity.getUpdatedAt()).isNull();
       assertThat(entity.getPermissions())
-              .singleElement()
-              .satisfies(permissionEntity -> {
+          .singleElement()
+          .satisfies(
+              permissionEntity -> {
                 assertThat(permissionEntity.getId()).isEqualTo(permissionId);
                 assertThat(permissionEntity.getName()).isEqualTo("url:read");
-                assertThat(permissionEntity.getDescription()).isEqualTo("Consultar URLs encurtadas");
+                assertThat(permissionEntity.getDescription())
+                    .isEqualTo("Consultar URLs encurtadas");
               });
     }
 
@@ -161,7 +153,7 @@ class RolePersistenceMapperTest {
   }
 
   private static void setFields(Object target, String fieldName, Object value)
-          throws NoSuchFieldException, IllegalAccessException {
+      throws NoSuchFieldException, IllegalAccessException {
     Class<?> currentType = target.getClass();
     boolean found = false;
     while (currentType != null) {

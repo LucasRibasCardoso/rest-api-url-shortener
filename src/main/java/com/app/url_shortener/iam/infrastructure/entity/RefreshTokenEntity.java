@@ -1,12 +1,11 @@
 package com.app.url_shortener.iam.infrastructure.entity;
 
 import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.Getter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Getter
 @Entity
@@ -39,17 +38,16 @@ public class RefreshTokenEntity {
   @JoinColumn(name = "replaced_by_token_id")
   private RefreshTokenEntity replacedByToken;
 
-  public RefreshTokenEntity() {
-  }
+  public RefreshTokenEntity() {}
 
   public RefreshTokenEntity(
-          UUID id,
-          UserEntity user,
-          String tokenHash,
-          Instant createdAt,
-          Instant expiresAt,
-          Instant revokedAt,
-          RefreshTokenEntity replacedByToken) {
+      UUID id,
+      UserEntity user,
+      String tokenHash,
+      Instant createdAt,
+      Instant expiresAt,
+      Instant revokedAt,
+      RefreshTokenEntity replacedByToken) {
     this.id = id;
     this.user = user;
     this.tokenHash = tokenHash;

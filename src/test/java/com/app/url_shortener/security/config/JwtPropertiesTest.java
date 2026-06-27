@@ -48,9 +48,7 @@ class JwtPropertiesTest {
       var text = properties.toString();
 
       // 3. Assert
-      assertThat(text)
-          .doesNotContain(secret)
-          .contains("[REDACTED]");
+      assertThat(text).doesNotContain(secret).contains("[REDACTED]");
     }
   }
 }

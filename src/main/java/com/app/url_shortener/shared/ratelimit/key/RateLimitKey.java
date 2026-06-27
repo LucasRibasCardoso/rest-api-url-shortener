@@ -18,11 +18,13 @@ public final class RateLimitKey {
   }
 
   // Format: {policy}:ip:{clientIp}:email:{emailHash}
-  public static RateLimitKey createForIpAndEmail(RateLimitPolicy policy, String clientIp, String emailHash) {
+  public static RateLimitKey createForIpAndEmail(
+      RateLimitPolicy policy, String clientIp, String emailHash) {
     Objects.requireNonNull(policy, "policy must not be null");
     requireNotBlank(clientIp, "clientIp");
     requireNotBlank(emailHash, "emailHash");
-    return new RateLimitKey(String.format("%s:ip:%s:email:%s", policy.getConfigKey(), clientIp, emailHash));
+    return new RateLimitKey(
+        String.format("%s:ip:%s:email:%s", policy.getConfigKey(), clientIp, emailHash));
   }
 
   // Format: {configKey}:email:{emailHash}

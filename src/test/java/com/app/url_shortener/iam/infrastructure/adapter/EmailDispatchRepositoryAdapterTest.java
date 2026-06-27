@@ -64,7 +64,8 @@ class EmailDispatchRepositoryAdapterTest {
       verify(mapper).toEntity(dispatch);
       verify(emailDispatchJpaRepository).saveAndFlush(entity);
       verify(mapper).toDomain(savedEntity);
-      verifyNoMoreInteractions(mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
+      verifyNoMoreInteractions(
+          mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
     }
 
     @Test
@@ -91,7 +92,8 @@ class EmailDispatchRepositoryAdapterTest {
       verify(emailDispatchJpaRepository).saveAndFlush(entity);
       verify(dataIntegrityExceptionTranslator).translate(dataIntegrityViolation);
       verify(mapper, never()).toDomain(org.mockito.ArgumentMatchers.any());
-      verifyNoMoreInteractions(mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
+      verifyNoMoreInteractions(
+          mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
     }
   }
 
@@ -118,7 +120,8 @@ class EmailDispatchRepositoryAdapterTest {
 
       verify(emailDispatchJpaRepository).findByEventId(eventId);
       verify(mapper).toDomain(entity);
-      verifyNoMoreInteractions(mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
+      verifyNoMoreInteractions(
+          mapper, emailDispatchJpaRepository, dataIntegrityExceptionTranslator);
     }
   }
 }

@@ -16,7 +16,8 @@ public class AccessTokenIssuerAdapter implements AccessTokenIssuerPort {
 
   @Override
   public IssuedAccessToken issue(AuthenticatedUserResult user) {
-    JwtAccessTokenSubject tokenProperties = new JwtAccessTokenSubject(user.id(), user.plan(), user.authorities());
+    JwtAccessTokenSubject tokenProperties =
+        new JwtAccessTokenSubject(user.id(), user.plan(), user.authorities());
     String accessToken = jwtTokenService.generateAccessToken(tokenProperties);
     long expiresInSeconds = jwtTokenService.getExpiresInSeconds();
     return new IssuedAccessToken(accessToken, expiresInSeconds);

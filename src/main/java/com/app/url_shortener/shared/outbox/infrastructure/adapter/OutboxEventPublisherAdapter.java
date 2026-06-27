@@ -38,7 +38,8 @@ public class OutboxEventPublisherAdapter implements OutboxEventPublisherPort {
       JsonNode payload = objectMapper.readTree(event.getPayload());
 
       if (!payload.isObject()) {
-        throw new OutboxPublishException(new IllegalArgumentException("Persisted outbox event payload must be a JSON object"));
+        throw new OutboxPublishException(
+            new IllegalArgumentException("Persisted outbox event payload must be a JSON object"));
       }
 
       return new OutboxMessageEnvelope(

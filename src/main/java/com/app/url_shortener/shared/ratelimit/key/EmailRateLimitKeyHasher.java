@@ -38,7 +38,8 @@ public class EmailRateLimitKeyHasher {
       return HexFormat.of().formatHex(encodedHash);
 
     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-      throw new IllegalStateException("Could not generate email HMAC hash using " + HASH_ALGORITHM, e);
+      throw new IllegalStateException(
+          "Could not generate email HMAC hash using " + HASH_ALGORITHM, e);
     }
   }
 
@@ -53,7 +54,8 @@ public class EmailRateLimitKeyHasher {
       byte[] decodedSecretBytes = Base64.getDecoder().decode(secret.trim());
 
       if (decodedSecretBytes.length < MIN_SECRET_BYTES) {
-        throw new IllegalStateException("Rate limit email hash secret must decode to at least 32 bytes");
+        throw new IllegalStateException(
+            "Rate limit email hash secret must decode to at least 32 bytes");
       }
       return decodedSecretBytes;
 

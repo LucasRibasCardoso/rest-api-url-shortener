@@ -10,13 +10,12 @@ import com.app.url_shortener.iam.domain.model.UserAccount;
 import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
 import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
 import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
-import java.lang.reflect.Field;
-import java.util.Set;
-import java.util.UUID;
-
 import com.app.url_shortener.iam.infrastructure.mapper.PermissionPersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.mapper.RolePersistenceMapper;
 import com.app.url_shortener.iam.infrastructure.mapper.UserAccountPersistenceMapper;
+import java.lang.reflect.Field;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -42,7 +41,8 @@ class UserAccountPersistenceMapperTest {
       var permissionId = UUID.randomUUID();
       var permissionEntity = new PermissionEntity(permissionId, "url:create", "Criar URLs");
       var roleEntity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
-      var entity = new UserEntity(
+      var entity =
+          new UserEntity(
               userId,
               "Maria Silva",
               "maria@email.com",
@@ -52,8 +52,7 @@ class UserAccountPersistenceMapperTest {
               true,
               null,
               null,
-              Set.of(roleEntity)
-      );
+              Set.of(roleEntity));
 
       // 2. Act
       var domain = mapper.toDomain(entity);
@@ -69,11 +68,7 @@ class UserAccountPersistenceMapperTest {
       // 1. Arrange
       var userId = UUID.randomUUID();
       var roleId = UUID.randomUUID();
-      var permissionEntity = new PermissionEntity(
-              UUID.randomUUID(),
-              "url:create",
-              "Criar URLs"
-      );
+      var permissionEntity = new PermissionEntity(UUID.randomUUID(), "url:create", "Criar URLs");
       var roleEntity = new RoleEntity(roleId, "USER", true, Set.of(permissionEntity));
       var entity = userEntity(userId, Set.of(roleEntity));
 
@@ -83,8 +78,9 @@ class UserAccountPersistenceMapperTest {
       // 3. Assert
       assertBasicUser(domain, userId);
       assertThat(domain.getRoles())
-              .singleElement()
-              .satisfies(role -> {
+          .singleElement()
+          .satisfies(
+              role -> {
                 assertThat(role.getId()).isEqualTo(roleId);
                 assertThat(role.getName()).isEqualTo("USER");
                 assertThat(role.isDefault()).isTrue();
@@ -109,14 +105,16 @@ class UserAccountPersistenceMapperTest {
       // 3. Assert
       assertBasicUser(domain, userId);
       assertThat(domain.getRoles())
-              .singleElement()
-              .satisfies(role -> {
+          .singleElement()
+          .satisfies(
+              role -> {
                 assertThat(role.getId()).isEqualTo(roleId);
                 assertThat(role.getName()).isEqualTo("USER");
                 assertThat(role.isDefault()).isTrue();
                 assertThat(role.getPermissions())
-                        .singleElement()
-                        .satisfies(permission -> {
+                    .singleElement()
+                    .satisfies(
+                        permission -> {
                           assertThat(permission.getId()).isEqualTo(permissionId);
                           assertThat(permission.getName()).isEqualTo("url:create");
                           assertThat(permission.getDescription()).isEqualTo("Criar URLs");
@@ -168,7 +166,8 @@ class UserAccountPersistenceMapperTest {
       var permissionId = UUID.randomUUID();
       var permission = Permission.restore(permissionId, "url:read", "Consultar URLs");
       var role = Role.restore(roleId, "ADMIN", false, Set.of(permission));
-      var domain = UserAccount.restore(
+      var domain =
+          UserAccount.restore(
               userId,
               "João Silva",
               "joao@email.com",
@@ -176,8 +175,7 @@ class UserAccountPersistenceMapperTest {
               UserStatus.PENDING_EMAIL_VERIFICATION,
               PlanType.PREMIUM,
               false,
-              Set.of(role)
-      );
+              Set.of(role));
 
       // 2. Act
       var entity = mapper.toEntity(domain);
@@ -197,14 +195,16 @@ class UserAccountPersistenceMapperTest {
       assertThat(entity.getCreatedBy()).isNull();
       assertThat(entity.getUpdatedBy()).isNull();
       assertThat(entity.getRoles())
-              .singleElement()
-              .satisfies(roleEntity -> {
+          .singleElement()
+          .satisfies(
+              roleEntity -> {
                 assertThat(roleEntity.getId()).isEqualTo(roleId);
                 assertThat(roleEntity.getName()).isEqualTo("ADMIN");
                 assertThat(roleEntity.isDefault()).isFalse();
                 assertThat(roleEntity.getPermissions())
-                        .singleElement()
-                        .satisfies(permissionEntity -> {
+                    .singleElement()
+                    .satisfies(
+                        permissionEntity -> {
                           assertThat(permissionEntity.getId()).isEqualTo(permissionId);
                           assertThat(permissionEntity.getName()).isEqualTo("url:read");
                           assertThat(permissionEntity.getDescription()).isEqualTo("Consultar URLs");
@@ -238,17 +238,16 @@ class UserAccountPersistenceMapperTest {
 
   private static UserEntity userEntity(UUID id, Set<RoleEntity> roles) {
     return new UserEntity(
-            id,
-            "Maria Silva",
-            "maria@email.com",
-            "password-hash",
-            UserStatus.ACTIVE,
-            PlanType.FREE,
-            true,
-            null,
-            null,
-            roles
-    );
+        id,
+        "Maria Silva",
+        "maria@email.com",
+        "password-hash",
+        UserStatus.ACTIVE,
+        PlanType.FREE,
+        true,
+        null,
+        null,
+        roles);
   }
 
   private static void assertBasicUser(UserAccount domain, UUID id) {
@@ -271,7 +270,7 @@ class UserAccountPersistenceMapperTest {
   }
 
   private static void setFields(Object target, String fieldName, Object value)
-          throws NoSuchFieldException, IllegalAccessException {
+      throws NoSuchFieldException, IllegalAccessException {
     Class<?> currentType = target.getClass();
     boolean found = false;
     while (currentType != null) {

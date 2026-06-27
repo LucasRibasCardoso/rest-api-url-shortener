@@ -8,5 +8,4 @@ public class DefaultRoleNotFoundException extends NotFoundException {
   public DefaultRoleNotFoundException() {
     super(IamErrorCode.AUTH_DEFAULT_ROLE_NOT_FOUND);
   }
-
 }

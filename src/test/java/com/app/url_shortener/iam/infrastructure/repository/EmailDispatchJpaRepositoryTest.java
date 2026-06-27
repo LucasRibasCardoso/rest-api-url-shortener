@@ -43,11 +43,7 @@ class EmailDispatchJpaRepositoryTest extends BaseDataJpaSliceTest {
               CREATED_AT.plusSeconds(120));
       UUID staleSendingId =
           insertDispatch(
-              "stale-sending",
-              EmailDispatchStatus.SENDING,
-              1,
-              CREATED_AT.plusSeconds(120),
-              null);
+              "stale-sending", EmailDispatchStatus.SENDING, 1, CREATED_AT.plusSeconds(120), null);
       Instant staleThreshold = CREATED_AT.plusSeconds(300);
 
       // 2. Act
@@ -73,25 +69,15 @@ class EmailDispatchJpaRepositoryTest extends BaseDataJpaSliceTest {
       // 1. Arrange
       UUID freshSendingId =
           insertDispatch(
-              "fresh-sending",
-              EmailDispatchStatus.SENDING,
-              1,
-              CREATED_AT.plusSeconds(500),
-              null);
+              "fresh-sending", EmailDispatchStatus.SENDING, 1, CREATED_AT.plusSeconds(500), null);
       UUID acceptedId =
           insertDispatch(
-              "accepted",
-              EmailDispatchStatus.ACCEPTED,
-              1,
-              CREATED_AT.plusSeconds(120),
-              null);
+              "accepted", EmailDispatchStatus.ACCEPTED, 1, CREATED_AT.plusSeconds(120), null);
       Instant staleThreshold = CREATED_AT.plusSeconds(300);
 
       // 2. Act
-      int freshUpdated =
-          repository.markAsSendingIfAvailable(freshSendingId, NOW, staleThreshold);
-      int acceptedUpdated =
-          repository.markAsSendingIfAvailable(acceptedId, NOW, staleThreshold);
+      int freshUpdated = repository.markAsSendingIfAvailable(freshSendingId, NOW, staleThreshold);
+      int acceptedUpdated = repository.markAsSendingIfAvailable(acceptedId, NOW, staleThreshold);
 
       // 3. Assert
       assertThat(freshUpdated).isZero();
@@ -208,9 +194,7 @@ class EmailDispatchJpaRepositoryTest extends BaseDataJpaSliceTest {
         status == EmailDispatchStatus.ACCEPTED ? "accepted-message-id" : null,
         attempts,
         timestamp(sendingStartedAt),
-        status == EmailDispatchStatus.ACCEPTED
-            ? timestamp(CREATED_AT.plusSeconds(180))
-            : null,
+        status == EmailDispatchStatus.ACCEPTED ? timestamp(CREATED_AT.plusSeconds(180)) : null,
         timestamp(failedAt),
         status == EmailDispatchStatus.FAILED ? "PREVIOUS_ERROR" : null,
         status == EmailDispatchStatus.FAILED ? "Previous failure" : null,
@@ -242,16 +226,12 @@ class EmailDispatchJpaRepositoryTest extends BaseDataJpaSliceTest {
 
   private String stringColumn(UUID dispatchId, String columnName) {
     return jdbcTemplate.queryForObject(
-        "SELECT " + columnName + " FROM email_dispatches WHERE id = ?",
-        String.class,
-        dispatchId);
+        "SELECT " + columnName + " FROM email_dispatches WHERE id = ?", String.class, dispatchId);
   }
 
   private Instant timestampColumn(UUID dispatchId, String columnName) {
     return jdbcTemplate.queryForObject(
-        "SELECT " + columnName + " FROM email_dispatches WHERE id = ?",
-        Instant.class,
-        dispatchId);
+        "SELECT " + columnName + " FROM email_dispatches WHERE id = ?", Instant.class, dispatchId);
   }
 
   private static Instant latest(Instant first, Instant second) {

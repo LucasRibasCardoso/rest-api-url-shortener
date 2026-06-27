@@ -38,7 +38,7 @@ import org.springframework.test.context.TestPropertySource;
       "app.outbox.publisher.initial-delay=1h"
     })
 @DisplayName("Testes de Integração - Publicação da outbox na SQS")
-class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
+class OutboxSqsPublishingIT extends AbstractIntegrationTest {
 
   private static final String REGISTER_ENDPOINT = "/api/v1/auth/register";
   private static final String QUEUE_NAME = "email-verification-events-queue";
@@ -50,7 +50,7 @@ class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
   private final OutboxPublisherScheduler outboxPublisherScheduler;
 
   @Autowired
-  OutboxSqsPublishingIntegrationTest(
+  OutboxSqsPublishingIT(
       SqsTemplate sqsTemplate,
       OutboxEventJpaRepository outboxEventJpaRepository,
       EmailDispatchJpaRepository emailDispatchJpaRepository,
@@ -85,13 +85,9 @@ class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
     // Assert
     var events = outboxEventJpaRepository.findAll();
     var publishedEvents =
-        events.stream()
-            .filter(event -> event.getStatus() == OutboxEventStatus.PUBLISHED)
-            .toList();
+        events.stream().filter(event -> event.getStatus() == OutboxEventStatus.PUBLISHED).toList();
     var pendingEvents =
-        events.stream()
-            .filter(event -> event.getStatus() == OutboxEventStatus.PENDING)
-            .toList();
+        events.stream().filter(event -> event.getStatus() == OutboxEventStatus.PENDING).toList();
     Set<?> publishedEventIds =
         publishedEvents.stream().map(OutboxEventEntity::getId).collect(Collectors.toSet());
     Set<?> messageEventIds =
@@ -111,8 +107,7 @@ class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
             });
     assertThat(messages).hasSize(2);
     assertThat(messageEventIds).isEqualTo(publishedEventIds);
-    assertThat(messages)
-        .allSatisfy(message -> assertEnvelope(message.getPayload()));
+    assertThat(messages).allSatisfy(message -> assertEnvelope(message.getPayload()));
     assertThat(emailDispatchJpaRepository.count()).isZero();
     assertThat(emailVerificationTokenJpaRepository.count()).isZero();
   }
@@ -180,10 +175,13 @@ class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
     var futureRetryEvent = outboxEventJpaRepository.findById(futureRetryEventId).orElseThrow();
 
     assertPublished(eligibleEvent);
-    assertThat(messages).singleElement().satisfies(message -> {
-      assertThat(message.getPayload().eventId()).isEqualTo(eligibleEventId);
-      assertEnvelope(message.getPayload());
-    });
+    assertThat(messages)
+        .singleElement()
+        .satisfies(
+            message -> {
+              assertThat(message.getPayload().eventId()).isEqualTo(eligibleEventId);
+              assertEnvelope(message.getPayload());
+            });
     assertThat(publishedEvent.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
     assertThat(publishedEvent.getPublishedAt()).isEqualTo(now.minusSeconds(20));
     assertThat(failedEvent.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
@@ -241,8 +239,7 @@ class OutboxSqsPublishingIntegrationTest extends AbstractIntegrationTest {
 
     // Assert
     List<OutboxEventEntity> events = outboxEventJpaRepository.findAll();
-    Set<?> eventIds =
-        events.stream().map(OutboxEventEntity::getId).collect(Collectors.toSet());
+    Set<?> eventIds = events.stream().map(OutboxEventEntity::getId).collect(Collectors.toSet());
     Set<?> messageEventIds =
         messages.stream()
             .map(Message::getPayload)

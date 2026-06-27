@@ -1,78 +1,5 @@
 package com.app.url_shortener.url.presentation.controller;
 
-import com.app.url_shortener.config.BaseWebSliceTest;
-import com.app.url_shortener.iam.domain.enums.PlanType;
-import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.security.config.SecurityConfig;
-import com.app.url_shortener.security.exception.handler.CustomAccessDeniedHandler;
-import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntryPoint;
-import com.app.url_shortener.security.principal.UserPrincipal;
-import com.app.url_shortener.shared.idempotency.config.IdempotencyProperties;
-import com.app.url_shortener.shared.config.JacksonConfig;
-import com.app.url_shortener.shared.config.ApplicationProperties;
-import com.app.url_shortener.shared.exception.CommonErrorCode;
-import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
-import com.app.url_shortener.shared.idempotency.port.IdempotencyPort;
-import com.app.url_shortener.shared.error.GlobalExceptionHandler;
-import com.app.url_shortener.shared.error.ProblemDetailFactory;
-import com.app.url_shortener.shared.error.ProblemDetailResponseWriter;
-import com.app.url_shortener.shared.error.ProblemType;
-import com.app.url_shortener.url.application.command.DeleteUrlCommand;
-import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
-import com.app.url_shortener.url.application.command.ShortenUrlCommand;
-import com.app.url_shortener.url.application.command.UrlRankingCommand;
-import com.app.url_shortener.url.application.command.UrlDetailsCommand;
-import com.app.url_shortener.url.application.command.UrlStatusFilter;
-import com.app.url_shortener.url.application.result.UrlPageResult;
-import com.app.url_shortener.url.application.result.ShortenUrlResult;
-import com.app.url_shortener.url.application.result.UrlDetailsResult;
-import com.app.url_shortener.url.application.result.UrlListItemResult;
-import com.app.url_shortener.url.application.result.UrlRankingItemResult;
-import com.app.url_shortener.url.application.result.UrlRankingResult;
-import com.app.url_shortener.url.application.usecase.DeleteUrlUseCase;
-import com.app.url_shortener.url.application.usecase.FindAllUrlsByUserIdUseCase;
-import com.app.url_shortener.url.application.usecase.FindTopAccessedUrlsByUserIdUseCase;
-import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
-import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
-import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlPageResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlRankingItemResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlRankingResponseDto;
-import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
-import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
-import com.app.url_shortener.url.domain.model.UrlStatus;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -88,18 +15,90 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.app.url_shortener.config.BaseWebSliceTest;
+import com.app.url_shortener.iam.domain.enums.PlanType;
+import com.app.url_shortener.iam.domain.enums.UserStatus;
+import com.app.url_shortener.security.config.SecurityConfig;
+import com.app.url_shortener.security.exception.handler.CustomAccessDeniedHandler;
+import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntryPoint;
+import com.app.url_shortener.security.principal.UserPrincipal;
+import com.app.url_shortener.shared.config.ApplicationProperties;
+import com.app.url_shortener.shared.config.JacksonConfig;
+import com.app.url_shortener.shared.error.GlobalExceptionHandler;
+import com.app.url_shortener.shared.error.ProblemDetailFactory;
+import com.app.url_shortener.shared.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.error.ProblemType;
+import com.app.url_shortener.shared.exception.CommonErrorCode;
+import com.app.url_shortener.shared.idempotency.config.IdempotencyProperties;
+import com.app.url_shortener.shared.idempotency.port.IdempotencyPort;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
+import com.app.url_shortener.url.application.command.DeleteUrlCommand;
+import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
+import com.app.url_shortener.url.application.command.ShortenUrlCommand;
+import com.app.url_shortener.url.application.command.UrlDetailsCommand;
+import com.app.url_shortener.url.application.command.UrlRankingCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
+import com.app.url_shortener.url.application.result.ShortenUrlResult;
+import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
+import com.app.url_shortener.url.application.result.UrlRankingItemResult;
+import com.app.url_shortener.url.application.result.UrlRankingResult;
+import com.app.url_shortener.url.application.usecase.DeleteUrlUseCase;
+import com.app.url_shortener.url.application.usecase.FindAllUrlsByUserIdUseCase;
+import com.app.url_shortener.url.application.usecase.FindTopAccessedUrlsByUserIdUseCase;
+import com.app.url_shortener.url.application.usecase.FindUrlDetailsUseCase;
+import com.app.url_shortener.url.application.usecase.ShortenUrlUseCase;
+import com.app.url_shortener.url.domain.model.UrlStatus;
+import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlDetailsResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlPageResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlRankingItemResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlRankingResponseDto;
+import com.app.url_shortener.url.presentation.dto.response.UrlResponseDto;
+import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
 @Tag("web-slice")
 @WebMvcTest(UrlController.class)
 @TestPropertySource(properties = "app.base-url=https://sho.rt")
 @Import({
-    SecurityConfig.class,
-    CustomAccessDeniedHandler.class,
-    CustomAuthenticationEntryPoint.class,
-    GlobalExceptionHandler.class,
-    JacksonConfig.class,
-    ProblemDetailFactory.class,
-    ProblemDetailResponseWriter.class,
-    UrlControllerPropertiesTestConfig.class
+  SecurityConfig.class,
+  CustomAccessDeniedHandler.class,
+  CustomAuthenticationEntryPoint.class,
+  GlobalExceptionHandler.class,
+  JacksonConfig.class,
+  ProblemDetailFactory.class,
+  ProblemDetailResponseWriter.class,
+  UrlControllerPropertiesTestConfig.class
 })
 @DisplayName("Slice Web MVC - UrlController")
 class UrlControllerTest extends BaseWebSliceTest {
@@ -107,34 +106,26 @@ class UrlControllerTest extends BaseWebSliceTest {
   private static final String URL_BASE_PATH = "/api/v1/urls";
   private static final String BASE_URL = "https://sho.rt";
   private static final UUID USER_ID = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
-  private static final UUID TARGET_USER_ID = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+  private static final UUID TARGET_USER_ID =
+      UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
 
-  @MockitoBean
-  private UrlWebMapper urlWebMapper;
+  @MockitoBean private UrlWebMapper urlWebMapper;
 
-  @MockitoBean
-  private DeleteUrlUseCase deleteUrlUseCase;
+  @MockitoBean private DeleteUrlUseCase deleteUrlUseCase;
 
-  @MockitoBean
-  private ShortenUrlUseCase shortenUrlUseCase;
+  @MockitoBean private ShortenUrlUseCase shortenUrlUseCase;
 
-  @MockitoBean
-  private FindUrlDetailsUseCase findUrlDetailsUseCase;
+  @MockitoBean private FindUrlDetailsUseCase findUrlDetailsUseCase;
 
-  @MockitoBean
-  private FindAllUrlsByUserIdUseCase findAllUrlsByUserIdUseCase;
+  @MockitoBean private FindAllUrlsByUserIdUseCase findAllUrlsByUserIdUseCase;
 
-  @MockitoBean
-  private FindTopAccessedUrlsByUserIdUseCase findTopAccessedUrlsByUserIdUseCase;
+  @MockitoBean private FindTopAccessedUrlsByUserIdUseCase findTopAccessedUrlsByUserIdUseCase;
 
-  @MockitoBean
-  private IdempotencyPort idempotencyStore;
+  @MockitoBean private IdempotencyPort idempotencyStore;
 
-  @MockitoBean
-  private IdempotencyProperties idempotencyProperties;
+  @MockitoBean private IdempotencyProperties idempotencyProperties;
 
-  @MockitoBean
-  private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
+  @MockitoBean private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
 
   @BeforeEach
   void setUp() {
@@ -152,8 +143,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       var request = new ShortenUrlRequestDto("https://google.com");
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("", request)
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(jsonPost("", request).with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -169,14 +160,16 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new ShortenUrlCommand(USER_ID, request.originalUrl(), planType);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult(request.originalUrl(), "aB3dE", createdAt);
-      var response = new UrlResponseDto(request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE);
+      var response =
+          new UrlResponseDto(
+              request.originalUrl(), "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE);
       given(urlWebMapper.toShortenUrlCommand(request, USER_ID, planType)).willReturn(command);
       given(shortenUrlUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("", request)
-          .with(authenticatedUser("url:create")));
+      ResultActions resultActions =
+          mockMvc.perform(jsonPost("", request).with(authenticatedUser("url:create")));
 
       // 3. Assert
       resultActions
@@ -204,8 +197,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       var request = new ShortenUrlRequestDto("ftp://google.com");
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("", request)
-          .with(authenticatedUser("url:create")));
+      ResultActions resultActions =
+          mockMvc.perform(jsonPost("", request).with(authenticatedUser("url:create")));
 
       // 3. Assert
       resultActions
@@ -224,11 +217,12 @@ class UrlControllerTest extends BaseWebSliceTest {
 
       given(urlWebMapper.toShortenUrlCommand(request, USER_ID, planType)).willReturn(command);
       doThrow(new TooManyRequestsException(Duration.ofSeconds(45)))
-          .when(shortenUrlUseCase).execute(command);
+          .when(shortenUrlUseCase)
+          .execute(command);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("", request)
-          .with(authenticatedUser("url:create")));
+      ResultActions resultActions =
+          mockMvc.perform(jsonPost("", request).with(authenticatedUser("url:create")));
 
       // 3. Assert
       resultActions
@@ -257,8 +251,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/aB3dE")
-          .with(authenticatedUser("url:create")));
+      ResultActions resultActions =
+          mockMvc.perform(get(URL_BASE_PATH + "/aB3dE").with(authenticatedUser("url:create")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -273,15 +267,39 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 42, lastAccessedAt);
+      var result =
+          new UrlDetailsResult(
+              shortCode,
+              "https://google.com",
+              USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              42,
+              lastAccessedAt);
+      var response =
+          new UrlDetailsResponseDto(
+              shortCode,
+              result.originalUrl(),
+              USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              42,
+              lastAccessedAt);
       given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/{shortcode}", shortCode)
+                  .with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions
@@ -311,15 +329,39 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "aB3dE";
       var command = new UrlDetailsCommand(USER_ID, shortCode, true);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
+      var result =
+          new UrlDetailsResult(
+              shortCode,
+              "https://google.com",
+              TARGET_USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              0,
+              null);
+      var response =
+          new UrlDetailsResponseDto(
+              shortCode,
+              result.originalUrl(),
+              TARGET_USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              0,
+              null);
       given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
-          .with(authenticatedUser("url:read:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/{shortcode}", shortCode)
+                  .with(authenticatedUser("url:read:any")));
 
       // 3. Assert
       resultActions
@@ -343,15 +385,39 @@ class UrlControllerTest extends BaseWebSliceTest {
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
       var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac003");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), TARGET_USER_ID, UrlStatus.DELETED, createdAt, deletedAt, deletedAt, deletedBy, 0, null);
+      var result =
+          new UrlDetailsResult(
+              shortCode,
+              "https://google.com",
+              TARGET_USER_ID,
+              UrlStatus.DELETED,
+              createdAt,
+              deletedAt,
+              deletedAt,
+              deletedBy,
+              0,
+              null);
+      var response =
+          new UrlDetailsResponseDto(
+              shortCode,
+              result.originalUrl(),
+              TARGET_USER_ID,
+              UrlStatus.DELETED,
+              createdAt,
+              deletedAt,
+              deletedAt,
+              deletedBy,
+              0,
+              null);
       given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, true)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortcode}", shortCode)
-          .with(authenticatedUser("url:read:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/{shortcode}", shortCode)
+                  .with(authenticatedUser("url:read:any")));
 
       // 3. Assert
       resultActions
@@ -379,15 +445,39 @@ class UrlControllerTest extends BaseWebSliceTest {
       var shortCode = "a".repeat(64);
       var command = new UrlDetailsCommand(USER_ID, shortCode, false);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var result = new UrlDetailsResult(shortCode, "https://google.com", USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
-      var response = new UrlDetailsResponseDto(shortCode, result.originalUrl(), USER_ID, UrlStatus.ACTIVE, createdAt, createdAt, null, null, 0, null);
+      var result =
+          new UrlDetailsResult(
+              shortCode,
+              "https://google.com",
+              USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              0,
+              null);
+      var response =
+          new UrlDetailsResponseDto(
+              shortCode,
+              result.originalUrl(),
+              USER_ID,
+              UrlStatus.ACTIVE,
+              createdAt,
+              createdAt,
+              null,
+              null,
+              0,
+              null);
       given(urlWebMapper.toUrlDetailsCommand(USER_ID, shortCode, false)).willReturn(command);
       given(findUrlDetailsUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlDetailsResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/{shortCode}", shortCode)
+                  .with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions
@@ -401,14 +491,18 @@ class UrlControllerTest extends BaseWebSliceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 404 sem delegar quando código curto de detalhes exceder o tamanho máximo")
-    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeExceedsMaximumLength() throws Exception {
+    @DisplayName(
+        "Deve retornar 404 sem delegar quando código curto de detalhes exceder o tamanho máximo")
+    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeExceedsMaximumLength()
+        throws Exception {
       // 1. Arrange
       var shortCode = "a".repeat(65);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/{shortCode}", shortCode)
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/{shortCode}", shortCode)
+                  .with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());
@@ -416,13 +510,16 @@ class UrlControllerTest extends BaseWebSliceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 404 sem delegar quando código curto de detalhes tiver caracteres especiais")
-    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeHasSpecialCharacters() throws Exception {
+    @DisplayName(
+        "Deve retornar 404 sem delegar quando código curto de detalhes tiver caracteres especiais")
+    void shouldReturnNotFoundWithoutDelegatingWhenDetailsShortCodeHasSpecialCharacters()
+        throws Exception {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/invalid-code!")
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/invalid-code!").with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());
@@ -440,8 +537,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/aB3dE")
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(delete(URL_BASE_PATH + "/aB3dE").with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -457,13 +554,13 @@ class UrlControllerTest extends BaseWebSliceTest {
       given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, false)).willReturn(command);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortcode}", shortCode)
-          .with(authenticatedUser("url:delete:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              delete(URL_BASE_PATH + "/{shortcode}", shortCode)
+                  .with(authenticatedUser("url:delete:own")));
 
       // 3. Assert
-      resultActions
-          .andExpect(status().isNoContent())
-          .andExpect(content().string(""));
+      resultActions.andExpect(status().isNoContent()).andExpect(content().string(""));
 
       verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, false);
       verify(deleteUrlUseCase).execute(command);
@@ -479,13 +576,13 @@ class UrlControllerTest extends BaseWebSliceTest {
       given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, false)).willReturn(command);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortCode}", shortCode)
-          .with(authenticatedUser("url:delete:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              delete(URL_BASE_PATH + "/{shortCode}", shortCode)
+                  .with(authenticatedUser("url:delete:own")));
 
       // 3. Assert
-      resultActions
-          .andExpect(status().isNoContent())
-          .andExpect(content().string(""));
+      resultActions.andExpect(status().isNoContent()).andExpect(content().string(""));
 
       verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, false);
       verify(deleteUrlUseCase).execute(command);
@@ -493,14 +590,18 @@ class UrlControllerTest extends BaseWebSliceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 404 sem delegar quando código curto de exclusão exceder o tamanho máximo")
-    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeExceedsMaximumLength() throws Exception {
+    @DisplayName(
+        "Deve retornar 404 sem delegar quando código curto de exclusão exceder o tamanho máximo")
+    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeExceedsMaximumLength()
+        throws Exception {
       // 1. Arrange
       var shortCode = "a".repeat(65);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortCode}", shortCode)
-          .with(authenticatedUser("url:delete:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              delete(URL_BASE_PATH + "/{shortCode}", shortCode)
+                  .with(authenticatedUser("url:delete:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());
@@ -508,13 +609,16 @@ class UrlControllerTest extends BaseWebSliceTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 404 sem delegar quando código curto de exclusão tiver caracteres especiais")
-    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeHasSpecialCharacters() throws Exception {
+    @DisplayName(
+        "Deve retornar 404 sem delegar quando código curto de exclusão tiver caracteres especiais")
+    void shouldReturnNotFoundWithoutDelegatingWhenDeleteShortCodeHasSpecialCharacters()
+        throws Exception {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/invalid-code!")
-          .with(authenticatedUser("url:delete:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              delete(URL_BASE_PATH + "/invalid-code!").with(authenticatedUser("url:delete:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isNotFound());
@@ -530,13 +634,13 @@ class UrlControllerTest extends BaseWebSliceTest {
       given(urlWebMapper.toDeleteUrlCommand(USER_ID, shortCode, true)).willReturn(command);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(delete(URL_BASE_PATH + "/{shortcode}", shortCode)
-          .with(authenticatedUser("url:delete:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              delete(URL_BASE_PATH + "/{shortcode}", shortCode)
+                  .with(authenticatedUser("url:delete:any")));
 
       // 3. Assert
-      resultActions
-          .andExpect(status().isNoContent())
-          .andExpect(content().string(""));
+      resultActions.andExpect(status().isNoContent()).andExpect(content().string(""));
 
       verify(urlWebMapper).toDeleteUrlCommand(USER_ID, shortCode, true);
       verify(deleteUrlUseCase).execute(command);
@@ -554,8 +658,8 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
-          .with(authenticatedUser("url:read:own")));
+      ResultActions resultActions =
+          mockMvc.perform(get(URL_BASE_PATH + "/me").with(authenticatedUser("url:read:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -571,15 +675,20 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
-      given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE)).willReturn(command);
+      given(
+              urlWebMapper.toFindAllUrlsByUserIdCommand(
+                  USER_ID, limit, cursor, UrlStatusFilter.ACTIVE))
+          .willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
-          .queryParam("limit", String.valueOf(limit))
-          .queryParam("cursor", cursor)
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me")
+                  .queryParam("limit", String.valueOf(limit))
+                  .queryParam("cursor", cursor)
+                  .with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions
@@ -588,7 +697,8 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls").isArray())
           .andExpect(jsonPath("$.nextCursor").doesNotExist());
 
-      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
+      verify(urlWebMapper)
+          .toFindAllUrlsByUserIdCommand(USER_ID, limit, cursor, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
       verify(urlWebMapper).toUrlPagelResponse(result, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
@@ -603,14 +713,17 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(USER_ID, limit, null, status);
       var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
-      given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(USER_ID, limit, null, status))
+          .willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
-          .queryParam("status", status.name())
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me")
+                  .queryParam("status", status.name())
+                  .with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions
@@ -630,9 +743,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
-          .queryParam("status", "INVALID")
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me")
+                  .queryParam("status", "INVALID")
+                  .with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions
@@ -647,9 +762,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me")
-          .queryParam("limit", "0")
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me")
+                  .queryParam("limit", "0")
+                  .with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions
@@ -669,8 +786,9 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me/ranking").with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -685,19 +803,34 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new UrlRankingCommand(USER_ID, rankingSize);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var lastAccessedAt = Instant.parse("2026-05-11T10:00:00Z");
-      var result = new UrlRankingResult(List.of(
-          new UrlRankingItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
-      ));
-      var response = new UrlRankingResponseDto(List.of(
-          new UrlRankingItemResponseDto("https://google.com", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE, 42, lastAccessedAt)
-      ));
+      var result =
+          new UrlRankingResult(
+              List.of(
+                  new UrlRankingItemResult(
+                      "https://google.com",
+                      "aB3dE",
+                      createdAt,
+                      UrlStatus.ACTIVE,
+                      42,
+                      lastAccessedAt)));
+      var response =
+          new UrlRankingResponseDto(
+              List.of(
+                  new UrlRankingItemResponseDto(
+                      "https://google.com",
+                      BASE_URL + "/r/aB3dE",
+                      createdAt,
+                      UrlStatus.ACTIVE,
+                      42,
+                      lastAccessedAt)));
       given(urlWebMapper.toUrlRankingCommand(USER_ID, rankingSize)).willReturn(command);
       given(findTopAccessedUrlsByUserIdUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlRankingResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
-          .with(authenticatedUser("url:ranking:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me/ranking").with(authenticatedUser("url:ranking:own")));
 
       // 3. Assert
       resultActions
@@ -729,9 +862,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       given(urlWebMapper.toUrlRankingResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
-          .queryParam("rankingSize", String.valueOf(rankingSize))
-          .with(authenticatedUser("url:ranking:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me/ranking")
+                  .queryParam("rankingSize", String.valueOf(rankingSize))
+                  .with(authenticatedUser("url:ranking:own")));
 
       // 3. Assert
       resultActions
@@ -752,17 +887,21 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/me/ranking")
-          .queryParam("rankingSize", String.valueOf(rankingSize))
-          .with(authenticatedUser("url:ranking:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/me/ranking")
+                  .queryParam("rankingSize", String.valueOf(rankingSize))
+                  .with(authenticatedUser("url:ranking:own")));
 
       // 3. Assert
       resultActions
           .andExpect(status().isBadRequest())
           .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-          .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+          .andExpect(
+              jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
           .andExpect(jsonPath("$.errors[0].field").value("rankingSize"))
-          .andExpect(jsonPath("$.errors[0].message").value("O tamanho do ranking deve ser 3 ou 10"));
+          .andExpect(
+              jsonPath("$.errors[0].message").value("O tamanho do ranking deve ser 3 ou 10"));
       verifyNoInteractions(urlWebMapper, findTopAccessedUrlsByUserIdUseCase);
     }
   }
@@ -777,8 +916,10 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
-          .with(authenticatedUser("url:list:own")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
+                  .with(authenticatedUser("url:list:own")));
 
       // 3. Assert
       resultActions.andExpect(status().isForbidden());
@@ -790,19 +931,37 @@ class UrlControllerTest extends BaseWebSliceTest {
     void shouldReturnUrlsForRequestedUser() throws Exception {
       // 1. Arrange
       var limit = 20;
-      var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
+      var command =
+          new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       var createdAt = Instant.parse("2026-05-10T14:30:00Z");
-      var pageResult = new UrlPageResult(List.of(new UrlListItemResult("https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)), "next");
-      var response = new UrlPageResponseDto(List.of(
-          new UrlResponseDto("https://google.com", "aB3dE", BASE_URL + "/r/aB3dE", createdAt, UrlStatus.ACTIVE)
-      ), "next");
-      given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE)).willReturn(command);
+      var pageResult =
+          new UrlPageResult(
+              List.of(
+                  new UrlListItemResult(
+                      "https://google.com", "aB3dE", createdAt, UrlStatus.ACTIVE)),
+              "next");
+      var response =
+          new UrlPageResponseDto(
+              List.of(
+                  new UrlResponseDto(
+                      "https://google.com",
+                      "aB3dE",
+                      BASE_URL + "/r/aB3dE",
+                      createdAt,
+                      UrlStatus.ACTIVE)),
+              "next");
+      given(
+              urlWebMapper.toFindAllUrlsByUserIdCommand(
+                  TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE))
+          .willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(pageResult);
       given(urlWebMapper.toUrlPagelResponse(pageResult, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
-          .with(authenticatedUser("url:list:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
+                  .with(authenticatedUser("url:list:any")));
 
       // 3. Assert
       resultActions
@@ -816,7 +975,8 @@ class UrlControllerTest extends BaseWebSliceTest {
           .andExpect(jsonPath("$.urls[0].lastAccessedAt").doesNotExist())
           .andExpect(jsonPath("$.nextCursor").value("next"));
 
-      verify(urlWebMapper).toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
+      verify(urlWebMapper)
+          .toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, UrlStatusFilter.ACTIVE);
       verify(findAllUrlsByUserIdUseCase).execute(command);
       verify(urlWebMapper).toUrlPagelResponse(pageResult, BASE_URL);
       verifyNoMoreInteractions(urlWebMapper, findAllUrlsByUserIdUseCase);
@@ -831,14 +991,17 @@ class UrlControllerTest extends BaseWebSliceTest {
       var command = new FindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status);
       var result = new UrlPageResult(List.of(), null);
       var response = new UrlPageResponseDto(List.of(), null);
-      given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status)).willReturn(command);
+      given(urlWebMapper.toFindAllUrlsByUserIdCommand(TARGET_USER_ID, limit, null, status))
+          .willReturn(command);
       given(findAllUrlsByUserIdUseCase.execute(command)).willReturn(result);
       given(urlWebMapper.toUrlPagelResponse(result, BASE_URL)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
-          .queryParam("status", status.name())
-          .with(authenticatedUser("url:list:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
+                  .queryParam("status", status.name())
+                  .with(authenticatedUser("url:list:any")));
 
       // 3. Assert
       resultActions
@@ -858,9 +1021,11 @@ class UrlControllerTest extends BaseWebSliceTest {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
-          .queryParam("limit", "101")
-          .with(authenticatedUser("url:list:any")));
+      ResultActions resultActions =
+          mockMvc.perform(
+              get(URL_BASE_PATH + "/users/{userId}", TARGET_USER_ID)
+                  .queryParam("limit", "101")
+                  .with(authenticatedUser("url:list:any")));
 
       // 3. Assert
       resultActions
@@ -879,18 +1044,18 @@ class UrlControllerTest extends BaseWebSliceTest {
   private RequestPostProcessor authenticatedUser(String... authorities) {
     return request -> {
       jwt()
-          .jwt(jwt -> jwt
-              .subject(USER_ID.toString())
-              .claim("plan", "FREE")
-              .claim("authorities", List.of(authorities)))
+          .jwt(
+              jwt ->
+                  jwt.subject(USER_ID.toString())
+                      .claim("plan", "FREE")
+                      .claim("authorities", List.of(authorities)))
           .authorities(grantedAuthorities(authorities))
           .postProcessRequest(request);
 
-      return authentication(new UsernamePasswordAuthenticationToken(
-          userPrincipal(authorities),
-          null,
-          grantedAuthorities(authorities)
-      )).postProcessRequest(request);
+      return authentication(
+              new UsernamePasswordAuthenticationToken(
+                  userPrincipal(authorities), null, grantedAuthorities(authorities)))
+          .postProcessRequest(request);
     };
   }
 
@@ -902,8 +1067,7 @@ class UrlControllerTest extends BaseWebSliceTest {
         null,
         PlanType.FREE,
         UserStatus.ACTIVE,
-        grantedAuthorities(authorities)
-    );
+        grantedAuthorities(authorities));
   }
 
   private List<GrantedAuthority> grantedAuthorities(String... authorities) {

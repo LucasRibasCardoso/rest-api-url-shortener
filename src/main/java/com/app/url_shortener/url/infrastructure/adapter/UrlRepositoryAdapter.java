@@ -2,8 +2,8 @@ package com.app.url_shortener.url.infrastructure.adapter;
 
 import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.port.output.UrlRepositoryPort;
-import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
 import com.app.url_shortener.url.application.result.UrlRankingItemResult;
 import com.app.url_shortener.url.application.result.UrlRankingResult;
 import com.app.url_shortener.url.domain.exception.ShortCodeCollisionException;
@@ -41,11 +41,13 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   private static final String DELETED_AT_ATTRIBUTE = "deletedAt";
   private static final String DELETED_BY_ATTRIBUTE = "deletedBy";
   private static final String UPDATED_AT_ATTRIBUTE = "updatedAt";
-  private static final String STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE = "statusCreatedAtShortCodeGsi";
+  private static final String STATUS_CREATED_AT_SHORT_CODE_GSI_ATTRIBUTE =
+      "statusCreatedAtShortCodeGsi";
   private static final String ACTIVE_RANKING_USER_ID_GSI_ATTRIBUTE = "activeRankingUserIdGsi";
   private static final String ACCESS_COUNT_ATTRIBUTE = "accessCount";
   private static final String LAST_ACCESSED_AT_ATTRIBUTE = "lastAccessedAt";
-  private static final DateTimeFormatter SORTABLE_INSTANT_FORMATTER = new DateTimeFormatterBuilder().appendInstant(9).toFormatter();
+  private static final DateTimeFormatter SORTABLE_INSTANT_FORMATTER =
+      new DateTimeFormatterBuilder().appendInstant(9).toFormatter();
 
   private final UrlMapper urlMapper;
   private final DynamoDbClient dynamoDbClient;
@@ -84,7 +86,8 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   @Override
   public void softDeleteByShortCode(Url url, UUID deletedBy) {
     Instant now = Instant.now();
-    String statusGsi = UrlStatus.DELETED.name() + "#" + url.getCreatedAt() + "#" + url.getShortCode();
+    String statusGsi =
+        UrlStatus.DELETED.name() + "#" + url.getCreatedAt() + "#" + url.getShortCode();
 
     var request =
         UpdateItemRequest.builder()
@@ -137,10 +140,12 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     Objects.requireNonNull(lastAccessedAt, "lastAccessedAt must not be null");
 
     try {
-      dynamoDbClient.updateItem(incrementCounterAndUpdateLastAccessedAt(shortCode, delta, lastAccessedAt));
+      dynamoDbClient.updateItem(
+          incrementCounterAndUpdateLastAccessedAt(shortCode, delta, lastAccessedAt));
     } catch (ConditionalCheckFailedException exception) {
       // Preserva um timestamp mais recente, mas ainda contabiliza o acesso recebido fora de ordem.
-      dynamoDbClient.updateItem(incrementCounterWhenLastAccessedAtIsNewer(shortCode, delta, lastAccessedAt));
+      dynamoDbClient.updateItem(
+          incrementCounterWhenLastAccessedAtIsNewer(shortCode, delta, lastAccessedAt));
     }
   }
 
@@ -148,8 +153,10 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
   public UrlRankingResult findTopAccessedActiveByUserId(UUID userId, int rankingSize) {
     DynamoDbIndex<UrlEntity> index = urlTable.index("user-active-ranking-index");
 
-    var request = QueryEnhancedRequest.builder()
-            .queryConditional(QueryConditional.keyEqualTo(key -> key.partitionValue(userId.toString())))
+    var request =
+        QueryEnhancedRequest.builder()
+            .queryConditional(
+                QueryConditional.keyEqualTo(key -> key.partitionValue(userId.toString())))
             .scanIndexForward(false)
             .limit(rankingSize)
             .build();
@@ -162,16 +169,15 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     }
 
     Page<UrlEntity> page = iterator.next();
-    List<UrlRankingItemResult> urls = page.items().stream()
-            .map(urlMapper::toDomain)
-            .map(urlMapper::toRankingItemResult)
-            .toList();
+    List<UrlRankingItemResult> urls =
+        page.items().stream().map(urlMapper::toDomain).map(urlMapper::toRankingItemResult).toList();
 
     return new UrlRankingResult(urls);
   }
 
   @Override
-  public UrlPageResult findAllByUserId(UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
+  public UrlPageResult findAllByUserId(
+      UUID userId, int limit, String cursor, UrlStatusFilter statusFilter) {
 
     String indexName = statusFilter.isAll() ? "user-index" : "user-status-index";
     DynamoDbIndex<UrlEntity> index = urlTable.index(indexName);
@@ -181,7 +187,8 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     var conditional =
         statusFilter.isAll()
             ? QueryConditional.keyEqualTo(key -> key.partitionValue(userIdStr))
-            : QueryConditional.sortBeginsWith(key -> key.partitionValue(userIdStr).sortValue(sortValueStr));
+            : QueryConditional.sortBeginsWith(
+                key -> key.partitionValue(userIdStr).sortValue(sortValueStr));
 
     var requestBuilder =
         QueryEnhancedRequest.builder()
@@ -201,26 +208,24 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
     }
 
     Page<UrlEntity> page = iterator.next();
-    List<UrlListItemResult> urls = page.items().stream()
-            .map(urlMapper::toDomain)
-            .map(urlMapper::toListItemResult)
-            .toList();
+    List<UrlListItemResult> urls =
+        page.items().stream().map(urlMapper::toDomain).map(urlMapper::toListItemResult).toList();
 
-    String nextCursor = page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
+    String nextCursor =
+        page.lastEvaluatedKey() != null ? cursorCodec.encode(page.lastEvaluatedKey()) : null;
 
     return new UrlPageResult(urls, nextCursor);
   }
 
   private UpdateItemRequest incrementCounterAndUpdateLastAccessedAt(
-      String shortCode,
-      long delta,
-      Instant lastAccessedAt) {
+      String shortCode, long delta, Instant lastAccessedAt) {
 
     return UpdateItemRequest.builder()
         .tableName(urlTable.tableName())
         .key(urlPrimaryKey(shortCode))
         .updateExpression("SET #lastAccessedAt = :lastAccessedAt ADD #accessCount :delta")
-        .conditionExpression("attribute_exists(#pk) AND (attribute_not_exists(#lastAccessedAt) OR #lastAccessedAt <= :lastAccessedAt)")
+        .conditionExpression(
+            "attribute_exists(#pk) AND (attribute_not_exists(#lastAccessedAt) OR #lastAccessedAt <= :lastAccessedAt)")
         .expressionAttributeNames(
             Map.of(
                 "#pk", SHORT_CODE_ATTRIBUTE,
@@ -229,14 +234,13 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
         .expressionAttributeValues(
             Map.of(
                 ":delta", toNumberAttributeValue(delta),
-                ":lastAccessedAt", toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
+                ":lastAccessedAt",
+                    toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
         .build();
   }
 
   private UpdateItemRequest incrementCounterWhenLastAccessedAtIsNewer(
-          String shortCode,
-          long delta,
-          Instant lastAccessedAt) {
+      String shortCode, long delta, Instant lastAccessedAt) {
 
     return UpdateItemRequest.builder()
         .tableName(urlTable.tableName())
@@ -251,7 +255,8 @@ public class UrlRepositoryAdapter implements UrlRepositoryPort {
         .expressionAttributeValues(
             Map.of(
                 ":delta", toNumberAttributeValue(delta),
-                ":lastAccessedAt", toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
+                ":lastAccessedAt",
+                    toAttributeValue(SORTABLE_INSTANT_FORMATTER.format(lastAccessedAt))))
         .build();
   }
 

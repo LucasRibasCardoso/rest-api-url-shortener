@@ -10,13 +10,10 @@ import org.mapstruct.ObjectFactory;
 import org.mapstruct.ReportingPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Mapper(
-        componentModel = "spring",
-        unmappedTargetPolicy = ReportingPolicy.ERROR)
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public abstract class RefreshTokenPersistenceMapper {
 
-  @Autowired
-  protected EntityManager entityManager;
+  @Autowired protected EntityManager entityManager;
 
   @Mapping(target = "userId", ignore = true)
   @Mapping(target = "replacedByTokenId", ignore = true)
@@ -33,14 +30,13 @@ public abstract class RefreshTokenPersistenceMapper {
     }
 
     return RefreshToken.restore(
-            entity.getId(),
-            entity.getUser() != null ? entity.getUser().getId() : null,
-            entity.getTokenHash(),
-            entity.getCreatedAt(),
-            entity.getExpiresAt(),
-            entity.getRevokedAt(),
-            entity.getReplacedByToken() != null ? entity.getReplacedByToken().getId() : null
-    );
+        entity.getId(),
+        entity.getUser() != null ? entity.getUser().getId() : null,
+        entity.getTokenHash(),
+        entity.getCreatedAt(),
+        entity.getExpiresAt(),
+        entity.getRevokedAt(),
+        entity.getReplacedByToken() != null ? entity.getReplacedByToken().getId() : null);
   }
 
   @ObjectFactory
@@ -51,18 +47,18 @@ public abstract class RefreshTokenPersistenceMapper {
 
     UserEntity userProxy = entityManager.getReference(UserEntity.class, domain.getUserId());
 
-    RefreshTokenEntity replacedByProxy = domain.getReplacedByTokenId() != null
+    RefreshTokenEntity replacedByProxy =
+        domain.getReplacedByTokenId() != null
             ? entityManager.getReference(RefreshTokenEntity.class, domain.getReplacedByTokenId())
             : null;
 
     return new RefreshTokenEntity(
-            domain.getId(),
-            userProxy,
-            domain.getTokenHash(),
-            domain.getCreatedAt(),
-            domain.getExpiresAt(),
-            domain.getRevokedAt(),
-            replacedByProxy
-    );
+        domain.getId(),
+        userProxy,
+        domain.getTokenHash(),
+        domain.getCreatedAt(),
+        domain.getExpiresAt(),
+        domain.getRevokedAt(),
+        replacedByProxy);
   }
 }

@@ -38,7 +38,8 @@ public class LoginUseCaseImpl implements LoginUseCase {
 
     checkAuthRateLimitPort.checkLogin(command.clientIp(), email);
 
-    AuthenticatedUserResult authenticatedUser = authenticateCredentialsPort.authenticate(email, command.password());
+    AuthenticatedUserResult authenticatedUser =
+        authenticateCredentialsPort.authenticate(email, command.password());
 
     IssuedAccessToken issuedAccessToken = accessTokenIssuerPort.issue(authenticatedUser);
 

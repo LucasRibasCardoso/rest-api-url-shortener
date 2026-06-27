@@ -30,7 +30,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Ranking das próprias URLs")
-class UrlRankingIntegrationTest extends AbstractIntegrationTest {
+class UrlRankingIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String RANKING_ENDPOINT = URLS_ENDPOINT + "/me/ranking";
@@ -43,7 +43,7 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
   private final JwtTokenService jwtTokenService;
 
   @Autowired
-  UrlRankingIntegrationTest(
+  UrlRankingIT(
       UserTestDataFactory userTestDataFactory,
       UrlRepositoryPort urlRepositoryPort,
       DynamoDbTable<UrlEntity> urlTable,
@@ -64,10 +64,26 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     userTestDataFactory.createActiveUser(email, PASSWORD);
     AuthenticatedSession session = login(email, PASSWORD, "login-ranking-default-url");
 
-    CreatedUrl first = createUrl(session.accessToken(), "https://example.com/ranking-default-1", "create-ranking-default-1");
-    CreatedUrl second = createUrl(session.accessToken(), "https://example.com/ranking-default-2", "create-ranking-default-2");
-    CreatedUrl third = createUrl(session.accessToken(), "https://example.com/ranking-default-3", "create-ranking-default-3");
-    CreatedUrl fourth = createUrl(session.accessToken(), "https://example.com/ranking-default-4", "create-ranking-default-4");
+    CreatedUrl first =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-default-1",
+            "create-ranking-default-1");
+    CreatedUrl second =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-default-2",
+            "create-ranking-default-2");
+    CreatedUrl third =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-default-3",
+            "create-ranking-default-3");
+    CreatedUrl fourth =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-default-4",
+            "create-ranking-default-4");
     Instant firstAccessedAt = Instant.parse("2026-06-01T10:00:00Z");
     Instant secondAccessedAt = Instant.parse("2026-06-01T10:05:00Z");
     Instant thirdAccessedAt = Instant.parse("2026-06-01T10:10:00Z");
@@ -76,7 +92,10 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     urlRepositoryPort.incrementAccessCount(second.shortCode(), 9, secondAccessedAt);
     urlRepositoryPort.incrementAccessCount(third.shortCode(), 2, thirdAccessedAt);
     urlRepositoryPort.incrementAccessCount(fourth.shortCode(), 12, fourthAccessedAt);
-    awaitRankingShortCodes(session.accessToken(), null, List.of(fourth.shortCode(), second.shortCode(), first.shortCode()));
+    awaitRankingShortCodes(
+        session.accessToken(),
+        null,
+        List.of(fourth.shortCode(), second.shortCode(), first.shortCode()));
 
     // Act
     Response response = requestRanking(session.accessToken());
@@ -94,13 +113,12 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
             shortUrl(fourth.shortCode()),
             shortUrl(second.shortCode()),
             shortUrl(first.shortCode()));
-    assertThat(statuses).containsExactly(UrlStatus.ACTIVE.name(), UrlStatus.ACTIVE.name(), UrlStatus.ACTIVE.name());
+    assertThat(statuses)
+        .containsExactly(UrlStatus.ACTIVE.name(), UrlStatus.ACTIVE.name(), UrlStatus.ACTIVE.name());
     assertThat(accessCounts).containsExactly(12, 9, 5);
     assertThat(lastAccessedAt)
         .containsExactly(
-            fourthAccessedAt.toString(),
-            secondAccessedAt.toString(),
-            firstAccessedAt.toString());
+            fourthAccessedAt.toString(), secondAccessedAt.toString(), firstAccessedAt.toString());
     assertThat(response.jsonPath().getList("urls.originalUrl", String.class))
         .containsExactly(fourth.originalUrl(), second.originalUrl(), first.originalUrl());
   }
@@ -113,15 +131,38 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     userTestDataFactory.createActiveUser(email, PASSWORD);
     AuthenticatedSession session = login(email, PASSWORD, "login-ranking-size-ten-url");
 
-    CreatedUrl first = createUrl(session.accessToken(), "https://example.com/ranking-size-ten-1", "create-ranking-size-ten-1");
-    CreatedUrl second = createUrl(session.accessToken(), "https://example.com/ranking-size-ten-2", "create-ranking-size-ten-2");
-    CreatedUrl third = createUrl(session.accessToken(), "https://example.com/ranking-size-ten-3", "create-ranking-size-ten-3");
-    CreatedUrl fourth = createUrl(session.accessToken(), "https://example.com/ranking-size-ten-4", "create-ranking-size-ten-4");
-    urlRepositoryPort.incrementAccessCount(first.shortCode(), 1, Instant.parse("2026-06-02T10:00:00Z"));
-    urlRepositoryPort.incrementAccessCount(second.shortCode(), 3, Instant.parse("2026-06-02T10:05:00Z"));
-    urlRepositoryPort.incrementAccessCount(third.shortCode(), 8, Instant.parse("2026-06-02T10:10:00Z"));
-    urlRepositoryPort.incrementAccessCount(fourth.shortCode(), 5, Instant.parse("2026-06-02T10:15:00Z"));
-    awaitRankingShortCodes(session.accessToken(), 10, List.of(third.shortCode(), fourth.shortCode(), second.shortCode(), first.shortCode()));
+    CreatedUrl first =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-size-ten-1",
+            "create-ranking-size-ten-1");
+    CreatedUrl second =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-size-ten-2",
+            "create-ranking-size-ten-2");
+    CreatedUrl third =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-size-ten-3",
+            "create-ranking-size-ten-3");
+    CreatedUrl fourth =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-size-ten-4",
+            "create-ranking-size-ten-4");
+    urlRepositoryPort.incrementAccessCount(
+        first.shortCode(), 1, Instant.parse("2026-06-02T10:00:00Z"));
+    urlRepositoryPort.incrementAccessCount(
+        second.shortCode(), 3, Instant.parse("2026-06-02T10:05:00Z"));
+    urlRepositoryPort.incrementAccessCount(
+        third.shortCode(), 8, Instant.parse("2026-06-02T10:10:00Z"));
+    urlRepositoryPort.incrementAccessCount(
+        fourth.shortCode(), 5, Instant.parse("2026-06-02T10:15:00Z"));
+    awaitRankingShortCodes(
+        session.accessToken(),
+        10,
+        List.of(third.shortCode(), fourth.shortCode(), second.shortCode(), first.shortCode()));
 
     // Act
     Response response = requestRanking(session.accessToken(), 10);
@@ -168,10 +209,20 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     AuthenticatedSession ownerSession = login(ownerEmail, PASSWORD, "login-ranking-owner-url");
     AuthenticatedSession otherSession = login(otherEmail, PASSWORD, "login-ranking-other-url");
 
-    CreatedUrl ownerUrl = createUrl(ownerSession.accessToken(), "https://example.com/ranking-owner", "create-ranking-owner");
-    CreatedUrl otherUrl = createUrl(otherSession.accessToken(), "https://example.com/ranking-other", "create-ranking-other");
-    urlRepositoryPort.incrementAccessCount(ownerUrl.shortCode(), 4, Instant.parse("2026-06-03T10:00:00Z"));
-    urlRepositoryPort.incrementAccessCount(otherUrl.shortCode(), 99, Instant.parse("2026-06-03T10:05:00Z"));
+    CreatedUrl ownerUrl =
+        createUrl(
+            ownerSession.accessToken(),
+            "https://example.com/ranking-owner",
+            "create-ranking-owner");
+    CreatedUrl otherUrl =
+        createUrl(
+            otherSession.accessToken(),
+            "https://example.com/ranking-other",
+            "create-ranking-other");
+    urlRepositoryPort.incrementAccessCount(
+        ownerUrl.shortCode(), 4, Instant.parse("2026-06-03T10:00:00Z"));
+    urlRepositoryPort.incrementAccessCount(
+        otherUrl.shortCode(), 99, Instant.parse("2026-06-03T10:05:00Z"));
     awaitRankingShortCodes(ownerSession.accessToken(), null, List.of(ownerUrl.shortCode()));
 
     // Act
@@ -195,10 +246,16 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     userTestDataFactory.createActiveUser(email, PASSWORD);
     AuthenticatedSession session = login(email, PASSWORD, "login-ranking-deleted-url");
 
-    CreatedUrl activeUrl = createUrl(session.accessToken(), "https://example.com/ranking-active", "create-ranking-active");
-    CreatedUrl deletedUrl = createUrl(session.accessToken(), "https://example.com/ranking-deleted", "create-ranking-deleted");
-    urlRepositoryPort.incrementAccessCount(activeUrl.shortCode(), 5, Instant.parse("2026-06-04T10:00:00Z"));
-    urlRepositoryPort.incrementAccessCount(deletedUrl.shortCode(), 20, Instant.parse("2026-06-04T10:05:00Z"));
+    CreatedUrl activeUrl =
+        createUrl(
+            session.accessToken(), "https://example.com/ranking-active", "create-ranking-active");
+    CreatedUrl deletedUrl =
+        createUrl(
+            session.accessToken(), "https://example.com/ranking-deleted", "create-ranking-deleted");
+    urlRepositoryPort.incrementAccessCount(
+        activeUrl.shortCode(), 5, Instant.parse("2026-06-04T10:00:00Z"));
+    urlRepositoryPort.incrementAccessCount(
+        deletedUrl.shortCode(), 20, Instant.parse("2026-06-04T10:05:00Z"));
     deleteUrl(session.accessToken(), deletedUrl.shortCode());
     awaitRankingShortCodes(session.accessToken(), null, List.of(activeUrl.shortCode()));
 
@@ -222,7 +279,11 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
     String email = "ranking-zero-access-url.integration@example.com";
     userTestDataFactory.createActiveUser(email, PASSWORD);
     AuthenticatedSession session = login(email, PASSWORD, "login-ranking-zero-access-url");
-    CreatedUrl url = createUrl(session.accessToken(), "https://example.com/ranking-zero-access", "create-ranking-zero-access");
+    CreatedUrl url =
+        createUrl(
+            session.accessToken(),
+            "https://example.com/ranking-zero-access",
+            "create-ranking-zero-access");
     awaitRankingShortCodes(session.accessToken(), null, List.of(url.shortCode()));
 
     // Act
@@ -288,7 +349,8 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
   void shouldReturnForbiddenWhenAuthenticatedUserDoesNotHaveRankingAuthority() {
     // Arrange
     UserEntity user =
-        userTestDataFactory.createActiveUser("ranking-without-authority-url.integration@example.com", PASSWORD);
+        userTestDataFactory.createActiveUser(
+            "ranking-without-authority-url.integration@example.com", PASSWORD);
     String accessTokenWithoutRankingAuthority =
         jwtTokenService.generateAccessToken(
             new JwtAccessTokenSubject(user.getId(), PlanType.FREE.name(), List.of("url:list:own")));
@@ -327,9 +389,7 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
             .response();
 
     return new CreatedUrl(
-        response.path("shortCode"),
-        response.path("originalUrl"),
-        response.path("createdAt"));
+        response.path("shortCode"), response.path("originalUrl"), response.path("createdAt"));
   }
 
   private void deleteUrl(String accessToken, String shortCode) {
@@ -343,7 +403,8 @@ class UrlRankingIntegrationTest extends AbstractIntegrationTest {
         .statusCode(204);
   }
 
-  private void awaitRankingShortCodes(String accessToken, Integer rankingSize, List<String> expectedShortCodes) {
+  private void awaitRankingShortCodes(
+      String accessToken, Integer rankingSize, List<String> expectedShortCodes) {
     await()
         .atMost(Duration.ofSeconds(5))
         .pollInterval(Duration.ofMillis(200))

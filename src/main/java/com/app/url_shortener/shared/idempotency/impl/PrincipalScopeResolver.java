@@ -3,13 +3,12 @@ package com.app.url_shortener.shared.idempotency.impl;
 import com.app.url_shortener.security.principal.UserPrincipal;
 import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor

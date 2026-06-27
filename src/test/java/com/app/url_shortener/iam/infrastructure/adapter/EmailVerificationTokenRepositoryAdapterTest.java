@@ -201,7 +201,9 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
         }
         startSignal.countDown();
 
-        results = List.of(firstConsume.get(10, TimeUnit.SECONDS), secondConsume.get(10, TimeUnit.SECONDS));
+        results =
+            List.of(
+                firstConsume.get(10, TimeUnit.SECONDS), secondConsume.get(10, TimeUnit.SECONDS));
       }
 
       // 3. Assert
@@ -330,10 +332,7 @@ class EmailVerificationTokenRepositoryAdapterTest extends BaseDataJpaSliceTest {
   }
 
   private boolean consumeAfterSignal(
-      UUID tokenId,
-      Instant now,
-      CountDownLatch workersReady,
-      CountDownLatch startSignal)
+      UUID tokenId, Instant now, CountDownLatch workersReady, CountDownLatch startSignal)
       throws InterruptedException {
     workersReady.countDown();
     if (!startSignal.await(5, TimeUnit.SECONDS)) {

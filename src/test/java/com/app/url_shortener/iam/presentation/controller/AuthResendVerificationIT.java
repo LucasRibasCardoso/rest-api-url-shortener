@@ -29,14 +29,13 @@ import org.springframework.http.HttpHeaders;
 import tools.jackson.databind.ObjectMapper;
 
 @DisplayName("Testes de Integração - Endpoint de reenvio de verificação")
-class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
+class AuthResendVerificationIT extends AbstractIntegrationTest {
 
   private static final String RESEND_ENDPOINT = "/api/v1/auth/resend-verification";
   private static final String PASSWORD = "secure-password";
   private static final String SUCCESS_MESSAGE =
       "Enviamos um novo código de verificação para o seu e-mail.";
-  private static final String COOLDOWN_KEY_PREFIX =
-      "auth:email-verification:resend-cooldown:";
+  private static final String COOLDOWN_KEY_PREFIX = "auth:email-verification:resend-cooldown:";
 
   private final UserTestDataFactory userTestDataFactory;
   private final OutboxEventJpaRepository outboxEventJpaRepository;
@@ -45,7 +44,7 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
   private final ObjectMapper objectMapper;
 
   @Autowired
-  AuthResendVerificationIntegrationTest(
+  AuthResendVerificationIT(
       UserTestDataFactory userTestDataFactory,
       OutboxEventJpaRepository outboxEventJpaRepository,
       StringRedisTemplate stringRedisTemplate,
@@ -132,7 +131,8 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  @DisplayName("Deve retornar 400 quando a chave de idempotência estiver ausente sem processar reenvio")
+  @DisplayName(
+      "Deve retornar 400 quando a chave de idempotência estiver ausente sem processar reenvio")
   void shouldRequireIdempotencyKeyBeforeProcessingResendVerification() {
     // Arrange
     String email = "missing-idempotency-resend.integration@example.com";
@@ -349,15 +349,16 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
     // Act
     List<ResendHttpResult> results =
         ConcurrentTestExecutor.execute(
-            2,
-            attempt -> toResendHttpResult(resend(requestBody, "concurrent-resend-" + attempt)));
+            2, attempt -> toResendHttpResult(resend(requestBody, "concurrent-resend-" + attempt)));
 
     // Assert
     OutboxEventEntity outboxEvent = outboxEventJpaRepository.findAll().getFirst();
     var payload = objectMapper.readTree(outboxEvent.getPayload());
     Long cooldownTtl = stringRedisTemplate.getExpire(cooldownKey(email));
 
-    assertThat(results).extracting(ResendHttpResult::statusCode).containsExactlyInAnyOrder(200, 429);
+    assertThat(results)
+        .extracting(ResendHttpResult::statusCode)
+        .containsExactlyInAnyOrder(200, 429);
     assertThat(results)
         .filteredOn(result -> result.statusCode() == 429)
         .singleElement()
@@ -395,11 +396,7 @@ class AuthResendVerificationIntegrationTest extends AbstractIntegrationTest {
   }
 
   private Response resendWithoutIdempotencyKey(String requestBody) {
-    return given()
-        .contentType(ContentType.JSON)
-        .body(requestBody)
-        .when()
-        .post(RESEND_ENDPOINT);
+    return given().contentType(ContentType.JSON).body(requestBody).when().post(RESEND_ENDPOINT);
   }
 
   private String cooldownKey(String email) {

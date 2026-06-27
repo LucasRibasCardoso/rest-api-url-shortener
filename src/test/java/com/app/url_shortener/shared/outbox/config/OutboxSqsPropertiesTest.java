@@ -44,9 +44,11 @@ class OutboxSqsPropertiesTest {
       var emptyViolations = validate(emptyQueues);
 
       // 3. Assert
-      assertThat(nullViolations).extracting(violation -> violation.getPropertyPath().toString())
+      assertThat(nullViolations)
+          .extracting(violation -> violation.getPropertyPath().toString())
           .containsExactly("queues");
-      assertThat(emptyViolations).extracting(violation -> violation.getPropertyPath().toString())
+      assertThat(emptyViolations)
+          .extracting(violation -> violation.getPropertyPath().toString())
           .containsExactly("queues");
     }
 
@@ -64,8 +66,8 @@ class OutboxSqsPropertiesTest {
     }
   }
 
-  private static java.util.Set<jakarta.validation.ConstraintViolation<OutboxSqsProperties>> validate(
-      OutboxSqsProperties properties) {
+  private static java.util.Set<jakarta.validation.ConstraintViolation<OutboxSqsProperties>>
+      validate(OutboxSqsProperties properties) {
     try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
       return validatorFactory.getValidator().validate(properties);
     }

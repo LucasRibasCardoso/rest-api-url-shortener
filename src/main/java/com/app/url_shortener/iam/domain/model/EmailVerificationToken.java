@@ -41,8 +41,7 @@ public class EmailVerificationToken {
     this.id = Objects.requireNonNull(id, "id is required");
     this.userId = Objects.requireNonNull(userId, "userId is required");
     this.email = RequiredText.normalize(email, "email");
-    this.hashedCode =
-        RequiredText.normalize(hashedCode, "verificationCodeHash");
+    this.hashedCode = RequiredText.normalize(hashedCode, "verificationCodeHash");
     this.encryptedCode = RequiredText.normalize(encryptedCode, "encryptedCode");
     this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt is required");
     this.consumedAt = consumedAt;

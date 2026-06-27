@@ -12,7 +12,8 @@ public interface EmailDispatchJpaRepository extends JpaRepository<EmailDispatchE
 
   Optional<EmailDispatchEntity> findByEventId(UUID eventId);
 
-  Optional<EmailDispatchEntity> findFirstByVerificationTokenIdOrderByCreatedAtDescIdDesc(UUID verificationTokenId);
+  Optional<EmailDispatchEntity> findFirstByVerificationTokenIdOrderByCreatedAtDescIdDesc(
+      UUID verificationTokenId);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(

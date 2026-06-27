@@ -1,8 +1,14 @@
 package com.app.url_shortener.iam.domain.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -10,13 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Entidade UserAccount")
@@ -36,7 +35,7 @@ class UserAccountTest {
 
       // Act
       var user =
-              UserAccount.createPendingRegistration(unformattedName, unformattedEmail, passwordHash);
+          UserAccount.createPendingRegistration(unformattedName, unformattedEmail, passwordHash);
 
       // Assert
       assertThat(user.getId()).isNotNull();
@@ -87,12 +86,17 @@ class UserAccountTest {
           assertThatThrownBy(
               () ->
                   UserAccount.restore(
-                      userId, "Maria", "maria@mail.com", "hash", null, PlanType.FREE, false, Set.of()));
+                      userId,
+                      "Maria",
+                      "maria@mail.com",
+                      "hash",
+                      null,
+                      PlanType.FREE,
+                      false,
+                      Set.of()));
 
       // 3. Assert
-      throwableAssert
-          .isInstanceOf(NullPointerException.class)
-          .hasMessage("status is required");
+      throwableAssert.isInstanceOf(NullPointerException.class).hasMessage("status is required");
     }
 
     @Test
@@ -116,13 +120,12 @@ class UserAccountTest {
                       Set.of()));
 
       // 3. Assert
-      throwableAssert
-          .isInstanceOf(NullPointerException.class)
-          .hasMessage("planType is required");
+      throwableAssert.isInstanceOf(NullPointerException.class).hasMessage("planType is required");
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("com.app.url_shortener.iam.domain.model.UserAccountTest#invalidStatusCombinations")
+    @MethodSource(
+        "com.app.url_shortener.iam.domain.model.UserAccountTest#invalidStatusCombinations")
     @DisplayName("Deve rejeitar combinações inconsistentes de status e verificação de e-mail")
     void shouldRejectInconsistentStatusAndEmailVerification(
         String scenario, UserStatus status, boolean emailVerified, String expectedMessage) {
@@ -144,9 +147,7 @@ class UserAccountTest {
                       Set.of()));
 
       // 3. Assert
-      throwableAssert
-          .isInstanceOf(IllegalArgumentException.class)
-          .hasMessage(expectedMessage);
+      throwableAssert.isInstanceOf(IllegalArgumentException.class).hasMessage(expectedMessage);
     }
   }
 
@@ -177,15 +178,15 @@ class UserAccountTest {
       // Arrange
       var defaultRole = defaultRole();
       var user =
-              UserAccount.restore(
-                      UUID.randomUUID(),
-                      "Maria",
-                      "maria@mail.com",
-                      "hash",
-                      UserStatus.ACTIVE,
-                      PlanType.FREE,
-                      true,
-                      Set.of(defaultRole));
+          UserAccount.restore(
+              UUID.randomUUID(),
+              "Maria",
+              "maria@mail.com",
+              "hash",
+              UserStatus.ACTIVE,
+              PlanType.FREE,
+              true,
+              Set.of(defaultRole));
 
       // Act
       user.verifyEmail(defaultRole);
@@ -200,7 +201,8 @@ class UserAccountTest {
     void shouldThrowExceptionWhenAccountIsLocked() {
       // Arrange
       var defaultRole = defaultRole();
-      var lockedUser = UserAccount.restore(
+      var lockedUser =
+          UserAccount.restore(
               UUID.randomUUID(),
               "Maria",
               "maria@mail.com",
@@ -212,7 +214,7 @@ class UserAccountTest {
 
       // Act & Assert
       assertThatThrownBy(() -> lockedUser.verifyEmail(defaultRole))
-              .isInstanceOf(UserAccountLockedException.class);
+          .isInstanceOf(UserAccountLockedException.class);
     }
 
     @Test
@@ -223,8 +225,8 @@ class UserAccountTest {
 
       // Act & Assert
       assertThatThrownBy(() -> user.verifyEmail(null))
-              .isInstanceOf(NullPointerException.class)
-              .hasMessage("defaultRole must not be null");
+          .isInstanceOf(NullPointerException.class)
+          .hasMessage("defaultRole must not be null");
     }
 
     @Test
@@ -262,9 +264,7 @@ class UserAccountTest {
       var text = user.toString();
 
       // 3. Assert
-      assertThat(text)
-          .doesNotContain(passwordHash)
-          .doesNotContain("passwordHash");
+      assertThat(text).doesNotContain(passwordHash).doesNotContain("passwordHash");
     }
   }
 

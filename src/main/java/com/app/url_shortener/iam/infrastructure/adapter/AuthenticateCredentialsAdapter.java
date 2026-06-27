@@ -7,6 +7,7 @@ import com.app.url_shortener.iam.domain.exception.auth.InvalidCredentialsExcepti
 import com.app.url_shortener.iam.domain.exception.user.UserAccountDisabledException;
 import com.app.url_shortener.iam.domain.exception.user.UserAccountLockedException;
 import com.app.url_shortener.security.principal.UserPrincipal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,8 +18,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -31,9 +30,9 @@ public class AuthenticateCredentialsAdapter implements AuthenticateCredentialsPo
   @Override
   public AuthenticatedUserResult authenticate(String email, String password) {
     try {
-      Authentication authentication = authenticationManager.authenticate(
-              new UsernamePasswordAuthenticationToken(email, password)
-      );
+      Authentication authentication =
+          authenticationManager.authenticate(
+              new UsernamePasswordAuthenticationToken(email, password));
 
       if (!(authentication.getPrincipal() instanceof UserPrincipal userPrincipal)) {
         throw new InvalidCredentialsException();
@@ -54,23 +53,21 @@ public class AuthenticateCredentialsAdapter implements AuthenticateCredentialsPo
 
   private AuthenticatedUserResult toAuthenticatedUserResult(UserPrincipal principal) {
 
-    List<String> authorities = principal.getAuthorities()
-            .stream()
-            .map(GrantedAuthority::getAuthority)
-            .toList();
+    List<String> authorities =
+        principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 
-    List<String> roles = authorities.stream()
+    List<String> roles =
+        authorities.stream()
             .filter(authority -> authority.startsWith(ROLE_PREFIX))
             .map(authority -> authority.substring(ROLE_PREFIX.length()))
             .toList();
 
     return new AuthenticatedUserResult(
-            principal.getId(),
-            principal.getName(),
-            principal.getEmail(),
-            roles,
-            authorities,
-            principal.getPlan().name()
-    );
+        principal.getId(),
+        principal.getName(),
+        principal.getEmail(),
+        roles,
+        authorities,
+        principal.getPlan().name());
   }
 }

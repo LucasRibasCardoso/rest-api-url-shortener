@@ -19,7 +19,6 @@ import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.infrastructure.entity.UrlEntity;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 @DisplayName("Testes de Integração - Exclusão de URL encurtada")
-class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
+class UrlDeleteIT extends AbstractIntegrationTest {
 
   private static final String URLS_ENDPOINT = "/api/v1/urls";
   private static final String REDIRECT_ENDPOINT = "/r";
@@ -43,7 +42,7 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
   private final JwtTokenService jwtTokenService;
 
   @Autowired
-  UrlDeleteIntegrationTest(
+  UrlDeleteIT(
       UserTestDataFactory userTestDataFactory,
       DynamoDbTable<UrlEntity> urlTable,
       StringRedisTemplate stringRedisTemplate,
@@ -61,7 +60,8 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
     String email = "delete-own-url.integration@example.com";
     UserEntity user = userTestDataFactory.createActiveUser(email, PASSWORD);
     AuthenticatedSession session = login(email, PASSWORD, "login-delete-own-url");
-    String shortCode = createUrl(session.accessToken(), "https://example.com/delete-own", "create-delete-own-url");
+    String shortCode =
+        createUrl(session.accessToken(), "https://example.com/delete-own", "create-delete-own-url");
     UrlEntity activeUrl = findByShortCode(shortCode);
 
     // Act
@@ -84,7 +84,8 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
     assertThat(deletedUrl.getAccessCount()).isZero();
     assertThat(deletedUrl.getLastAccessedAt()).isNull();
     assertThat(deletedUrl.getActiveRankingUserIdGsi()).isNull();
-    assertThat(deletedUrl.getStatusCreatedAtShortCodeGsi()).startsWith(UrlStatus.DELETED.name() + "#");
+    assertThat(deletedUrl.getStatusCreatedAtShortCodeGsi())
+        .startsWith(UrlStatus.DELETED.name() + "#");
     assertDeletedRedirectCache(shortCode);
   }
 
@@ -200,7 +201,11 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
             "https://example.com/delete-already-deleted",
             "create-delete-already-deleted-url");
 
-    requestDeleteUrl(session.accessToken(), shortCode).then().log().ifValidationFails().statusCode(204);
+    requestDeleteUrl(session.accessToken(), shortCode)
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(204);
     UrlEntity firstDeletedState = findByShortCode(shortCode);
 
     // Act
@@ -351,7 +356,11 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
             "https://example.com/delete-redirect",
             "create-delete-redirect-url");
 
-    requestDeleteUrl(session.accessToken(), shortCode).then().log().ifValidationFails().statusCode(204);
+    requestDeleteUrl(session.accessToken(), shortCode)
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(204);
 
     // Act
     Response response = given().when().get(REDIRECT_ENDPOINT + "/" + shortCode);
@@ -389,7 +398,11 @@ class UrlDeleteIntegrationTest extends AbstractIntegrationTest {
             "https://example.com/delete-details",
             "create-delete-details-url");
 
-    requestDeleteUrl(session.accessToken(), shortCode).then().log().ifValidationFails().statusCode(204);
+    requestDeleteUrl(session.accessToken(), shortCode)
+        .then()
+        .log()
+        .ifValidationFails()
+        .statusCode(204);
     UrlEntity deletedUrl = findByShortCode(shortCode);
 
     // Act

@@ -38,22 +38,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Caso de Uso Reenvio de Verificação")
 class ResendVerificationUseCaseTest {
 
-  private static final String RESPONSE_MESSAGE = "Enviamos um novo código de verificação para o seu e-mail.";
+  private static final String RESPONSE_MESSAGE =
+      "Enviamos um novo código de verificação para o seu e-mail.";
   private static final Duration CODE_TTL = Duration.ofMinutes(10);
   private static final Duration SENDING_TIMEOUT = Duration.ofMinutes(1);
   private static final Duration RESEND_COOLDOWN = Duration.ofMinutes(2);
 
-  @Mock
-  private EmailVerificationOutboxPort emailVerificationEventPort;
+  @Mock private EmailVerificationOutboxPort emailVerificationEventPort;
 
-  @Mock
-  private UserAccountRepositoryPort userAccountRepositoryPort;
+  @Mock private UserAccountRepositoryPort userAccountRepositoryPort;
 
-  @Mock
-  private CheckAuthRateLimitPort checkAuthRateLimitPort;
+  @Mock private CheckAuthRateLimitPort checkAuthRateLimitPort;
 
-  @Mock
-  private EmailVerificationResendCooldownPort emailVerificationResendCooldownPort;
+  @Mock private EmailVerificationResendCooldownPort emailVerificationResendCooldownPort;
 
   private final EmailVerificationPolicy emailVerificationPolicy =
       new EmailVerificationPolicy(CODE_TTL, SENDING_TIMEOUT, RESEND_COOLDOWN);
@@ -82,7 +79,8 @@ class ResendVerificationUseCaseTest {
       var command = new ResendVerificationCommand(" USER@EMAIL.COM ");
       var pendingUser = pendingUser();
 
-      given(userAccountRepositoryPort.findByEmail("user@email.com")).willReturn(Optional.of(pendingUser));
+      given(userAccountRepositoryPort.findByEmail("user@email.com"))
+          .willReturn(Optional.of(pendingUser));
       given(emailVerificationResendCooldownPort.reserve(pendingUser.getEmail(), RESEND_COOLDOWN))
           .willReturn(true);
 
@@ -100,17 +98,19 @@ class ResendVerificationUseCaseTest {
               emailVerificationResendCooldownPort);
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification("user@email.com");
       inOrder.verify(userAccountRepositoryPort).findByEmail("user@email.com");
-      inOrder.verify(emailVerificationEventPort)
+      inOrder
+          .verify(emailVerificationEventPort)
           .publishEmailVerificationRequestedEvent(
               pendingUser.getId(), pendingUser.getEmail(), EmailDispatchReason.RESEND);
-      inOrder.verify(emailVerificationResendCooldownPort)
+      inOrder
+          .verify(emailVerificationResendCooldownPort)
           .reserve(pendingUser.getEmail(), RESEND_COOLDOWN);
 
       verifyNoMoreInteractions(
-              checkAuthRateLimitPort,
-              userAccountRepositoryPort,
-              emailVerificationEventPort,
-              emailVerificationResendCooldownPort);
+          checkAuthRateLimitPort,
+          userAccountRepositoryPort,
+          emailVerificationEventPort,
+          emailVerificationResendCooldownPort);
     }
 
     @Test
@@ -120,7 +120,8 @@ class ResendVerificationUseCaseTest {
       var command = new ResendVerificationCommand("user@email.com");
       var pendingUser = pendingUser();
 
-      given(userAccountRepositoryPort.findByEmail(command.email())).willReturn(Optional.of(pendingUser));
+      given(userAccountRepositoryPort.findByEmail(command.email()))
+          .willReturn(Optional.of(pendingUser));
       given(emailVerificationResendCooldownPort.reserve(pendingUser.getEmail(), RESEND_COOLDOWN))
           .willReturn(false);
 
@@ -138,10 +139,12 @@ class ResendVerificationUseCaseTest {
               emailVerificationResendCooldownPort);
       inOrder.verify(checkAuthRateLimitPort).checkResendVerification(command.email());
       inOrder.verify(userAccountRepositoryPort).findByEmail(command.email());
-      inOrder.verify(emailVerificationEventPort)
+      inOrder
+          .verify(emailVerificationEventPort)
           .publishEmailVerificationRequestedEvent(
               pendingUser.getId(), pendingUser.getEmail(), EmailDispatchReason.RESEND);
-      inOrder.verify(emailVerificationResendCooldownPort)
+      inOrder
+          .verify(emailVerificationResendCooldownPort)
           .reserve(pendingUser.getEmail(), RESEND_COOLDOWN);
       verifyNoMoreInteractions(
           checkAuthRateLimitPort,
@@ -173,13 +176,15 @@ class ResendVerificationUseCaseTest {
     }
 
     @Test
-    @DisplayName("Deve retornar mensagem padrão sem publicar evento quando o usuário não estiver pendente")
+    @DisplayName(
+        "Deve retornar mensagem padrão sem publicar evento quando o usuário não estiver pendente")
     void shouldReturnDefaultMessageWithoutPublishingEventWhenUserIsNotPending() {
       // 1. Arrange
       var command = new ResendVerificationCommand("user@email.com");
       var activeUser = activeUser();
 
-      given(userAccountRepositoryPort.findByEmail(command.email())).willReturn(Optional.of(activeUser));
+      given(userAccountRepositoryPort.findByEmail(command.email()))
+          .willReturn(Optional.of(activeUser));
 
       // 2. Act
       var result = resendVerificationUseCase.execute(command);
@@ -194,32 +199,29 @@ class ResendVerificationUseCaseTest {
       verifyNoInteractions(emailVerificationEventPort, emailVerificationResendCooldownPort);
       verifyNoMoreInteractions(checkAuthRateLimitPort, userAccountRepositoryPort);
     }
-
   }
 
   private UserAccount pendingUser() {
     return UserAccount.restore(
-            UUID.fromString("019a19e6-fc96-7e7c-996e-86d7c3470001"),
-            "User Name",
-            "user@email.com",
-            "encoded-password",
-            UserStatus.PENDING_EMAIL_VERIFICATION,
-            PlanType.FREE,
-            false,
-            Set.of()
-    );
+        UUID.fromString("019a19e6-fc96-7e7c-996e-86d7c3470001"),
+        "User Name",
+        "user@email.com",
+        "encoded-password",
+        UserStatus.PENDING_EMAIL_VERIFICATION,
+        PlanType.FREE,
+        false,
+        Set.of());
   }
 
   private UserAccount activeUser() {
     return UserAccount.restore(
-            UUID.fromString("019a19e6-fc96-7e7c-996e-86d7c3470002"),
-            "User Name",
-            "user@email.com",
-            "encoded-password",
-            UserStatus.ACTIVE,
-            PlanType.FREE,
-            true,
-            Set.of()
-    );
+        UUID.fromString("019a19e6-fc96-7e7c-996e-86d7c3470002"),
+        "User Name",
+        "user@email.com",
+        "encoded-password",
+        UserStatus.ACTIVE,
+        PlanType.FREE,
+        true,
+        Set.of());
   }
 }

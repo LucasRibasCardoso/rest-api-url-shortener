@@ -2,21 +2,20 @@ package com.app.url_shortener.shared.ratelimit.infrastructure;
 
 import com.app.url_shortener.shared.ratelimit.config.RateLimitPolicyProperties;
 import com.app.url_shortener.shared.ratelimit.config.RateLimitProperties;
-import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitDecision;
 import com.app.url_shortener.shared.ratelimit.core.RateLimitPolicy;
 import com.app.url_shortener.shared.ratelimit.core.RateLimiterPort;
+import com.app.url_shortener.shared.ratelimit.exception.RateLimitInfrastructureException;
 import com.app.url_shortener.shared.ratelimit.key.RateLimitKey;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.distributed.proxy.BucketNotFoundException;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.lettuce.core.RedisException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-
-import io.lettuce.core.RedisException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +33,8 @@ public class Bucket4jRedisRateLimiterAdapter implements RateLimiterPort {
     Objects.requireNonNull(policy, "policy must not be null");
     Objects.requireNonNull(key, "key must not be null");
 
-    BucketConfiguration bucketConfiguration = bucketConfigs.computeIfAbsent(policy, this::createBucketConfiguration);
+    BucketConfiguration bucketConfiguration =
+        bucketConfigs.computeIfAbsent(policy, this::createBucketConfiguration);
     try {
 
       Bucket bucket = proxyManager.getProxy(redisKey(key), () -> bucketConfiguration);
@@ -44,8 +44,7 @@ public class Bucket4jRedisRateLimiterAdapter implements RateLimiterPort {
         return RateLimitDecision.allowed(probe.getRemainingTokens());
       }
       return RateLimitDecision.denied(probe.getRemainingTokens(), probe.getNanosToWaitForRefill());
-    }
-    catch (BucketNotFoundException | RedisException e) {
+    } catch (BucketNotFoundException | RedisException e) {
       throw new RateLimitInfrastructureException(e);
     }
   }
@@ -54,9 +53,11 @@ public class Bucket4jRedisRateLimiterAdapter implements RateLimiterPort {
     RateLimitPolicyProperties policyProperties = properties.getPolicyProperties(policy);
 
     return BucketConfiguration.builder()
-        .addLimit(limit -> limit
-                .capacity(policyProperties.capacity())
-                .refillGreedy(policyProperties.refillTokens(), policyProperties.refillPeriod()))
+        .addLimit(
+            limit ->
+                limit
+                    .capacity(policyProperties.capacity())
+                    .refillGreedy(policyProperties.refillTokens(), policyProperties.refillPeriod()))
         .build();
   }
 

@@ -77,7 +77,8 @@ public class UrlRedirectEventConsumer {
             .collect(Collectors.joining(", ")));
   }
 
-  private Map<String, List<Message<UrlRedirectedEvent>>> groupMessages(List<Message<UrlRedirectedEvent>> messages) {
+  private Map<String, List<Message<UrlRedirectedEvent>>> groupMessages(
+      List<Message<UrlRedirectedEvent>> messages) {
     return messages.stream().collect(Collectors.groupingBy(msg -> msg.getPayload().shortCode()));
   }
 }

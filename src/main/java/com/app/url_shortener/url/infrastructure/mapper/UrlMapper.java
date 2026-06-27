@@ -12,7 +12,9 @@ import org.mapstruct.ReportingPolicy;
 public interface UrlMapper {
 
   @Mapping(target = "createdAtShortCodeGsi", expression = "java(toCreatedAtShortCodeGsi(domain))")
-  @Mapping(target = "statusCreatedAtShortCodeGsi", expression = "java(toStatusCreatedAtShortCodeGsi(domain))")
+  @Mapping(
+      target = "statusCreatedAtShortCodeGsi",
+      expression = "java(toStatusCreatedAtShortCodeGsi(domain))")
   @Mapping(target = "activeRankingUserIdGsi", expression = "java(toActiveRankingUserIdGsi(domain))")
   UrlEntity toEntity(Url domain);
 

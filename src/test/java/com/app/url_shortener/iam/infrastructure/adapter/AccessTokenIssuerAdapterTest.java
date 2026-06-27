@@ -24,11 +24,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Adaptador Emissor de Access Token")
 class AccessTokenIssuerAdapterTest {
 
-  @Mock
-  private JwtTokenService jwtTokenService;
+  @Mock private JwtTokenService jwtTokenService;
 
-  @InjectMocks
-  private AccessTokenIssuerAdapter adapter;
+  @InjectMocks private AccessTokenIssuerAdapter adapter;
 
   @Nested
   @DisplayName("Emissão de Access Token")

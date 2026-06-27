@@ -77,11 +77,14 @@ class VerifyEmailUseCaseTest {
 
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email()))
           .willReturn(Optional.of(userAccount));
-      given(emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
-              any(UUID.class), any(String.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
+                  any(UUID.class), any(String.class), any(Instant.class)))
           .willReturn(Optional.of(token));
       given(verificationCodeProtectorPort.matches(command.code(), HASHED_CODE)).willReturn(true);
-      given(emailVerificationTokenRepositoryPort.consumeIfActive(any(UUID.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.consumeIfActive(
+                  any(UUID.class), any(Instant.class)))
           .willReturn(true);
       given(roleRepositoryPort.findDefaultRole()).willReturn(defaultRole);
       given(userAccountRepositoryPort.save(userAccount)).willReturn(userAccount);
@@ -127,7 +130,8 @@ class VerifyEmailUseCaseTest {
       // 1. Arrange
       var command = command();
 
-      given(userAccountRepositoryPort.findByEmailWithRoles(command.email())).willReturn(Optional.empty());
+      given(userAccountRepositoryPort.findByEmailWithRoles(command.email()))
+          .willReturn(Optional.empty());
 
       // 2. Act
       var throwableAssert = assertThatThrownBy(() -> verifyEmailUseCase.execute(command));
@@ -152,8 +156,9 @@ class VerifyEmailUseCaseTest {
 
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email()))
           .willReturn(Optional.of(userAccount));
-      given(emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
-              any(UUID.class), any(String.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
+                  any(UUID.class), any(String.class), any(Instant.class)))
           .willReturn(Optional.empty());
 
       // 2. Act
@@ -182,8 +187,9 @@ class VerifyEmailUseCaseTest {
 
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email()))
           .willReturn(Optional.of(userAccount));
-      given(emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
-              any(UUID.class), any(String.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
+                  any(UUID.class), any(String.class), any(Instant.class)))
           .willReturn(Optional.of(token));
       given(verificationCodeProtectorPort.matches(command.code(), HASHED_CODE)).willReturn(false);
 
@@ -198,8 +204,10 @@ class VerifyEmailUseCaseTest {
       verify(emailVerificationTokenRepositoryPort)
           .findActiveByUserIdAndEmail(any(UUID.class), any(String.class), any(Instant.class));
       verify(verificationCodeProtectorPort).matches(command.code(), HASHED_CODE);
-      verify(emailVerificationTokenRepositoryPort).registerFailedAttempt(any(UUID.class), any(Instant.class));
-      verify(emailVerificationTokenRepositoryPort, never()).consumeIfActive(any(UUID.class), any(Instant.class));
+      verify(emailVerificationTokenRepositoryPort)
+          .registerFailedAttempt(any(UUID.class), any(Instant.class));
+      verify(emailVerificationTokenRepositoryPort, never())
+          .consumeIfActive(any(UUID.class), any(Instant.class));
       verifyNoInteractions(roleRepositoryPort);
       verify(userAccountRepositoryPort, never()).save(any(UserAccount.class));
       verifyNoMoreInteractions(
@@ -219,11 +227,14 @@ class VerifyEmailUseCaseTest {
 
       given(userAccountRepositoryPort.findByEmailWithRoles(command.email()))
           .willReturn(Optional.of(userAccount));
-      given(emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
-              any(UUID.class), any(String.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.findActiveByUserIdAndEmail(
+                  any(UUID.class), any(String.class), any(Instant.class)))
           .willReturn(Optional.of(token));
       given(verificationCodeProtectorPort.matches(command.code(), HASHED_CODE)).willReturn(true);
-      given(emailVerificationTokenRepositoryPort.consumeIfActive(any(UUID.class), any(Instant.class)))
+      given(
+              emailVerificationTokenRepositoryPort.consumeIfActive(
+                  any(UUID.class), any(Instant.class)))
           .willReturn(false);
 
       // 2. Act
@@ -237,7 +248,8 @@ class VerifyEmailUseCaseTest {
       verify(emailVerificationTokenRepositoryPort)
           .findActiveByUserIdAndEmail(any(UUID.class), any(String.class), any(Instant.class));
       verify(verificationCodeProtectorPort).matches(command.code(), HASHED_CODE);
-      verify(emailVerificationTokenRepositoryPort).consumeIfActive(any(UUID.class), any(Instant.class));
+      verify(emailVerificationTokenRepositoryPort)
+          .consumeIfActive(any(UUID.class), any(Instant.class));
       verifyNoInteractions(roleRepositoryPort);
       verify(userAccountRepositoryPort, never()).save(any(UserAccount.class));
       verifyNoMoreInteractions(

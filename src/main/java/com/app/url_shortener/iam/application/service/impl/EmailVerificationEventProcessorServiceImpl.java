@@ -23,7 +23,8 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EmailVerificationEventProcessorServiceImpl implements EmailVerificationEventProcessorService {
+public class EmailVerificationEventProcessorServiceImpl
+    implements EmailVerificationEventProcessorService {
 
   private final EmailVerificationPolicy emailVerificationPolicy;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
@@ -75,10 +76,9 @@ public class EmailVerificationEventProcessorServiceImpl implements EmailVerifica
     Instant now = Instant.now();
     Instant staleSendingThreshold = now.minus(emailVerificationPolicy.sendingTimeout());
 
-    boolean reserved = emailDispatchRepositoryPort.markAsSendingIfAvailable(
-            emailDispatch.getId(),
-            now,
-            staleSendingThreshold);
+    boolean reserved =
+        emailDispatchRepositoryPort.markAsSendingIfAvailable(
+            emailDispatch.getId(), now, staleSendingThreshold);
 
     if (!reserved) {
       throw new EmailDispatchAlreadyProcessingException();
@@ -86,27 +86,29 @@ public class EmailVerificationEventProcessorServiceImpl implements EmailVerifica
   }
 
   private void tryMarkDispatchAsAccepted(EmailDispatch emailDispatch, String providerMessageId) {
-    boolean accepted = emailDispatchRepositoryPort.markAsAccepted(
-            emailDispatch.getId(),
-            providerMessageId,
-            Instant.now());
+    boolean accepted =
+        emailDispatchRepositoryPort.markAsAccepted(
+            emailDispatch.getId(), providerMessageId, Instant.now());
 
     if (!accepted) {
       throw new EmailDispatchStateConflictException();
     }
   }
 
-  private EmailVerificationSendResult sendVerificationEmail(EmailDispatch dispatch, EmailVerificationToken token) {
+  private EmailVerificationSendResult sendVerificationEmail(
+      EmailDispatch dispatch, EmailVerificationToken token) {
     try {
-      var verificationCode = verificationCodeProtectorPort.decrypt(token.getEncryptedCode()).value();
-      return emailVerificationSenderPort.sendEmailVerificationCode(token.getEmail(), verificationCode);
+      var verificationCode =
+          verificationCodeProtectorPort.decrypt(token.getEncryptedCode()).value();
+      return emailVerificationSenderPort.sendEmailVerificationCode(
+          token.getEmail(), verificationCode);
 
     } catch (Exception exception) {
       emailDispatchRepositoryPort.markAsFailed(
-              dispatch.getId(),
-              IamErrorCode.AUTH_EMAIL_VERIFICATION_SEND_FAILED.name(),
-              exception.getClass().getSimpleName(),
-              Instant.now());
+          dispatch.getId(),
+          IamErrorCode.AUTH_EMAIL_VERIFICATION_SEND_FAILED.name(),
+          exception.getClass().getSimpleName(),
+          Instant.now());
       throw exception;
     }
   }

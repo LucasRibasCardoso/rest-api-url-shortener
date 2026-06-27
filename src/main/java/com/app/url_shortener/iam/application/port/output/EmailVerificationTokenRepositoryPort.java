@@ -13,7 +13,8 @@ public interface EmailVerificationTokenRepositoryPort {
 
   Optional<EmailVerificationToken> findOpenByUserIdAndEmail(UUID userId, String email);
 
-  Optional<EmailVerificationToken> findActiveByUserIdAndEmail(UUID userId, String email, Instant now);
+  Optional<EmailVerificationToken> findActiveByUserIdAndEmail(
+      UUID userId, String email, Instant now);
 
   int revokeOpenByUserIdAndEmail(UUID userId, String email, Instant now);
 

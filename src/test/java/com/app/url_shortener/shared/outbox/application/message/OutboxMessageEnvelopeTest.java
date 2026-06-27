@@ -25,13 +25,7 @@ class OutboxMessageEnvelopeTest {
     // 2. Act
     var envelope =
         new OutboxMessageEnvelope(
-            eventId,
-            "EMAIL_VERIFICATION_REQUESTED",
-            1,
-            "USER",
-            "user-id",
-            occurredAt,
-            payload);
+            eventId, "EMAIL_VERIFICATION_REQUESTED", 1, "USER", "user-id", occurredAt, payload);
 
     // 3. Assert
     assertAll(

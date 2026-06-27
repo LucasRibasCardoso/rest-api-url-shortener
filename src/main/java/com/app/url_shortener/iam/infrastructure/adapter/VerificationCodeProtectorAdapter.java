@@ -34,7 +34,8 @@ public class VerificationCodeProtectorAdapter implements VerificationCodeProtect
       byte[] digest = mac.doFinal(code.value().getBytes(StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(digest);
     } catch (GeneralSecurityException exception) {
-      throw new VerificationCodeProtectionException(IamErrorCode.AUTH_VERIFICATION_CODE_HASH_FAILED, exception);
+      throw new VerificationCodeProtectionException(
+          IamErrorCode.AUTH_VERIFICATION_CODE_HASH_FAILED, exception);
     }
   }
 
@@ -48,8 +49,7 @@ public class VerificationCodeProtectorAdapter implements VerificationCodeProtect
 
     String candidateHash = hash(rawCode);
     return MessageDigest.isEqual(
-            candidateHash.getBytes(StandardCharsets.UTF_8),
-            codeHash.getBytes(StandardCharsets.UTF_8));
+        candidateHash.getBytes(StandardCharsets.UTF_8), codeHash.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
@@ -60,14 +60,16 @@ public class VerificationCodeProtectorAdapter implements VerificationCodeProtect
       return verificationCodeTextEncryptor.encrypt(code.value());
 
     } catch (RuntimeException exception) {
-      throw new VerificationCodeProtectionException(IamErrorCode.AUTH_VERIFICATION_CODE_ENCRYPT_FAILED, exception);
+      throw new VerificationCodeProtectionException(
+          IamErrorCode.AUTH_VERIFICATION_CODE_ENCRYPT_FAILED, exception);
     }
   }
 
   @Override
   public VerificationCode decrypt(String encryptedCode) {
     if (encryptedCode == null || encryptedCode.isBlank()) {
-      throw new VerificationCodeProtectionException(IamErrorCode.AUTH_ENCRYPTED_VERIFICATION_CODE_INVALID);
+      throw new VerificationCodeProtectionException(
+          IamErrorCode.AUTH_ENCRYPTED_VERIFICATION_CODE_INVALID);
     }
 
     try {
@@ -75,7 +77,8 @@ public class VerificationCodeProtectorAdapter implements VerificationCodeProtect
       return VerificationCode.of(rawCode);
 
     } catch (RuntimeException exception) {
-      throw new VerificationCodeProtectionException(IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED, exception);
+      throw new VerificationCodeProtectionException(
+          IamErrorCode.AUTH_VERIFICATION_CODE_DECRYPT_FAILED, exception);
     }
   }
 

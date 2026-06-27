@@ -18,7 +18,8 @@ public class EmailVerificationConfig {
 
   @Bean
   public EmailVerificationPolicy emailVerificationPolicy(EmailVerificationProperties properties) {
-    return new EmailVerificationPolicy(properties.codeTtl(), properties.sendingTimeout(), properties.resendCooldown());
+    return new EmailVerificationPolicy(
+        properties.codeTtl(), properties.sendingTimeout(), properties.resendCooldown());
   }
 
   @Bean

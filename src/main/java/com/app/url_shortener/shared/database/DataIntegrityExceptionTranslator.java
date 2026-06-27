@@ -15,17 +15,19 @@ public class DataIntegrityExceptionTranslator {
   private final PostgresConstraintExtractor postgresConstraintExtractor;
 
   public RuntimeException translate(DataIntegrityViolationException exception) {
-    return postgresConstraintExtractor.extractUniqueConstraintName(exception)
-            .flatMap(DatabaseConstraints::fromValue)
-            .map(this::mapConstraintToException)
-            .orElseGet(DataIntegrityConflictException::new);
+    return postgresConstraintExtractor
+        .extractUniqueConstraintName(exception)
+        .flatMap(DatabaseConstraints::fromValue)
+        .map(this::mapConstraintToException)
+        .orElseGet(DataIntegrityConflictException::new);
   }
 
   private RuntimeException mapConstraintToException(DatabaseConstraints constraint) {
     return switch (constraint) {
       case UK_USERS_EMAIL -> new EmailAlreadyRegisteredException();
       case UK_EMAIL_DISPATCHES_EVENT_ID -> new DuplicateEmailDispatchEventException();
-      case UK_EMAIL_VERIFICATION_TOKENS_OPEN_USER_EMAIL -> new DuplicateOpenEmailVerificationTokenException();
+      case UK_EMAIL_VERIFICATION_TOKENS_OPEN_USER_EMAIL ->
+          new DuplicateOpenEmailVerificationTokenException();
     };
   }
 }

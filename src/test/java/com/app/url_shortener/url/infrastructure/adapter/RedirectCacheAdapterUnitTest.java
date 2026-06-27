@@ -1,5 +1,11 @@
 package com.app.url_shortener.url.infrastructure.adapter;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.app.url_shortener.url.domain.exception.RedirectCacheException;
 import com.app.url_shortener.url.infrastructure.config.RedirectCacheProperties;
 import java.time.Duration;
@@ -15,12 +21,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import tools.jackson.databind.ObjectMapper;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Testes de Unidade - Adaptador Redis de Cache de Redirect")
@@ -30,11 +30,9 @@ class RedirectCacheAdapterUnitTest {
   private static final Duration TTL_DELETED = Duration.ofHours(1);
   private static final Duration TTL_NOT_FOUND = Duration.ofMinutes(5);
 
-  @Mock
-  private StringRedisTemplate redisTemplate;
+  @Mock private StringRedisTemplate redisTemplate;
 
-  @Mock
-  private ValueOperations<String, String> valueOperations;
+  @Mock private ValueOperations<String, String> valueOperations;
 
   @Nested
   @DisplayName("Falhas de infraestrutura")
@@ -69,7 +67,8 @@ class RedirectCacheAdapterUnitTest {
       when(redisTemplate.opsForValue()).thenReturn(valueOperations);
       doThrow(exception)
           .when(valueOperations)
-          .set(org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
+          .set(
+              org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
               org.mockito.ArgumentMatchers.anyString(),
               org.mockito.ArgumentMatchers.eq(TTL_ACTIVE));
 
@@ -79,7 +78,8 @@ class RedirectCacheAdapterUnitTest {
           .hasCause(exception);
       verify(redisTemplate).opsForValue();
       verify(valueOperations)
-          .set(org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
+          .set(
+              org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
               org.mockito.ArgumentMatchers.anyString(),
               org.mockito.ArgumentMatchers.eq(TTL_ACTIVE));
       verifyNoMoreInteractions(redisTemplate, valueOperations);
@@ -95,7 +95,8 @@ class RedirectCacheAdapterUnitTest {
       when(redisTemplate.opsForValue()).thenReturn(valueOperations);
       doThrow(exception)
           .when(valueOperations)
-          .set(org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
+          .set(
+              org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
               org.mockito.ArgumentMatchers.anyString(),
               org.mockito.ArgumentMatchers.eq(TTL_DELETED));
 
@@ -105,7 +106,8 @@ class RedirectCacheAdapterUnitTest {
           .hasCause(exception);
       verify(redisTemplate).opsForValue();
       verify(valueOperations)
-          .set(org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
+          .set(
+              org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
               org.mockito.ArgumentMatchers.anyString(),
               org.mockito.ArgumentMatchers.eq(TTL_DELETED));
       verifyNoMoreInteractions(redisTemplate, valueOperations);
@@ -131,7 +133,8 @@ class RedirectCacheAdapterUnitTest {
           .hasCause(exception);
       verify(redisTemplate).opsForValue();
       verify(valueOperations)
-          .setIfAbsent(org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
+          .setIfAbsent(
+              org.mockito.ArgumentMatchers.eq("url:redirect:" + shortCode),
               org.mockito.ArgumentMatchers.anyString(),
               org.mockito.ArgumentMatchers.eq(TTL_NOT_FOUND));
       verifyNoMoreInteractions(redisTemplate, valueOperations);

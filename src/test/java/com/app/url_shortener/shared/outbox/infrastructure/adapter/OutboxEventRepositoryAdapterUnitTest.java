@@ -10,8 +10,8 @@ import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateId;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxAggregateType;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEvent;
 import com.app.url_shortener.shared.outbox.domain.model.OutboxEventType;
-import com.app.url_shortener.shared.outbox.infrastructure.mapper.OutboxEventPersistenceMapper;
 import com.app.url_shortener.shared.outbox.infrastructure.entity.OutboxEventEntity;
+import com.app.url_shortener.shared.outbox.infrastructure.mapper.OutboxEventPersistenceMapper;
 import com.app.url_shortener.shared.outbox.infrastructure.repository.OutboxEventJpaRepository;
 import java.time.Instant;
 import java.util.List;
@@ -30,14 +30,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Adaptador de Repositório Outbox")
 class OutboxEventRepositoryAdapterUnitTest {
 
-  @Mock
-  private OutboxEventJpaRepository outboxEventJpaRepository;
+  @Mock private OutboxEventJpaRepository outboxEventJpaRepository;
 
-  @Mock
-  private OutboxEventPersistenceMapper outboxEventPersistenceMapper;
+  @Mock private OutboxEventPersistenceMapper outboxEventPersistenceMapper;
 
-  @InjectMocks
-  private OutboxEventRepositoryAdapter adapter;
+  @InjectMocks private OutboxEventRepositoryAdapter adapter;
 
   @Nested
   @DisplayName("Persistência")

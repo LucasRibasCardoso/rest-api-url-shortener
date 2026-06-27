@@ -26,11 +26,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("Testes de Unidade - Resolvedor de Chaves de Rate Limit")
 class RateLimitKeyResolverTest {
 
-  @Mock
-  private EmailRateLimitKeyHasher emailRateLimitKeyHasher;
+  @Mock private EmailRateLimitKeyHasher emailRateLimitKeyHasher;
 
-  @InjectMocks
-  private RateLimitKeyResolver resolver;
+  @InjectMocks private RateLimitKeyResolver resolver;
 
   @Nested
   @DisplayName("Chaves por Email")
@@ -251,7 +249,8 @@ class RateLimitKeyResolverTest {
       var key = resolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_FREE);
 
       // 3. Assert
-      assertThat(key.getValue()).isEqualTo("url-shorten-free:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
+      assertThat(key.getValue())
+          .isEqualTo("url-shorten-free:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
       verifyNoInteractions(emailRateLimitKeyHasher);
     }
 
@@ -265,7 +264,8 @@ class RateLimitKeyResolverTest {
       var key = resolver.shortenByUserIdAndPlan(userId, RateLimitPolicy.URL_SHORTEN_PREMIUM);
 
       // 3. Assert
-      assertThat(key.getValue()).isEqualTo("url-shorten-premium:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
+      assertThat(key.getValue())
+          .isEqualTo("url-shorten-premium:user:019a16f1-ae7f-7c9d-9e18-44773f1ad101");
       verifyNoInteractions(emailRateLimitKeyHasher);
     }
 
@@ -288,7 +288,8 @@ class RateLimitKeyResolverTest {
       // 1. Arrange
 
       // 2. Act & 3. Assert
-      assertThatThrownBy(() -> resolver.shortenByUserIdAndPlan(null, RateLimitPolicy.URL_SHORTEN_FREE))
+      assertThatThrownBy(
+              () -> resolver.shortenByUserIdAndPlan(null, RateLimitPolicy.URL_SHORTEN_FREE))
           .isInstanceOf(NullPointerException.class)
           .hasMessage("userId must not be null");
       verifyNoInteractions(emailRateLimitKeyHasher);
