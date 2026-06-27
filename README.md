@@ -1,6 +1,6 @@
 # URL Shortener SaaS API
 
-[![Pipeline CI/CD](https://github.com/LucasRibasCardoso/url-shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/LucasRibasCardoso/url-shortener/actions/workflows/ci.yml)
+[![Pipeline CI/CD](https://github.com/LucasRibasCardoso/rest-api-url-shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/LucasRibasCardoso/rest-api-url-shortener/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F?logo=springboot&logoColor=white)
 ![Maven](https://img.shields.io/badge/Maven-Wrapper-C71A36?logo=apachemaven&logoColor=white)
@@ -54,7 +54,7 @@ Na prática:
 - A camada `domain` concentra modelos, value objects, enums, eventos e exceções de negócio.
 - A camada `infrastructure` implementa adapters para JPA/PostgreSQL, Redis, DynamoDB, Hashids, tokens e notificações.
 
-Também existem decisões de arquitetura orientadas a eventos internos. O registro de usuário publica `EmailVerificationEvent`, processado por `@TransactionalEventListener` após o commit da transação para envio do código de verificação.
+Também existem decisões de arquitetura orientadas a eventos assíncronos. O registro e o reenvio de verificação gravam eventos de outbox no PostgreSQL; um scheduler publica esses eventos no SQS e um consumidor processa o envio do e-mail de verificação. Redirecionamentos públicos também publicam eventos no SQS para atualização assíncrona de contadores de acesso no DynamoDB.
 
 ## Stack Utilizada
 
@@ -75,7 +75,7 @@ Também existem decisões de arquitetura orientadas a eventos internos. O regist
 - PostgreSQL 16.3 Alpine
 - Flyway para migrations relacionais
 - Spring Data JPA / Hibernate
-- Redis 7.2 Alpine para cache, idempotência, tokens de verificação e contador de IDs
+- Redis 7.2 Alpine para cache de redirecionamento, idempotência, rate limiting e alocação de blocos de IDs
 - DynamoDB via AWS SDK 2.42.29 e DynamoDB Enhanced Client
 - LocalStack 3.0.0 para DynamoDB, SQS e SES em ambiente local
 
@@ -83,7 +83,7 @@ Também existem decisões de arquitetura orientadas a eventos internos. O regist
 
 - LocalStack com DynamoDB, SQS e SES para desenvolvimento local
 - AWS DynamoDB como armazenamento de URLs
-- AWS SQS para publicação e consumo assíncrono de eventos
+- AWS SQS para eventos assíncronos de verificação de e-mail e redirecionamento
 - AWS SES para envio de e-mails de verificação
 
 ### Testes & Qualidade
@@ -209,7 +209,7 @@ Tipos de teste presentes:
 - Unitários (`@Tag("unit")`): domínio, use cases, adapters, mappers, JWT, handlers e utilitários sem Spring context completo.
 - Web slice (`@Tag("web-slice")`): controllers com `@WebMvcTest`, validação, autorização e contratos HTTP.
 - JPA slice (`@Tag("jpa-slice")`): repositórios/adapters relacionais com base `BaseDataJpaSliceTest`.
-- Redis slice (`@Tag("redis-slice")`): idempotência, contador de IDs e tokens temporários com base `BaseRedisSliceTest`.
+- Redis slice (`@Tag("redis-slice")`): idempotência, cache de redirecionamento, cooldown de reenvio e rate limiting com base `BaseRedisSliceTest`.
 - Integração (`@Tag("integration")`): base `AbstractIntegrationTest` com Spring Boot, RestAssured, PostgreSQL, Redis e LocalStack/Testcontainers.
 
 ## Endpoints Principais
@@ -225,7 +225,7 @@ Base path: `/api/v1/auth`
 | `POST` | `/api/v1/auth/login` | Autentica credenciais, retorna access token e define cookie `refreshToken` | Pública |
 | `POST` | `/api/v1/auth/refresh` | Rotaciona refresh token e emite novo access token | Pública, via cookie |
 | `POST` | `/api/v1/auth/logout` | Revoga refresh token e expira o cookie | Protegida |
-| `POST` | `/api/v1/auth/resend-verification` | Reenvia código de verificação | Protegida pela configuração global atual |
+| `POST` | `/api/v1/auth/resend-verification` | Reenvia código de verificação | Pública |
 
 Operações protegidas pelo filtro de idempotência exigem o header:
 
@@ -244,6 +244,7 @@ Base path: `/api/v1/urls`
 | `DELETE` | `/api/v1/urls/{shortcode}` | Remove uma URL | `url:delete:own` ou `url:delete:any` |
 | `GET` | `/api/v1/urls/me?limit=20&cursor=...` | Lista URLs do usuário autenticado com paginação por cursor | `url:list:own` |
 | `GET` | `/api/v1/urls/users/{userId}?limit=20&cursor=...` | Lista URLs de um usuário específico | `url:list:any` |
+| `GET` | `/api/v1/urls/me/ranking?rankingSize=3` | Lista as URLs ativas mais acessadas do usuário autenticado | `url:ranking:own` |
 
 ### Redirecionamento público
 
@@ -281,19 +282,14 @@ http://localhost:8080/v3/api-docs
 - **Refresh tokens persistidos como hash**: tokens brutos são gerados com `SecureRandom`, enviados ao cliente e armazenados no PostgreSQL apenas como SHA-256.
 - **Rotina de limpeza agendada**: `RefreshTokenCleanupTask` remove tokens expirados/revogados antigos diariamente às 03:00.
 - **Idempotência em endpoints críticos**: `IdempotencyFilter` exige `Idempotency-Key`, evita concorrência duplicada e reutiliza respostas concluídas por 24 horas via Redis.
-- **Redis como componente operacional**: além de cache, Redis armazena tokens temporários de verificação de e-mail e aloca blocos de IDs para geração de short codes.
+- **Redis como componente operacional**: além de cache de redirecionamento, Redis sustenta idempotência, rate limiting com Bucket4j e alocação de blocos de IDs para geração de short codes.
 - **Geração eficiente de short codes**: IDs numéricos são alocados em blocos no Redis e codificados com Hashids/Base62, reduzindo chamadas ao contador central.
-- **DynamoDB para URLs**: registros de URL são persistidos em tabela DynamoDB por `shortCode`, com índice secundário `user-index` para listagem por usuário.
-- **Cache de resolução por short code**: consultas por short code usam `@Cacheable("urls")` e exclusões invalidam o cache com `@CacheEvict`.
+- **DynamoDB para URLs**: registros de URL são persistidos em tabela DynamoDB por `shortCode`, com índices secundários para listagem por usuário, filtro por status e ranking de URLs ativas.
+- **Cache de resolução por short code**: consultas por short code usam Redis com TTLs distintos para URLs ativas, removidas e não encontradas.
+- **Outbox transacional com SQS**: eventos de verificação de e-mail são persistidos no PostgreSQL, publicados por scheduler e consumidos via SQS, reduzindo acoplamento entre transação de IAM e envio externo.
+- **Contadores assíncronos de redirecionamento**: acessos públicos publicam eventos no SQS e o consumidor agrupa mensagens por `shortCode` para incrementar contadores no DynamoDB.
+- **Rate limiting por política**: Bucket4j com Redis aplica limites para registro, login, verificação, reenvio e criação de URLs por plano.
 - **Problem Details centralizado**: `GlobalExceptionHandler` e `ProblemDetailFactory` padronizam erros HTTP com `errorCode`, validações de campo e categorias como validation, conflict, forbidden e infrastructure.
 - **Migrations versionadas**: PostgreSQL é versionado por Flyway em `src/main/resources/db/migration`.
 - **Pipeline CI/CD**: GitHub Actions executa testes unitários, slice tests, integração e publica imagem Docker no GitHub Container Registry para a branch `main`.
 - **Container runtime enxuto**: Dockerfile usa Temurin 21 JRE Alpine, layered JAR, usuário não-root e opções JVM configuradas.
-
-## Roadmap
-
-- Substituir a estratégia `ConsoleEmailSenderStrategy` por um provedor real de e-mail e remover logs de códigos de verificação em ambientes produtivos.
-- Externalizar segredos e propriedades sensíveis para um mecanismo de configuração seguro, mantendo `application-dev.yml` apenas com valores locais descartáveis.
-- Implementar métricas de acesso/click tracking para URLs, incluindo contadores, auditoria e dashboards operacionais.
-- Adicionar rate limiting e quotas por plano (`FREE`/`PREMIUM`), aproveitando as bases já existentes de `PlanType` e exceções de limite.
-- Ampliar testes end-to-end para fluxos completos de registro, verificação, login, criação de URL, redirecionamento e revogação de token.
