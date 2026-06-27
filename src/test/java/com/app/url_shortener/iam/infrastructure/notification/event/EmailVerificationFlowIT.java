@@ -34,6 +34,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -311,7 +312,7 @@ class EmailVerificationFlowIT extends AbstractIntegrationTest {
     EmailVerificationRequestedEvent event = toEvent(outboxEvent);
     var preparedDispatch = emailDispatchVerificationService.findOrCreate(event);
     UUID dispatchId = preparedDispatch.dispatch().getId();
-    Instant reservationTime = Instant.now();
+    Instant reservationTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
     // Act
     List<Boolean> reservationResults =

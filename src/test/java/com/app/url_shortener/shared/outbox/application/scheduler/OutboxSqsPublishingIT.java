@@ -15,6 +15,7 @@ import io.awspring.cloud.sqs.operations.SqsTemplate;
 import io.restassured.http.ContentType;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -116,7 +117,7 @@ class OutboxSqsPublishingIT extends AbstractIntegrationTest {
   @DisplayName("Deve ignorar eventos não elegíveis e publicar somente eventos pendentes aptos")
   void shouldIgnoreIneligibleEventsAndPublishOnlyEligiblePendingEvents() {
     // Arrange
-    var now = Instant.now();
+    var now = Instant.now().truncatedTo(ChronoUnit.MICROS);
     var eligibleEventId = UUID.fromString("019b1ec0-4f2a-7d90-9c10-111111111111");
     var publishedEventId = UUID.fromString("019b1ec0-4f2a-7d90-9c10-222222222222");
     var failedEventId = UUID.fromString("019b1ec0-4f2a-7d90-9c10-333333333333");
