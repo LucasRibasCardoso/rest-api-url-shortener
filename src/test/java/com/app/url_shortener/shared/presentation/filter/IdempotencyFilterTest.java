@@ -296,6 +296,34 @@ class IdempotencyFilterTest {
     }
 
     @Test
+    @DisplayName("Deve excluir chave de idempotência quando resposta tiver erro 4xx")
+    void shouldDeleteIdempotencyKeyWhenResponseHasClientError() throws Exception {
+      // 1. Arrange
+      var request = requestWithIdempotencyKey("POST", PROTECTED_URI, "");
+      var response = new MockHttpServletResponse();
+      var filterChain = filterChainReturning(HttpServletResponse.SC_BAD_REQUEST, "validation error");
+
+      given(principalScopeResolver.resolve(request)).willReturn(FINGERPRINT.principalScope());
+      given(requestBodyHasher.sha256Hex(any(byte[].class))).willReturn(FINGERPRINT.bodyHash());
+      given(idempotencyPort.saveInProgress(GENERATED_KEY, Duration.ofMinutes(2))).willReturn(true);
+
+      // 2. Act
+      filter.doFilterInternal(request, response, filterChain);
+
+      // 3. Assert
+      assertAll(
+              () -> assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_BAD_REQUEST),
+              () -> assertThat(response.getContentAsString()).isEqualTo("validation error")
+      );
+
+      verify(idempotencyPort).saveInProgress(GENERATED_KEY, Duration.ofMinutes(2));
+      verify(idempotencyPort).delete(GENERATED_KEY);
+      verify(idempotencyPort, never()).saveCompleted(any(), any(), any());
+      verifyNoInteractions(exceptionResolver);
+      verifyNoMoreInteractions(idempotencyPort);
+    }
+
+    @Test
     @DisplayName("Deve excluir chave de idempotência quando resposta tiver erro 5xx")
     void shouldDeleteIdempotencyKeyWhenResponseHasServerError() throws Exception {
       // 1. Arrange

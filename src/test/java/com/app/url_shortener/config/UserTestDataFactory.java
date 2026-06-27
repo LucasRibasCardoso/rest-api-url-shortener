@@ -24,14 +24,32 @@ public class UserTestDataFactory {
   private final PasswordEncoder passwordEncoder;
 
   public UserEntity createActiveUser(String email, String rawPassword) {
+    return createActiveUser(email, rawPassword, PlanType.FREE);
+  }
+
+  public UserEntity createActiveUser(String email, String rawPassword, PlanType planType) {
     RoleEntity defaultRole = roleJpaRepository.findDefaultRole().orElseThrow();
-    return createUser(email, rawPassword, UserStatus.ACTIVE, true, Set.of(defaultRole));
+    return createUser(email, rawPassword, planType, UserStatus.ACTIVE, true, Set.of(defaultRole));
+  }
+
+  public UserEntity createAdminUser(String email, String rawPassword) {
+    return createAdminUser(email, rawPassword, PlanType.FREE);
+  }
+
+  public UserEntity createAdminUser(String email, String rawPassword, PlanType planType) {
+    RoleEntity adminRole =
+        roleJpaRepository.findAll().stream()
+            .filter(role -> "ADMIN".equals(role.getName()))
+            .findFirst()
+            .orElseThrow();
+    return createUser(email, rawPassword, planType, UserStatus.ACTIVE, true, Set.of(adminRole));
   }
 
   public UserEntity createPendingUser(String email, String rawPassword) {
     return createUser(
         email,
         rawPassword,
+        PlanType.FREE,
         UserStatus.PENDING_EMAIL_VERIFICATION,
         false,
         Collections.emptySet());
@@ -40,6 +58,7 @@ public class UserTestDataFactory {
   private UserEntity createUser(
       String email,
       String rawPassword,
+      PlanType planType,
       UserStatus status,
       boolean emailVerified,
       Set<RoleEntity> roles) {
@@ -50,7 +69,7 @@ public class UserTestDataFactory {
             email,
             passwordEncoder.encode(rawPassword),
             status,
-            PlanType.FREE,
+            planType,
             emailVerified,
             null,
             null,

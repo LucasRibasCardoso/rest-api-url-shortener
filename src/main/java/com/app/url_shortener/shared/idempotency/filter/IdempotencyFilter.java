@@ -11,21 +11,10 @@ import com.app.url_shortener.shared.idempotency.valueobjects.CachedResponse;
 import com.app.url_shortener.shared.idempotency.valueobjects.IdempotencyEntry;
 import com.app.url_shortener.shared.idempotency.valueobjects.IdempotencyKey;
 import com.app.url_shortener.shared.idempotency.valueobjects.RequestFingerprint;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.MediaType;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
-import org.springframework.util.PathMatcher;
-import org.springframework.util.StreamUtils;
-import org.springframework.web.util.ContentCachingResponseWrapper;
-import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.HandlerExceptionResolver;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -33,6 +22,16 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 @Component
 public class IdempotencyFilter extends OncePerRequestFilter {
@@ -128,14 +127,14 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     try {
       filterChain.doFilter(cachedRequest, wrappedResponse);
 
-      if (wrappedResponse.getStatus() >= HttpServletResponse.SC_INTERNAL_SERVER_ERROR) {
-        idempotencyPort.delete(idempotencyKey);
+      if (wrappedResponse.getStatus() >= 200 && wrappedResponse.getStatus() < 300) {
+        var responseBody = new String(wrappedResponse.getContentAsByteArray(), responseCharset(wrappedResponse));
+        var cachedResponse = new CachedResponse(wrappedResponse.getStatus(), responseBody);
+        idempotencyPort.saveCompleted(idempotencyKey, cachedResponse, COMPLETED_TTL);
         return;
       }
 
-      var responseBody = new String(wrappedResponse.getContentAsByteArray(), responseCharset(wrappedResponse));
-      var cachedResponse = new CachedResponse(wrappedResponse.getStatus(), responseBody);
-      idempotencyPort.saveCompleted(idempotencyKey, cachedResponse, COMPLETED_TTL);
+      idempotencyPort.delete(idempotencyKey);
     }
     catch (Exception exception) {
       idempotencyPort.delete(idempotencyKey);
