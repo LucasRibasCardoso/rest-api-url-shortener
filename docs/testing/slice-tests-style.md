@@ -51,7 +51,8 @@ The slice base classes are in
   `tools.jackson.databind.ObjectMapper`, and a `@MockitoBean JwtDecoder`.
 - `BaseDataJpaSliceTest` provides `@DataJpaTest`,
   `@AutoConfigureTestDatabase(replace = NONE)`, and PostgreSQL dynamic datasource properties.
-- `BaseRedisSliceTest` provides `@DataRedisTest` and Redis dynamic connection properties.
+- `BaseRedisSliceTest` provides `@DataRedisTest`, Redis dynamic connection properties, and a
+  centralized `FLUSHDB` reset before every test.
 
 Container support is centralized:
 
@@ -113,7 +114,8 @@ behavior.
 - Use the Redis Testcontainer already provided by the base class.
 - Test serialization/deserialization, TTL, key format, save/read/delete behavior, custom Redis
   queries, and idempotency/cache behavior when implemented by Redis.
-- Clean Redis state between tests if the base class does not already do it.
+- Rely on the `BaseRedisSliceTest` reset for isolation. Do not add broad key deletion, `FLUSHDB`, or
+  `FLUSHALL` cleanup to concrete tests.
 - Prefer exercising the real Redis-facing component with Spring-managed `StringRedisTemplate` or
   `RedisTemplate` support instead of mocking Redis operations.
 

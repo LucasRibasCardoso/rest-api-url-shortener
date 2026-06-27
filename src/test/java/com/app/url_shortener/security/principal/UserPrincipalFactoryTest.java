@@ -1,22 +1,21 @@
 package com.app.url_shortener.security.principal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.RoleEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.entity.RoleEntity;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - UserPrincipalFactory")
@@ -34,41 +33,42 @@ class UserPrincipalFactoryTest {
       // 1. Arrange
       var userId = UUID.randomUUID();
       var role = role("USER", permission("url:create"));
-      var user = userEntity(
+      var user =
+          userEntity(
               userId,
               "Maria Silva",
               "maria@email.com",
               "password-hash",
               UserStatus.ACTIVE,
               PlanType.PREMIUM,
-              roles(role)
-      );
+              roles(role));
 
       // 2. Act
       var principal = factory.from(user);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(principal.getId()).isEqualTo(userId),
-              () -> assertThat(principal.getName()).isEqualTo("Maria Silva"),
-              () -> assertThat(principal.getEmail()).isEqualTo("maria@email.com"),
-              () -> assertThat(principal.getPasswordHash()).isEqualTo("password-hash"),
-              () -> assertThat(principal.getPassword()).isEqualTo("password-hash"),
-              () -> assertThat(principal.getUsername()).isEqualTo("maria@email.com"),
-              () -> assertThat(principal.getStatus()).isEqualTo(UserStatus.ACTIVE),
-              () -> assertThat(principal.getPlan()).isEqualTo(PlanType.PREMIUM),
-              () -> assertThat(principal.getAuthorities())
-                      .extracting("authority")
-                      .containsExactly("ROLE_USER", "url:create")
-      );
+          () -> assertThat(principal.getId()).isEqualTo(userId),
+          () -> assertThat(principal.getName()).isEqualTo("Maria Silva"),
+          () -> assertThat(principal.getEmail()).isEqualTo("maria@email.com"),
+          () -> assertThat(principal.getPasswordHash()).isEqualTo("password-hash"),
+          () -> assertThat(principal.getPassword()).isEqualTo("password-hash"),
+          () -> assertThat(principal.getUsername()).isEqualTo("maria@email.com"),
+          () -> assertThat(principal.getStatus()).isEqualTo(UserStatus.ACTIVE),
+          () -> assertThat(principal.getPlan()).isEqualTo(PlanType.PREMIUM),
+          () ->
+              assertThat(principal.getAuthorities())
+                  .extracting("authority")
+                  .containsExactly("ROLE_USER", "url:create"));
     }
 
     @Test
-    @DisplayName("Deve prefixar roles sem prefixo e preservar permissões exatamente pelo nome")
-    void shouldPrefixRolesWithoutPrefixAndMapPermissionsExactlyByName() {
+    @DisplayName(
+        "Deve prefixar nomes canônicos de roles e preservar permissões exatamente pelo nome")
+    void shouldPrefixCanonicalRoleNamesAndMapPermissionsExactlyByName() {
       // 1. Arrange
       var adminRole = role("ADMIN", permission("url:create"), permission("url:delete"));
-      var supportRole = role("ROLE_SUPPORT", permission("users:read"));
+      var supportRole = role("SUPPORT", permission("users:read"));
       var user = userEntity(roles(adminRole, supportRole));
 
       // 2. Act
@@ -76,14 +76,9 @@ class UserPrincipalFactoryTest {
 
       // 3. Assert
       assertThat(principal.getAuthorities())
-              .extracting("authority")
-              .containsExactly(
-                      "ROLE_ADMIN",
-                      "url:create",
-                      "url:delete",
-                      "ROLE_SUPPORT",
-                      "users:read"
-              );
+          .extracting("authority")
+          .containsExactlyInAnyOrder(
+              "ROLE_ADMIN", "url:create", "url:delete", "ROLE_SUPPORT", "users:read");
     }
 
     @Test
@@ -91,16 +86,16 @@ class UserPrincipalFactoryTest {
     void shouldRemoveDuplicateAuthorities() {
       // 1. Arrange
       var userRole = role("USER", permission("url:read"), permission("url:create"));
-      var prefixedUserRole = role("ROLE_USER", permission("url:read"), permission("url:create"));
-      var user = userEntity(roles(userRole, prefixedUserRole));
+      var adminRole = role("ADMIN", permission("url:read"), permission("url:create"));
+      var user = userEntity(roles(userRole, adminRole));
 
       // 2. Act
       var principal = factory.from(user);
 
       // 3. Assert
       assertThat(principal.getAuthorities())
-              .extracting("authority")
-              .containsExactly("ROLE_USER", "url:read", "url:create");
+          .extracting("authority")
+          .containsExactlyInAnyOrder("ROLE_USER", "ROLE_ADMIN", "url:read", "url:create");
     }
 
     @Test
@@ -127,45 +122,30 @@ class UserPrincipalFactoryTest {
       var principal = factory.from(user);
 
       // 3. Assert
-      assertThat(principal.getAuthorities())
-              .extracting("authority")
-              .containsExactly("ROLE_USER");
+      assertThat(principal.getAuthorities()).extracting("authority").containsExactly("ROLE_USER");
     }
   }
 
   private static UserEntity userEntity(Set<RoleEntity> roles) {
     return userEntity(
-            UUID.randomUUID(),
-            "John Doe",
-            "john.doe@email.com",
-            "password-hash",
-            UserStatus.ACTIVE,
-            PlanType.FREE,
-            roles
-    );
+        UUID.randomUUID(),
+        "John Doe",
+        "john.doe@email.com",
+        "password-hash",
+        UserStatus.ACTIVE,
+        PlanType.FREE,
+        roles);
   }
 
   private static UserEntity userEntity(
-          UUID id,
-          String name,
-          String email,
-          String passwordHash,
-          UserStatus status,
-          PlanType plan,
-          Set<RoleEntity> roles
-  ) {
-    return new UserEntity(
-            id,
-            name,
-            email,
-            passwordHash,
-            status,
-            plan,
-            true,
-            null,
-            null,
-            roles
-    );
+      UUID id,
+      String name,
+      String email,
+      String passwordHash,
+      UserStatus status,
+      PlanType plan,
+      Set<RoleEntity> roles) {
+    return new UserEntity(id, name, email, passwordHash, status, plan, true, null, null, roles);
   }
 
   private static RoleEntity role(String name, PermissionEntity... permissions) {

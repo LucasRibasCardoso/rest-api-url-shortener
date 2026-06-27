@@ -29,43 +29,45 @@ public class SecurityConfig {
   }
 
   @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) {
+  public AuthenticationManager authenticationManager(
+      AuthenticationConfiguration authenticationConfiguration) {
     return authenticationConfiguration.getAuthenticationManager();
   }
 
   @Bean
   SecurityFilterChain securityFilterChain(
-          HttpSecurity http,
-          CustomAccessDeniedHandler accessDeniedHandler,
-          CustomAuthenticationEntryPoint authenticationEntryPoint,
-          Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter
-  ) {
+      HttpSecurity http,
+      CustomAccessDeniedHandler accessDeniedHandler,
+      CustomAuthenticationEntryPoint authenticationEntryPoint,
+      Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter) {
 
-    return http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
+    return http.csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers(
+                        "/api/v1/auth/register",
+                        "/api/v1/auth/verify-email",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/resend-verification")
+                    .permitAll()
+                    .requestMatchers("/r/**")
+                    .permitAll()
                     .requestMatchers(
-                            "/api/v1/auth/register",
-                            "/api/v1/auth/verify-email",
-                            "/api/v1/auth/login",
-                            "/api/v1/auth/refresh"
-                    ).permitAll()
-                    .requestMatchers("/r/**").permitAll()
-                    .requestMatchers(
-                            "/docs.html",
-                            "/swagger-ui.html",
-                            "/swagger-ui/**",
-                            "/v3/api-docs/**"
-                    ).permitAll()
-                    .requestMatchers("/api/v1/urls/**").authenticated()
-                    .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
+                        "/docs.html", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**")
+                    .permitAll()
+                    .requestMatchers("/api/v1/urls/**")
+                    .authenticated()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            oauth2 ->
+                oauth2
                     .authenticationEntryPoint(authenticationEntryPoint)
                     .accessDeniedHandler(accessDeniedHandler)
-                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
-            ).build();
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+        .build();
   }
 }

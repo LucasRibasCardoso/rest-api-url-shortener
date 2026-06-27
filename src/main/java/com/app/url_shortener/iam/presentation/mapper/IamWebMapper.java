@@ -5,9 +5,9 @@ import com.app.url_shortener.iam.application.result.*;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponse;
+import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import org.mapstruct.Mapper;
@@ -16,34 +16,36 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface IamWebMapper {
 
-  RegisterUserCommand toCommand(RegisterRequestDto request);
+  RegisterUserCommand toRegisterUserCommand(RegisterRequestDto request, String clientIp);
 
-  GenericMessageResponse toResponse(RegisterUserResult result);
+  GenericMessageResponseDto toGenericMessageResponse(RegisterUserResult result);
 
-  VerifyEmailCommand toCommand(VerifyEmailRequestDto request);
+  VerifyEmailCommand toVerifyEmailCommand(VerifyEmailRequestDto request);
 
-  GenericMessageResponse toResponse(VerifyEmailResult result);
+  GenericMessageResponseDto toGenericMessageResponse(VerifyEmailResult result);
 
-  LoginCommand toCommand(LoginRequestDto request);
+  LoginCommand toLoginCommand(LoginRequestDto request, String clientIp);
 
-  LoginResponseDto toResponse(LoginResult result);
+  LoginResponseDto toLoginResponse(LoginResult result);
 
-  LogoutCommand toLogoutCommand(String refreshToken);
+  default LogoutCommand toLogoutCommand(String refreshToken) {
+    return new LogoutCommand(refreshToken);
+  }
 
-  ResendVerificationCommand toCommand(ResendVerificationRequest request);
+  ResendVerificationCommand toResendVerificationCommand(ResendVerificationRequestDto request);
 
-  GenericMessageResponse toResponse(ResendVerificationResult result);
+  GenericMessageResponseDto toGenericMessageResponse(ResendVerificationResult result);
 
   RefreshTokenCommand toRefreshTokenCommand(String refreshToken);
 
-  RefreshTokenResponseDto toResponse(RefreshTokenResult result);
+  RefreshTokenResponseDto toRefreshTokenResponse(RefreshTokenResult result);
 
-  default VerificationCode mapToVerificationCode(String value) {
+  default VerificationCode toVerificationCode(String value) {
     if (value == null) return null;
     return VerificationCode.of(value);
   }
 
-  default String mapToString(VerificationCode verificationCode) {
+  default String toVerificationCodeValue(VerificationCode verificationCode) {
     if (verificationCode == null) return null;
     return verificationCode.value();
   }

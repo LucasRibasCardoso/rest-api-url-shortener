@@ -11,8 +11,12 @@ public abstract class AppBusinessException extends RuntimeException {
     this.errorCode = errorCode;
   }
 
+  public AppBusinessException(ErrorCode errorCode, Throwable cause) {
+    super(errorCode.getMessage(), cause);
+    this.errorCode = errorCode;
+  }
+
   public ErrorCode getErrorCode() {
     return errorCode;
   }
 }
-

@@ -1,6 +1,10 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
-import com.app.url_shortener.iam.infrastructure.adapter.SecureTokenGeneratorAdapter;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.security.SecureRandom;
+import java.util.Base64;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -10,12 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.security.SecureRandom;
-import java.util.Base64;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -63,9 +61,9 @@ class SecureTokenGeneratorAdapterTest {
 
       // 3. Assert
       assertThat(hash)
-              .isEqualTo("0881b36898a91d864edaf39d2b2bd5801d5f873e3142a9ec5b3b574c4f6b51e5")
-              .hasSize(64)
-              .matches("^[0-9a-f]{64}$");
+          .isEqualTo("0881b36898a91d864edaf39d2b2bd5801d5f873e3142a9ec5b3b574c4f6b51e5")
+          .hasSize(64)
+          .matches("^[0-9a-f]{64}$");
     }
 
     @ParameterizedTest
@@ -81,8 +79,8 @@ class SecureTokenGeneratorAdapterTest {
 
       // 3. Assert
       throwableAssert
-              .isInstanceOf(IllegalArgumentException.class)
-              .hasMessage("Não é possível gerar hash de um token vazio ou nulo");
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Não é possível gerar hash de um token vazio ou nulo");
     }
   }
 

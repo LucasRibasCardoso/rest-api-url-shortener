@@ -1,6 +1,9 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 0
   flyway:
     enabled: false
   jpa:
@@ -14,27 +17,57 @@ spring:
     redis:
       host: localhost
       port: 6379
+  cloud:
+    aws:
+      credentials:
+        access-key: test-access-key
+        secret-key: test-secret-key
+      region:
+        static: us-east-1
+      sqs:
+        endpoint: http://localhost:4566
+        queue-not-found-strategy: fail
+        listener:
+          auto-startup: false
 
 aws:
   dynamodb:
     endpoint: http://localhost:4566
     region: us-east-1
-    access-key: test
-    secret-key: test
-    table-name: url
-  cloud:
-    credentials:
-      use-default-aws-credentials-chain: false
+    access-key: test-access-key
+    secret-key: test-secret-key
+    tables:
+      url: url
+      url-counter: url_counter
 
 app:
-  base-url: "http://localhost:8080"
+  base-url: http://localhost:8080
+  iam:
+    email-verification:
+      sender: console
+      code-protection:
+        encryption-password: test-email-verification-password-32
+        encryption-salt: 0123456789abcdef
+        hmac-secret: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+  outbox:
+    publisher:
+      enabled: false
+    sqs:
+      queues:
+        EMAIL_VERIFICATION_REQUESTED: email-verification-events-queue
   hashids:
-    salt: "6tqpVWWvusxiDnK0iHXD5xsNBTSkN/BV7ojsWkjBu10="
-    min-length: 7
-  id-generator:
-    block-size: 1000
+    salt: test-hashids-salt
   security:
     jwt:
-      secret: "rTtcljj9j9k16M65zQOnxjc1ujxwmyrmAVOJZ1dlEws="
-      issuer: ${spring.application.name}
-      access-token-expiration-minutes: 15
+      secret: test-jwt-secret-with-at-least-32-bytes
+  aws:
+    sqs:
+      url-redirect-events-queue: url-redirect-events-queue
+      url-redirect-events-dlq: url-redirect-events-dlq
+      email-verification-events-queue: email-verification-events-queue
+      email-verification-events-dlq: email-verification-events-dlq
+  rate-limit:
+    email-hash-secret: dGVzdC1yYXRlLWxpbWl0LWVtYWlsLWhhc2gtc2VjcmV0
+    policies:
+      auth-login:
+        refill-period: 15m

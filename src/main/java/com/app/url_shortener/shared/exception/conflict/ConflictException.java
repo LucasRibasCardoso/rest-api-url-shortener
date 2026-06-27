@@ -8,5 +8,4 @@ public abstract class ConflictException extends AppBusinessException {
   public ConflictException(ErrorCode errorCode) {
     super(errorCode);
   }
-
 }

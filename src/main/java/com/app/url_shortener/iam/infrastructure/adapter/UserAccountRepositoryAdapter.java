@@ -2,21 +2,19 @@ package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
 import com.app.url_shortener.iam.domain.model.UserAccount;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.UserEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.UserAccountPersistenceMapper;
-import com.app.url_shortener.iam.infrastructure.persistence.repository.UserJpaRepository;
-import com.app.url_shortener.shared.infrastructure.persistence.DataIntegrityExceptionTranslator;
+import com.app.url_shortener.iam.infrastructure.entity.UserEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.UserAccountPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.repository.UserJpaRepository;
+import com.app.url_shortener.shared.database.DataIntegrityExceptionTranslator;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-import java.util.UUID;
-
 @Repository
 @RequiredArgsConstructor
 public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
-
 
   private final UserJpaRepository userJpaRepository;
   private final DataIntegrityExceptionTranslator dataIntegrityExceptionTranslator;
@@ -30,7 +28,7 @@ public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
   }
 
   @Override
-  public UserAccount saveNewUserAccount(UserAccount userAccount) {
+  public UserAccount create(UserAccount userAccount) {
     try {
       UserEntity userEntity = userAccountPersistenceMapper.toEntity(userAccount);
       UserEntity savedEntity = userJpaRepository.saveAndFlush(userEntity);
@@ -43,11 +41,27 @@ public class UserAccountRepositoryAdapter implements UserAccountRepositoryPort {
 
   @Override
   public Optional<UserAccount> findByEmail(String email) {
-    return userJpaRepository.findByEmailWithRolesAndPermissions(email).map(userAccountPersistenceMapper::toDomain);
+    return userJpaRepository
+        .findByEmail(email)
+        .map(userAccountPersistenceMapper::toDomainWithoutRoles);
+  }
+
+  @Override
+  public Optional<UserAccount> findByEmailWithRoles(String email) {
+    return userJpaRepository
+        .findByEmailWithRoles(email)
+        .map(userAccountPersistenceMapper::toDomainWithRoles);
   }
 
   @Override
   public Optional<UserAccount> findById(UUID id) {
-    return userJpaRepository.findById(id).map(userAccountPersistenceMapper::toDomain);
+    return userJpaRepository.findById(id).map(userAccountPersistenceMapper::toDomainWithoutRoles);
+  }
+
+  @Override
+  public Optional<UserAccount> findByIdWithRolesAndPermissions(UUID id) {
+    return userJpaRepository
+        .findByIdWithRolesAndPermissions(id)
+        .map(userAccountPersistenceMapper::toDomainWithRolesAndPermissions);
   }
 }

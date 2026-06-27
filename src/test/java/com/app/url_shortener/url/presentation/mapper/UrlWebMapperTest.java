@@ -1,9 +1,20 @@
 package com.app.url_shortener.url.presentation.mapper;
 
-import com.app.url_shortener.url.application.result.PageUrlResult;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+
+import com.app.url_shortener.iam.domain.enums.PlanType;
+import com.app.url_shortener.url.application.command.FindAllUrlsByUserIdCommand;
+import com.app.url_shortener.url.application.command.UrlStatusFilter;
 import com.app.url_shortener.url.application.result.ShortenUrlResult;
 import com.app.url_shortener.url.application.result.UrlDetailsResult;
+import com.app.url_shortener.url.application.result.UrlListItemResult;
+import com.app.url_shortener.url.application.result.UrlPageResult;
+import com.app.url_shortener.url.domain.model.UrlStatus;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -11,13 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -36,15 +40,16 @@ class UrlWebMapperTest {
       // 1. Arrange
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var request = new ShortenUrlRequestDto("  https://google.com  ");
+      var planType = PlanType.PREMIUM;
 
       // 2. Act
-      var command = mapper.toCommand(request, userId);
+      var command = mapper.toShortenUrlCommand(request, userId, planType);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.userId()).isEqualTo(userId),
-          () -> assertThat(command.originalUrl()).isEqualTo("https://google.com")
-      );
+          () -> assertThat(command.originalUrl()).isEqualTo("https://google.com"),
+          () -> assertThat(command.planType()).isEqualTo(planType));
     }
 
     @Test
@@ -56,14 +61,13 @@ class UrlWebMapperTest {
       var canReadAny = true;
 
       // 2. Act
-      var command = mapper.toCommand(requesterId, shortCode, canReadAny);
+      var command = mapper.toUrlDetailsCommand(requesterId, shortCode, canReadAny);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.requesterId()).isEqualTo(requesterId),
           () -> assertThat(command.shortCode()).isEqualTo("aB3dE"),
-          () -> assertThat(command.canReadAny()).isTrue()
-      );
+          () -> assertThat(command.canReadAny()).isTrue());
     }
 
     @Test
@@ -75,14 +79,13 @@ class UrlWebMapperTest {
       var canDeleteAny = true;
 
       // 2. Act
-      var command = mapper.toCommandDelete(requesterId, shortCode, canDeleteAny);
+      var command = mapper.toDeleteUrlCommand(requesterId, shortCode, canDeleteAny);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.requesterId()).isEqualTo(requesterId),
           () -> assertThat(command.shortCode()).isEqualTo("aB3dE"),
-          () -> assertThat(command.canDeleteAny()).isTrue()
-      );
+          () -> assertThat(command.canDeleteAny()).isTrue());
     }
 
     @Test
@@ -92,16 +95,31 @@ class UrlWebMapperTest {
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
       var limit = 20;
       var cursor = "  next-page-cursor  ";
+      var status = UrlStatusFilter.DELETED;
 
       // 2. Act
-      var command = mapper.toCommand(userId, limit, cursor);
+      var command = mapper.toFindAllUrlsByUserIdCommand(userId, limit, cursor, status);
 
       // 3. Assert
       assertAll(
           () -> assertThat(command.userId()).isEqualTo(userId),
           () -> assertThat(command.limit()).isEqualTo(limit),
-          () -> assertThat(command.cursor()).isEqualTo("next-page-cursor")
-      );
+          () -> assertThat(command.cursor()).isEqualTo("next-page-cursor"),
+          () -> assertThat(command.status()).isEqualTo(status));
+    }
+
+    @Test
+    @DisplayName("Deve usar filtro ACTIVE quando comando de listagem receber status nulo")
+    void shouldUseActiveFilterWhenFindAllCommandReceivesNullStatus() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var limit = 20;
+
+      // 2. Act
+      var command = new FindAllUrlsByUserIdCommand(userId, limit, null, null);
+
+      // 3. Assert
+      assertThat(command.status()).isEqualTo(UrlStatusFilter.ACTIVE);
     }
 
     @Test
@@ -111,7 +129,7 @@ class UrlWebMapperTest {
       var shortCode = "  aB3dE  ";
 
       // 2. Act
-      var command = mapper.toCommand(shortCode);
+      var command = mapper.toResolveUrlCommand(shortCode);
 
       // 3. Assert
       assertThat(command.shortCode()).isEqualTo("aB3dE");
@@ -126,66 +144,132 @@ class UrlWebMapperTest {
     @DisplayName("Deve mapear resultado de encurtamento para resposta com URL curta completa")
     void shouldMapShortenUrlResultToResponseWithFullShortUrl() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
       var result = new ShortenUrlResult("https://google.com", "aB3dE", createdAt);
       var baseUrl = "https://sho.rt";
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toUrlResponse(result, baseUrl);
 
       // 3. Assert
       assertAll(
           () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
-          () -> assertThat(response.createdAt()).isEqualTo(createdAt)
-      );
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE));
     }
 
     @Test
-    @DisplayName("Deve mapear resultado de detalhes para resposta com URL base terminada em barra")
-    void shouldMapUrlDetailsResultToResponseWhenBaseUrlEndsWithSlash() {
+    @DisplayName("Deve mapear resultado de detalhes para resposta completa")
+    void shouldMapUrlDetailsResultToFullDetailsResponse() {
       // 1. Arrange
-      var createdAt = LocalDateTime.of(2026, 5, 10, 14, 30);
-      var result = new UrlDetailsResult("https://google.com", "aB3dE", createdAt);
-      var baseUrl = "https://sho.rt/";
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var updatedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var lastAccessedAt = Instant.parse("2026-05-11T09:00:00Z");
+      var result =
+          new UrlDetailsResult(
+              "aB3dE",
+              "https://google.com",
+              userId,
+              UrlStatus.ACTIVE,
+              createdAt,
+              updatedAt,
+              null,
+              null,
+              42,
+              lastAccessedAt);
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toUrlDetailsResponse(result);
 
       // 3. Assert
       assertAll(
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
           () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
-          () -> assertThat(response.shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
-          () -> assertThat(response.createdAt()).isEqualTo(createdAt)
-      );
+          () -> assertThat(response.userId()).isEqualTo(userId),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.ACTIVE),
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.updatedAt()).isEqualTo(updatedAt),
+          () -> assertThat(response.deletedAt()).isNull(),
+          () -> assertThat(response.deletedBy()).isNull(),
+          () -> assertThat(response.accessCount()).isEqualTo(42),
+          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt));
+    }
+
+    @Test
+    @DisplayName("Deve mapear resultado de detalhes deletado para resposta completa")
+    void shouldMapDeletedUrlDetailsResultToFullDetailsResponse() {
+      // 1. Arrange
+      var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac001");
+      var deletedBy = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac002");
+      var createdAt = Instant.parse("2026-05-10T14:30:00Z");
+      var deletedAt = Instant.parse("2026-05-11T10:00:00Z");
+      var lastAccessedAt = Instant.parse("2026-05-11T09:00:00Z");
+      var result =
+          new UrlDetailsResult(
+              "aB3dE",
+              "https://google.com",
+              userId,
+              UrlStatus.DELETED,
+              createdAt,
+              deletedAt,
+              deletedAt,
+              deletedBy,
+              10,
+              lastAccessedAt);
+
+      // 2. Act
+      var response = mapper.toUrlDetailsResponse(result);
+
+      // 3. Assert
+      assertAll(
+          () -> assertThat(response.shortCode()).isEqualTo(result.shortCode()),
+          () -> assertThat(response.originalUrl()).isEqualTo(result.originalUrl()),
+          () -> assertThat(response.userId()).isEqualTo(userId),
+          () -> assertThat(response.status()).isEqualTo(UrlStatus.DELETED),
+          () -> assertThat(response.createdAt()).isEqualTo(createdAt),
+          () -> assertThat(response.updatedAt()).isEqualTo(deletedAt),
+          () -> assertThat(response.deletedAt()).isEqualTo(deletedAt),
+          () -> assertThat(response.deletedBy()).isEqualTo(deletedBy),
+          () -> assertThat(response.accessCount()).isEqualTo(10),
+          () -> assertThat(response.lastAccessedAt()).isEqualTo(lastAccessedAt));
     }
 
     @Test
     @DisplayName("Deve mapear resultado paginado para resposta propagando URL base")
     void shouldMapPageUrlResultToResponsePropagatingBaseUrl() {
       // 1. Arrange
-      var firstCreatedAt = LocalDateTime.of(2026, 5, 10, 14, 30);
-      var secondCreatedAt = LocalDateTime.of(2026, 5, 10, 15, 45);
-      var result = new PageUrlResult(List.of(
-          new UrlDetailsResult("https://google.com", "aB3dE", firstCreatedAt),
-          new UrlDetailsResult("https://spring.io", "fG4hI", secondCreatedAt)
-      ), "next-page-cursor");
+      var firstCreatedAt = Instant.parse("2026-05-10T14:30:00Z");
+      var secondCreatedAt = Instant.parse("2026-05-10T15:45:00Z");
+      var result =
+          new UrlPageResult(
+              List.of(
+                  new UrlListItemResult(
+                      "https://google.com", "aB3dE", firstCreatedAt, UrlStatus.ACTIVE),
+                  new UrlListItemResult(
+                      "https://spring.io", "fG4hI", secondCreatedAt, UrlStatus.DELETED)),
+              "next-page-cursor");
       var baseUrl = "https://sho.rt";
 
       // 2. Act
-      var response = mapper.toResponse(result, baseUrl);
+      var response = mapper.toUrlPagelResponse(result, baseUrl);
 
       // 3. Assert
       assertAll(
           () -> assertThat(response.nextCursor()).isEqualTo(result.nextCursor()),
           () -> assertThat(response.urls()).hasSize(2),
           () -> assertThat(response.urls().get(0).originalUrl()).isEqualTo("https://google.com"),
+          () -> assertThat(response.urls().get(0).shortCode()).isEqualTo("aB3dE"),
           () -> assertThat(response.urls().get(0).shortUrl()).isEqualTo("https://sho.rt/r/aB3dE"),
           () -> assertThat(response.urls().get(0).createdAt()).isEqualTo(firstCreatedAt),
+          () -> assertThat(response.urls().get(0).status()).isEqualTo(UrlStatus.ACTIVE),
           () -> assertThat(response.urls().get(1).originalUrl()).isEqualTo("https://spring.io"),
+          () -> assertThat(response.urls().get(1).shortCode()).isEqualTo("fG4hI"),
           () -> assertThat(response.urls().get(1).shortUrl()).isEqualTo("https://sho.rt/r/fG4hI"),
-          () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt)
-      );
+          () -> assertThat(response.urls().get(1).createdAt()).isEqualTo(secondCreatedAt),
+          () -> assertThat(response.urls().get(1).status()).isEqualTo(UrlStatus.DELETED));
     }
   }
 

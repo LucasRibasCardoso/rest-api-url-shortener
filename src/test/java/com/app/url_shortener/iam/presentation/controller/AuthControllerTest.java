@@ -1,31 +1,45 @@
 package com.app.url_shortener.iam.presentation.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.app.url_shortener.config.BaseWebSliceTest;
 import com.app.url_shortener.iam.application.command.*;
 import com.app.url_shortener.iam.application.result.*;
 import com.app.url_shortener.iam.application.usecase.*;
-import com.app.url_shortener.iam.domain.exception.auth.AuthErrorCode;
+import com.app.url_shortener.iam.domain.exception.IamErrorCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserDto;
-import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponse;
+import com.app.url_shortener.iam.presentation.dto.response.AuthenticatedUserResponseDto;
+import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
-import com.app.url_shortener.config.BaseWebSliceTest;
 import com.app.url_shortener.security.config.SecurityConfig;
 import com.app.url_shortener.security.exception.handler.CustomAccessDeniedHandler;
 import com.app.url_shortener.security.exception.handler.CustomAuthenticationEntryPoint;
-import com.app.url_shortener.shared.config.IdempotencyProperties;
 import com.app.url_shortener.shared.config.JacksonConfig;
+import com.app.url_shortener.shared.error.GlobalExceptionHandler;
+import com.app.url_shortener.shared.error.ProblemDetailFactory;
+import com.app.url_shortener.shared.error.ProblemDetailResponseWriter;
+import com.app.url_shortener.shared.error.ProblemType;
 import com.app.url_shortener.shared.exception.CommonErrorCode;
-import com.app.url_shortener.shared.infrastructure.idempotency.IdempotencyStore;
-import com.app.url_shortener.shared.presentation.error.GlobalExceptionHandler;
-import com.app.url_shortener.shared.presentation.error.ProblemDetailFactory;
-import com.app.url_shortener.shared.presentation.error.ProblemDetailResponseWriter;
-import com.app.url_shortener.shared.presentation.error.ProblemType;
+import com.app.url_shortener.shared.idempotency.config.IdempotencyProperties;
+import com.app.url_shortener.shared.idempotency.port.IdempotencyPort;
+import com.app.url_shortener.shared.ratelimit.core.ClientIpResolver;
+import com.app.url_shortener.shared.ratelimit.exception.TooManyRequestsException;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -42,62 +56,43 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 @Tag("web-slice")
 @WebMvcTest(AuthController.class)
 @Import({
-        SecurityConfig.class,
-        CustomAccessDeniedHandler.class,
-        CustomAuthenticationEntryPoint.class,
-        GlobalExceptionHandler.class,
-        JacksonConfig.class,
-        ProblemDetailFactory.class,
-        ProblemDetailResponseWriter.class
+  SecurityConfig.class,
+  CustomAccessDeniedHandler.class,
+  CustomAuthenticationEntryPoint.class,
+  GlobalExceptionHandler.class,
+  JacksonConfig.class,
+  ProblemDetailFactory.class,
+  ProblemDetailResponseWriter.class
 })
 @DisplayName("Slice Web MVC - AuthController")
 class AuthControllerTest extends BaseWebSliceTest {
 
   private static final String AUTH_BASE_PATH = "/api/v1/auth";
 
-  @MockitoBean
-  private IamWebMapper iamWebMapper;
+  @MockitoBean private IamWebMapper iamWebMapper;
 
-  @MockitoBean
-  private LoginUseCase loginUseCase;
+  @MockitoBean private LoginUseCase loginUseCase;
 
-  @MockitoBean
-  private LogoutUseCase logoutUseCase;
+  @MockitoBean private LogoutUseCase logoutUseCase;
 
-  @MockitoBean
-  private VerifyEmailUseCase verifyEmailUseCase;
+  @MockitoBean private VerifyEmailUseCase verifyEmailUseCase;
 
-  @MockitoBean
-  private RegisterUserUseCase registerUserUseCase;
+  @MockitoBean private RegisterUserUseCase registerUserUseCase;
 
-  @MockitoBean
-  private RefreshTokenUseCase refreshTokenUseCase;
+  @MockitoBean private RefreshTokenUseCase refreshTokenUseCase;
 
-  @MockitoBean
-  private ResendVerificationUseCase resendVerificationUseCase;
+  @MockitoBean private ResendVerificationUseCase resendVerificationUseCase;
 
-  @MockitoBean
-  private IdempotencyStore idempotencyStore;
+  @MockitoBean private ClientIpResolver clientIpResolver;
 
-  @MockitoBean
-  private IdempotencyProperties idempotencyProperties;
+  @MockitoBean private IdempotencyPort idempotencyStore;
 
-  @MockitoBean
-  private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
+  @MockitoBean private IdempotencyProperties idempotencyProperties;
+
+  @MockitoBean private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter;
 
   @BeforeEach
   void setUp() {
@@ -113,27 +108,31 @@ class AuthControllerTest extends BaseWebSliceTest {
     void shouldReturnCreatedAndSerializeResponseWhenRegisteringUser() throws Exception {
       // 1. Arrange
       var request = new RegisterRequestDto("User Name", "user@email.com", "secure-password");
-      var command = new RegisterUserCommand(request.name(), request.email(), request.password());
+      var clientIp = "203.0.113.10";
+      var command =
+          new RegisterUserCommand(clientIp, request.name(), request.email(), request.password());
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
+      var response = new GenericMessageResponseDto(result.message());
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toRegisterUserCommand(request, clientIp)).willReturn(command);
       given(registerUserUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/register", request));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isCreated())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-              .andExpect(jsonPath("$.message").value(response.message()));
+          .andExpect(status().isCreated())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toRegisterUserCommand(request, clientIp);
       verify(registerUserUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
-      verifyNoMoreInteractions(iamWebMapper, registerUserUseCase);
+      verify(iamWebMapper).toGenericMessageResponse(result);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, registerUserUseCase);
     }
   }
 
@@ -148,25 +147,69 @@ class AuthControllerTest extends BaseWebSliceTest {
       var request = new VerifyEmailRequestDto("user@email.com", "123456");
       var command = new VerifyEmailCommand(request.email(), null);
       var result = new VerifyEmailResult("Email verificado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
+      var response = new GenericMessageResponseDto(result.message());
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(iamWebMapper.toVerifyEmailCommand(request)).willReturn(command);
       given(verifyEmailUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/verify-email", request));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isOk())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-              .andExpect(jsonPath("$.message").value(response.message()));
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.message").value(response.message()));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(iamWebMapper).toVerifyEmailCommand(request);
       verify(verifyEmailUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, verifyEmailUseCase);
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|',
+        textBlock =
+            """
+            missing email | {"code":"123456"} | email
+            blank email | {"email":"","code":"123456"} | email
+            invalid email | {"email":"invalid-email","code":"123456"} | email
+            long email | {"email":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@email.com","code":"123456"} | email
+            missing code | {"email":"user@email.com"} | code
+            blank code | {"email":"user@email.com","code":""} | code
+            non numeric code | {"email":"user@email.com","code":"ABC123"} | code
+            short code | {"email":"user@email.com","code":"12345"} | code
+            long code | {"email":"user@email.com","code":"1234567"} | code
+            """)
+    @DisplayName("Deve retornar 400 com ProblemDetail quando verify-email request for inválido")
+    void shouldReturnBadRequestProblemDetailWhenVerifyEmailRequestIsInvalid(
+        String scenario, String body, String invalidField) throws Exception {
+      // 1. Arrange
+
+      // 2. Act
+      ResultActions resultActions =
+          mockMvc.perform(
+              post(AUTH_BASE_PATH + "/verify-email")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.VALIDATION))
+          .andExpect(jsonPath("$.title").value("Validação"))
+          .andExpect(jsonPath("$.status").value(400))
+          .andExpect(
+              jsonPath("$.detail").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage()))
+          .andExpect(
+              jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+          .andExpect(jsonPath("$.errors[?(@.field == '%s')]".formatted(invalidField)).exists())
+          .andExpect(result -> assertThat(scenario).isNotBlank());
+
+      verifyNoInteractions(iamWebMapper, verifyEmailUseCase);
     }
   }
 
@@ -179,37 +222,43 @@ class AuthControllerTest extends BaseWebSliceTest {
     void shouldReturnOkSerializeResponseAndSetRefreshTokenCookie() throws Exception {
       // 1. Arrange
       var request = new LoginRequestDto("user@email.com", "secure-password");
-      var command = new LoginCommand(request.email(), request.password());
+      var clientIp = "203.0.113.10";
+      var command = new LoginCommand(request.email(), request.password(), clientIp);
       var result = loginResult("raw-refresh-token", "jwt-access-token");
       var response = loginResponseDto();
 
-      given(iamWebMapper.toCommand(request)).willReturn(command);
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toLoginCommand(request, clientIp)).willReturn(command);
       given(loginUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toLoginResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/login", request));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isOk())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-              .andExpect(jsonPath("$.accessToken").value(response.accessToken()))
-              .andExpect(jsonPath("$.tokenType").value(response.tokenType()))
-              .andExpect(jsonPath("$.expiresInSeconds").value(response.expiresInSeconds()))
-              .andExpect(jsonPath("$.user.id").value(response.user().id().toString()))
-              .andExpect(jsonPath("$.user.email").value(response.user().email()))
-              .andExpect(jsonPath("$.user.roles[0]").value("USER"))
-              .andExpect(refreshTokenCookie("raw-refresh-token", "604800"));
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.accessToken").value(response.accessToken()))
+          .andExpect(jsonPath("$.tokenType").value(response.tokenType()))
+          .andExpect(jsonPath("$.expiresInSeconds").value(response.expiresInSeconds()))
+          .andExpect(jsonPath("$.user.id").value(response.user().id().toString()))
+          .andExpect(jsonPath("$.user.email").value(response.user().email()))
+          .andExpect(jsonPath("$.user.roles[0]").value("USER"))
+          .andExpect(refreshTokenCookie("raw-refresh-token", "604800"));
 
-      verify(iamWebMapper).toCommand(request);
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toLoginCommand(request, clientIp);
       verify(loginUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
-      verifyNoMoreInteractions(iamWebMapper, loginUseCase);
+      verify(iamWebMapper).toLoginResponse(result);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
 
     @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
+    @CsvSource(
+        delimiter = '|',
+        textBlock =
+            """
             missing email | {"password":"secure-password"} | email
             blank email | {"email":"","password":"secure-password"} | email
             invalid email | {"email":"invalid-email","password":"secure-password"} | email
@@ -218,36 +267,75 @@ class AuthControllerTest extends BaseWebSliceTest {
             """)
     @DisplayName("Deve retornar 400 com ProblemDetail quando login request for inválido")
     void shouldReturnBadRequestProblemDetailWhenLoginRequestIsInvalid(
-            String scenario,
-            String body,
-            String invalidField
-    ) throws Exception {
+        String scenario, String body, String invalidField) throws Exception {
       // 1. Arrange
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(post(AUTH_BASE_PATH + "/login")
-              .contentType(MediaType.APPLICATION_JSON)
-              .content(body));
+      ResultActions resultActions =
+          mockMvc.perform(
+              post(AUTH_BASE_PATH + "/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(body));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isBadRequest())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.title").value("Bad Request"))
-              .andExpect(jsonPath("$.status").value(400))
-              .andExpect(jsonPath("$.detail").value("Invalid request content."))
-              .andExpect(result -> {
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.VALIDATION))
+          .andExpect(jsonPath("$.title").value("Validação"))
+          .andExpect(jsonPath("$.status").value(400))
+          .andExpect(
+              jsonPath("$.detail").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getMessage()))
+          .andExpect(
+              jsonPath("$.errorCode").value(CommonErrorCode.REQUEST_VALIDATION_FAILED.getCode()))
+          .andExpect(jsonPath("$.errors[?(@.field == '%s')]".formatted(invalidField)).exists())
+          .andExpect(
+              result -> {
                 assertThat(scenario).isNotBlank();
                 assertThat(result.getResolvedException())
-                        .isInstanceOf(MethodArgumentNotValidException.class);
+                    .isInstanceOf(MethodArgumentNotValidException.class);
 
                 var exception = (MethodArgumentNotValidException) result.getResolvedException();
                 assertThat(exception.getBindingResult().getFieldErrors())
-                        .extracting("field")
-                        .contains(invalidField);
+                    .extracting("field")
+                    .contains(invalidField);
               });
 
       verifyNoInteractions(iamWebMapper, loginUseCase);
+    }
+
+    @Test
+    @DisplayName("Deve retornar 429 com ProblemDetail quando rate limit do login for excedido")
+    void shouldReturnTooManyRequestsProblemDetailWhenLoginRateLimitIsExceeded() throws Exception {
+      // 1. Arrange
+      var request = new LoginRequestDto("user@email.com", "secure-password");
+      var clientIp = "203.0.113.10";
+      var command = new LoginCommand(request.email(), request.password(), clientIp);
+
+      given(clientIpResolver.resolve(any(HttpServletRequest.class))).willReturn(clientIp);
+      given(iamWebMapper.toLoginCommand(request, clientIp)).willReturn(command);
+      doThrow(new TooManyRequestsException(Duration.ofSeconds(30)))
+          .when(loginUseCase)
+          .execute(command);
+
+      // 2. Act
+      ResultActions resultActions = mockMvc.perform(jsonPost("/login", request));
+
+      // 3. Assert
+      resultActions
+          .andExpect(status().isTooManyRequests())
+          .andExpect(header().string(HttpHeaders.RETRY_AFTER, "30"))
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.TOO_MANY_REQUESTS))
+          .andExpect(jsonPath("$.title").value("Muitas requisições"))
+          .andExpect(jsonPath("$.status").value(429))
+          .andExpect(jsonPath("$.detail").value(CommonErrorCode.TOO_MANY_REQUESTS.getMessage()))
+          .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.TOO_MANY_REQUESTS.getCode()));
+
+      verify(clientIpResolver).resolve(any(HttpServletRequest.class));
+      verify(iamWebMapper).toLoginCommand(request, clientIp);
+      verify(loginUseCase).execute(command);
+      verifyNoMoreInteractions(clientIpResolver, iamWebMapper, loginUseCase);
     }
   }
 
@@ -266,27 +354,29 @@ class AuthControllerTest extends BaseWebSliceTest {
 
       given(iamWebMapper.toRefreshTokenCommand(refreshToken)).willReturn(command);
       given(refreshTokenUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
+      given(iamWebMapper.toRefreshTokenResponse(result)).willReturn(response);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(post(AUTH_BASE_PATH + "/refresh")
-              .cookie(new Cookie("refreshToken", refreshToken)));
+      ResultActions resultActions =
+          mockMvc.perform(
+              post(AUTH_BASE_PATH + "/refresh").cookie(new Cookie("refreshToken", refreshToken)));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isOk())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-              .andExpect(jsonPath("$.newAccessToken").value(response.newAccessToken()))
-              .andExpect(refreshTokenCookie("new-refresh-token", "604800"));
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.newAccessToken").value(response.newAccessToken()))
+          .andExpect(refreshTokenCookie("new-refresh-token", "604800"));
 
       verify(iamWebMapper).toRefreshTokenCommand(refreshToken);
       verify(refreshTokenUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toRefreshTokenResponse(result);
       verifyNoMoreInteractions(refreshTokenUseCase, iamWebMapper);
     }
 
     @Test
-    @DisplayName("Deve retornar 401 com ProblemDetail quando cookie de refresh token estiver ausente")
+    @DisplayName(
+        "Deve retornar 401 com ProblemDetail quando cookie de refresh token estiver ausente")
     void shouldReturnUnauthorizedProblemDetailWhenRefreshTokenCookieIsMissing() throws Exception {
       // 1. Arrange
 
@@ -295,13 +385,15 @@ class AuthControllerTest extends BaseWebSliceTest {
 
       // 3. Assert
       resultActions
-              .andExpect(status().isUnauthorized())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.type").value(ProblemType.UNAUTHORIZED))
-              .andExpect(jsonPath("$.title").value("Não autorizado"))
-              .andExpect(jsonPath("$.status").value(401))
-              .andExpect(jsonPath("$.detail").value(AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
-              .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
+          .andExpect(status().isUnauthorized())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.UNAUTHORIZED))
+          .andExpect(jsonPath("$.title").value("Não autorizado"))
+          .andExpect(jsonPath("$.status").value(401))
+          .andExpect(
+              jsonPath("$.detail").value(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getMessage()))
+          .andExpect(
+              jsonPath("$.errorCode").value(IamErrorCode.AUTH_REFRESH_TOKEN_INVALID.getCode()));
 
       verifyNoInteractions(refreshTokenUseCase, iamWebMapper);
     }
@@ -321,13 +413,13 @@ class AuthControllerTest extends BaseWebSliceTest {
 
       // 3. Assert
       resultActions
-              .andExpect(status().isUnauthorized())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.type").value(ProblemType.UNAUTHORIZED))
-              .andExpect(jsonPath("$.title").value("Não autorizado"))
-              .andExpect(jsonPath("$.status").value(401))
-              .andExpect(jsonPath("$.detail").value(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()))
-              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
+          .andExpect(status().isUnauthorized())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.type").value(ProblemType.UNAUTHORIZED))
+          .andExpect(jsonPath("$.title").value("Não autorizado"))
+          .andExpect(jsonPath("$.status").value(401))
+          .andExpect(jsonPath("$.detail").value(CommonErrorCode.AUTH_UNAUTHORIZED.getMessage()))
+          .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
 
       verifyNoInteractions(logoutUseCase);
     }
@@ -341,19 +433,21 @@ class AuthControllerTest extends BaseWebSliceTest {
       given(iamWebMapper.toLogoutCommand(refreshToken)).willReturn(command);
 
       // 2. Act
-      ResultActions resultActions = mockMvc.perform(post(AUTH_BASE_PATH + "/logout")
-              .with(jwt())
-              .cookie(new Cookie("refreshToken", refreshToken)));
+      ResultActions resultActions =
+          mockMvc.perform(
+              post(AUTH_BASE_PATH + "/logout")
+                  .with(jwt())
+                  .cookie(new Cookie("refreshToken", refreshToken)));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isNoContent())
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("refreshToken=")))
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Path=/api/v1/auth")))
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Secure")))
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
-              .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("SameSite=Strict")));
+          .andExpect(status().isNoContent())
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("refreshToken=")))
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Path=/api/v1/auth")))
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Secure")))
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
+          .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("SameSite=Strict")));
 
       verify(iamWebMapper).toLogoutCommand(refreshToken);
       verify(logoutUseCase).execute(command);
@@ -366,56 +460,38 @@ class AuthControllerTest extends BaseWebSliceTest {
   class ResendTests {
 
     @Test
-    @DisplayName("Deve exigir autenticação para reenviar verificação")
-    void shouldRequireAuthenticationForResendVerification() throws Exception {
+    @DisplayName("Deve retornar 200 e delegar reenvio sem autenticação")
+    void shouldReturnOkAndDelegateResendVerificationWithoutAuthentication() throws Exception {
       // 1. Arrange
-      var request = new ResendVerificationRequest("user@email.com");
+      var request = new ResendVerificationRequestDto("user@email.com");
+      var command = new ResendVerificationCommand(request.email());
+      var result = new ResendVerificationResult("Código reenviado com sucesso.");
+      var response = new GenericMessageResponseDto(result.message());
+
+      given(iamWebMapper.toResendVerificationCommand(request)).willReturn(command);
+      given(resendVerificationUseCase.execute(command)).willReturn(result);
+      given(iamWebMapper.toGenericMessageResponse(result)).willReturn(response);
 
       // 2. Act
       ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request));
 
       // 3. Assert
       resultActions
-              .andExpect(status().isUnauthorized())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.errorCode").value(CommonErrorCode.AUTH_UNAUTHORIZED.getCode()));
+          .andExpect(status().isOk())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+          .andExpect(jsonPath("$.message").value(response.message()));
 
-      verifyNoInteractions(iamWebMapper, resendVerificationUseCase);
-    }
-
-    @Test
-    @DisplayName("Deve retornar 200 e delegar reenvio quando autenticado")
-    void shouldReturnOkAndDelegateResendVerificationWhenAuthenticated() throws Exception {
-      // 1. Arrange
-      var request = new ResendVerificationRequest("user@email.com");
-      var command = new ResendVerificationCommand(request.email());
-      var result = new ResendVerificationResult("Código reenviado com sucesso.");
-      var response = new GenericMessageResponse(result.message());
-
-      given(iamWebMapper.toCommand(request)).willReturn(command);
-      given(resendVerificationUseCase.execute(command)).willReturn(result);
-      given(iamWebMapper.toResponse(result)).willReturn(response);
-
-      // 2. Act
-      ResultActions resultActions = mockMvc.perform(jsonPost("/resend-verification", request).with(jwt()));
-
-      // 3. Assert
-      resultActions
-              .andExpect(status().isOk())
-              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-              .andExpect(jsonPath("$.message").value(response.message()));
-
-      verify(iamWebMapper).toCommand(request);
+      verify(iamWebMapper).toResendVerificationCommand(request);
       verify(resendVerificationUseCase).execute(command);
-      verify(iamWebMapper).toResponse(result);
+      verify(iamWebMapper).toGenericMessageResponse(result);
       verifyNoMoreInteractions(iamWebMapper, resendVerificationUseCase);
     }
   }
 
   private MockHttpServletRequestBuilder jsonPost(String path, Object body) {
     return post(AUTH_BASE_PATH + path)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(body));
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(body));
   }
 
   private ResultMatcher refreshTokenCookie(String value, String maxAge) {
@@ -423,45 +499,37 @@ class AuthControllerTest extends BaseWebSliceTest {
       String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
 
       assertThat(setCookie)
-              .contains("refreshToken=" + value)
-              .contains("Path=/api/v1/auth")
-              .contains("Max-Age=" + maxAge)
-              .contains("Secure")
-              .contains("HttpOnly")
-              .contains("SameSite=Strict");
+          .contains("refreshToken=" + value)
+          .contains("Path=/api/v1/auth")
+          .contains("Max-Age=" + maxAge)
+          .contains("Secure")
+          .contains("HttpOnly")
+          .contains("SameSite=Strict");
     };
   }
 
   private LoginResult loginResult(String refreshToken, String accessToken) {
     return new LoginResult(
-            refreshToken,
-            accessToken,
-            "Bearer",
-            3_600L,
-            new AuthenticatedUserResult(
-                    userId(),
-                    "User Name",
-                    "user@email.com",
-                    List.of("USER"),
-                    List.of("ROLE_USER"),
-                    "FREE"
-            )
-    );
+        refreshToken,
+        accessToken,
+        "Bearer",
+        3_600L,
+        new AuthenticatedUserResult(
+            userId(),
+            "User Name",
+            "user@email.com",
+            List.of("USER"),
+            List.of("ROLE_USER"),
+            "FREE"));
   }
 
   private LoginResponseDto loginResponseDto() {
     return new LoginResponseDto(
-            "jwt-access-token",
-            "Bearer",
-            3_600L,
-            new AuthenticatedUserDto(
-                    userId(),
-                    "User Name",
-                    "user@email.com",
-                    "FREE",
-                    List.of("USER")
-            )
-    );
+        "jwt-access-token",
+        "Bearer",
+        3_600L,
+        new AuthenticatedUserResponseDto(
+            userId(), "User Name", "user@email.com", "FREE", List.of("USER")));
   }
 
   private UUID userId() {

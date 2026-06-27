@@ -1,70 +1,72 @@
 package com.app.url_shortener.iam.application.usecase.impl;
 
 import com.app.url_shortener.iam.application.command.VerifyEmailCommand;
-import com.app.url_shortener.iam.application.port.output.EmailVerificationTokenPort;
-import com.app.url_shortener.iam.application.port.output.RoleRepositoryPort;
-import com.app.url_shortener.iam.application.port.output.UserAccountRepositoryPort;
+import com.app.url_shortener.iam.application.port.output.*;
 import com.app.url_shortener.iam.application.result.VerifyEmailResult;
 import com.app.url_shortener.iam.application.usecase.VerifyEmailUseCase;
-import com.app.url_shortener.iam.domain.exception.auth.EmailVerificationTokenExpiredException;
-import com.app.url_shortener.iam.domain.exception.user.InvalidVerificationCodeException;
-import com.app.url_shortener.iam.domain.exception.user.UserNotFoundException;
+import com.app.url_shortener.iam.domain.exception.auth.InvalidOrExpiredEmailVerificationCodeException;
+import com.app.url_shortener.iam.domain.model.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.model.Role;
 import com.app.url_shortener.iam.domain.model.UserAccount;
-import com.app.url_shortener.iam.domain.valueobject.EmailVerificationToken;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
 
-  private static final String SUCCESS_MESSAGE = "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
+  private static final String SUCCESS_MESSAGE =
+      "E-mail verificado com sucesso. Agora você pode fazer login na sua conta.";
 
   private final RoleRepositoryPort roleRepositoryPort;
+  private final CheckAuthRateLimitPort checkAuthRateLimitPort;
   private final UserAccountRepositoryPort userAccountRepositoryPort;
-  private final EmailVerificationTokenPort emailVerificationTokenPort;
+  private final VerificationCodeProtectorPort verificationCodeProtectorPort;
+  private final EmailVerificationTokenRepositoryPort emailVerificationTokenRepositoryPort;
 
   @Override
   @Transactional
   public VerifyEmailResult execute(VerifyEmailCommand command) {
-    String email = command.email();
-    VerificationCode code = command.code();
+    checkAuthRateLimitPort.checkVerifyEmail(command.email());
 
-    EmailVerificationToken token = validateEmailVerificationToken(emailVerificationTokenPort.findByEmail(email));
-    if (!token.matches(code)) {
-      throw new InvalidVerificationCodeException();
-    }
+    UserAccount userAccount = fetchUserAccountByEmail(command.email());
+    consumeToken(userAccount, command.code());
+    verifyAccountEmail(userAccount);
 
-    UserAccount userAccount = userAccountRepositoryPort.findByEmail(email).orElseThrow(UserNotFoundException::new);
-    Role defaultRole = roleRepositoryPort.findDefaultRole();
-    userAccount.verifyEmail(defaultRole);
-    userAccountRepositoryPort.save(userAccount);
-
-    registerTokenDeletionAfterCommit(email);
     return new VerifyEmailResult(SUCCESS_MESSAGE);
   }
 
-  private void registerTokenDeletionAfterCommit(String email) {
-    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-      @Override
-      public void afterCommit() {
-        emailVerificationTokenPort.deleteByEmail(email);
-      }
-    });
+  private UserAccount fetchUserAccountByEmail(String email) {
+    return userAccountRepositoryPort
+        .findByEmailWithRoles(email)
+        .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
   }
 
-  private EmailVerificationToken validateEmailVerificationToken(Optional<EmailVerificationToken> token) {
-    if (token.isEmpty() || token.get().isExpired()) {
-      throw new EmailVerificationTokenExpiredException();
+  private void consumeToken(UserAccount userAccount, VerificationCode verificationCode) {
+    var now = Instant.now();
+
+    EmailVerificationToken token =
+        emailVerificationTokenRepositoryPort
+            .findActiveByUserIdAndEmail(userAccount.getId(), userAccount.getEmail(), now)
+            .orElseThrow(InvalidOrExpiredEmailVerificationCodeException::new);
+
+    if (!verificationCodeProtectorPort.matches(verificationCode, token.getHashedCode())) {
+      emailVerificationTokenRepositoryPort.registerFailedAttempt(token.getId(), now);
+      throw new InvalidOrExpiredEmailVerificationCodeException();
     }
 
-    return token.get();
+    boolean consumed = emailVerificationTokenRepositoryPort.consumeIfActive(token.getId(), now);
+    if (!consumed) {
+      throw new InvalidOrExpiredEmailVerificationCodeException();
+    }
+  }
+
+  private void verifyAccountEmail(UserAccount userAccount) {
+    Role defaultRole = roleRepositoryPort.findDefaultRole();
+    userAccount.verifyEmail(defaultRole);
+    userAccountRepositoryPort.save(userAccount);
   }
 }

@@ -1,36 +1,140 @@
 package com.app.url_shortener.url.domain.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
-
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.Getter;
 
 @Getter
-@ToString
-@EqualsAndHashCode
 public class Url implements Serializable {
   private final UUID userId;
   private final String shortCode;
   private final String originalUrl;
-  private final LocalDateTime createdAt;
+  private final Instant createdAt;
+  private final UrlStatus status;
+  private final Instant deletedAt;
+  private final UUID deletedBy;
+  private final Instant updatedAt;
+  private final long accessCount;
+  private final Instant lastAccessedAt;
 
-  private Url(UUID userId, String shortCode, String originalUrl, LocalDateTime createdAt) {
+  private Url(
+      UUID userId,
+      String shortCode,
+      String originalUrl,
+      Instant createdAt,
+      UrlStatus urlStatus,
+      Instant deletedAt,
+      UUID deletedBy,
+      Instant updatedAt,
+      long accessCount,
+      Instant lastAccessedAt) {
     this.userId = Objects.requireNonNull(userId, "userId is required.");
-    this.shortCode = Objects.requireNonNull(shortCode, "shortCode is required.").trim();
-    this.originalUrl = Objects.requireNonNull(originalUrl, "originalUrl is required.").trim();
-    this.createdAt = Objects.requireNonNull(createdAt, "createdAt is  required");
+    this.shortCode = RequiredText.normalize(shortCode, "shortCode");
+    this.originalUrl = RequiredText.normalize(originalUrl, "originalUrl");
+    this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required.");
+    this.status = Objects.requireNonNull(urlStatus, "urlStatus is required.");
+    this.deletedAt = deletedAt;
+    this.deletedBy = deletedBy;
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required.");
+    this.accessCount = accessCount;
+    this.lastAccessedAt = lastAccessedAt;
+
+    validateStatusConsistency();
+    validateAccessCount(accessCount);
   }
 
   public static Url create(UUID userId, String shortCode, String originalUrl) {
-    return new Url(userId, shortCode, originalUrl, LocalDateTime.now());
+    Instant now = Instant.now();
+    return new Url(userId, shortCode, originalUrl, now, UrlStatus.ACTIVE, null, null, now, 0, null);
   }
 
-  public static Url restore(UUID userId, String shortCode, String originalUrl, LocalDateTime createdAt) {
-    return new Url(userId, shortCode, originalUrl, createdAt);
+  public static Url restore(
+      UUID userId,
+      String shortCode,
+      String originalUrl,
+      Instant createdAt,
+      UrlStatus urlStatus,
+      Instant deletedAt,
+      UUID deletedBy,
+      Instant updatedAt,
+      long accessCount,
+      Instant lastAccessedAt) {
+    return new Url(
+        userId,
+        shortCode,
+        originalUrl,
+        createdAt,
+        urlStatus,
+        deletedAt,
+        deletedBy,
+        updatedAt,
+        accessCount,
+        lastAccessedAt);
   }
 
+  private static void validateAccessCount(long accessCount) {
+    if (accessCount < 0) {
+      throw new IllegalArgumentException("accessCount must not be negative.");
+    }
+  }
+
+  public boolean isDeleted() {
+    return status == UrlStatus.DELETED && deletedAt != null && deletedBy != null;
+  }
+
+  public boolean isActive() {
+    return status == UrlStatus.ACTIVE && deletedAt == null && deletedBy == null;
+  }
+
+  public boolean isRedirectable() {
+    return isActive();
+  }
+
+  /**
+   * Garante que o status da URL seja consistente com seus metadados de exclusão.
+   *
+   * <p>URLs ativas não podem possuir {@code deletedAt} ou {@code deletedBy}, e URLs excluídas
+   * precisam conter ambos os metadados.
+   *
+   * @throws IllegalArgumentException se a combinação de status e metadados for inválida
+   */
+  private void validateStatusConsistency() {
+    if (status == UrlStatus.ACTIVE && (deletedAt != null || deletedBy != null)) {
+      throw new IllegalArgumentException("Active URL cannot have delete metadata.");
+    }
+
+    if (status == UrlStatus.DELETED && (deletedAt == null || deletedBy == null)) {
+      throw new IllegalArgumentException("Deleted URL requires delete metadata.");
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "Url{"
+        + "userId="
+        + userId
+        + ", shortCode='"
+        + shortCode
+        + '\''
+        + ", originalUrl='"
+        + originalUrl
+        + '\''
+        + ", createdAt="
+        + createdAt
+        + '}';
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    if (!(object instanceof Url url)) return false;
+    return Objects.equals(shortCode, url.shortCode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(shortCode);
+  }
 }

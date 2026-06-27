@@ -1,15 +1,14 @@
 package com.app.url_shortener.iam.infrastructure.adapter;
 
 import com.app.url_shortener.iam.application.port.output.SecureTokenGeneratorPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HexFormat;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -42,7 +41,8 @@ public class SecureTokenGeneratorAdapter implements SecureTokenGeneratorPort {
       return HexFormat.of().formatHex(encodedHash);
 
     } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("Algoritmo de hash não encontrado no ambiente: " + HASH_ALGORITHM, e);
+      throw new IllegalStateException(
+          "Algoritmo de hash não encontrado no ambiente: " + HASH_ALGORITHM, e);
     }
   }
 }

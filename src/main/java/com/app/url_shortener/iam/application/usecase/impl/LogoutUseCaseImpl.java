@@ -18,11 +18,12 @@ public class LogoutUseCaseImpl implements LogoutUseCase {
   @Override
   @Transactional
   public void execute(LogoutCommand command) {
-    if (command.refreshToken() == null || command.refreshToken().isBlank()) {
+    String rawRefreshToken = command.refreshToken();
+    if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
       return;
     }
 
-    String tokenHash = secureTokenGeneratorPort.hashToken(command.refreshToken());
-    refreshTokenRepositoryPort.revokeActiveTokenByHash(tokenHash);
+    String refreshTokenHash = secureTokenGeneratorPort.hashToken(rawRefreshToken);
+    refreshTokenRepositoryPort.revokeActiveTokenByHash(refreshTokenHash);
   }
 }

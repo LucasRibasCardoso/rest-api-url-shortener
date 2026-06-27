@@ -1,25 +1,22 @@
 package com.app.url_shortener.iam.domain.model;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
-
+import com.app.url_shortener.shared.domain.validation.RequiredText;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 @Getter
-@ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Permission {
 
-  @EqualsAndHashCode.Include
-  private final UUID id;
+  @EqualsAndHashCode.Include private final UUID id;
   private final String name;
   private final String description;
 
   private Permission(UUID id, String name, String description) {
     this.id = Objects.requireNonNull(id, "id is required");
-    this.name = Objects.requireNonNull(name, "name is required");
+    this.name = RequiredText.normalize(name, "name");
     this.description = normalizeDescription(description);
   }
 
@@ -37,7 +34,20 @@ public class Permission {
       return null;
     }
 
-    String normalizedDescription = description.trim();
-    return normalizedDescription.isBlank() ? null : normalizedDescription;
+    return description.trim().isBlank() ? null : description.trim();
+  }
+
+  @Override
+  public String toString() {
+    return "Permission{"
+        + "id="
+        + id
+        + ", name='"
+        + name
+        + '\''
+        + ", description='"
+        + description
+        + '\''
+        + '}';
   }
 }

@@ -8,5 +8,4 @@ public abstract class UnauthorizedException extends AppBusinessException {
   public UnauthorizedException(ErrorCode errorCode) {
     super(errorCode);
   }
-
 }

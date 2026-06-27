@@ -1,24 +1,23 @@
 package com.app.url_shortener.iam.infrastructure.persistence.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.iam.domain.model.Permission;
-import com.app.url_shortener.iam.infrastructure.persistence.entity.PermissionEntity;
-import com.app.url_shortener.iam.infrastructure.persistence.mapper.PermissionPersistenceMapper;
+import com.app.url_shortener.iam.infrastructure.entity.PermissionEntity;
+import com.app.url_shortener.iam.infrastructure.mapper.PermissionPersistenceMapper;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @Tag("unit")
 @DisplayName("Testes de Unidade - PermissionPersistenceMapper")
 class PermissionPersistenceMapperTest {
 
   private final PermissionPersistenceMapper mapper =
-          Mappers.getMapper(PermissionPersistenceMapper.class);
+      Mappers.getMapper(PermissionPersistenceMapper.class);
 
   @Nested
   @DisplayName("Mapeamento para Domínio")

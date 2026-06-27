@@ -4,20 +4,20 @@ services:
     container_name: originalUrl-shortener-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: url_shortener
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: UTC
       PGTZ: UTC
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U app_user -d url_shortener",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
         ]
       interval: 10s
       timeout: 5s
@@ -30,7 +30,7 @@ services:
     image: redis:7.2-alpine
     container_name: originalUrl-shortener-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
     command: redis-server --save 60 1 --loglevel warning
     networks:
       - local-net
@@ -39,12 +39,22 @@ services:
     image: localstack/localstack:3.0.0
     container_name: originalUrl-shortener-aws
     ports:
-      - "127.0.0.1:4566:4566"
+      - "127.0.0.1:${LOCALSTACK_PORT}:4566"
     environment:
-      - SERVICES=dynamodb
-      - DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      SERVICES: dynamodb,sqs,ses
+      DEFAULT_REGION: ${AWS_REGION}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      LOCALSTACK_ENDPOINT_URL: http://localhost:4566
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL:-no-reply@url-shortener.local}
+      URL_TABLE_NAME: ${DYNAMODB_URL_TABLE_NAME}
+      COUNTER_TABLE_NAME: ${DYNAMODB_URL_COUNTER_TABLE_NAME}
+      URL_COUNTER_NAME: url_short_code
+      URL_REDIRECT_EVENTS_QUEUE_NAME: ${SQS_URL_REDIRECT_EVENTS_QUEUE_NAME}
+      URL_REDIRECT_EVENTS_DLQ_NAME: ${SQS_URL_REDIRECT_EVENTS_DLQ_NAME}
+      EMAIL_VERIFICATION_EVENTS_QUEUE_NAME: ${SQS_EMAIL_VERIFICATION_EVENTS_QUEUE_NAME}
+      EMAIL_VERIFICATION_EVENTS_DLQ_NAME: ${SQS_EMAIL_VERIFICATION_EVENTS_DLQ_NAME}
     volumes:
       - ./localstack-init:/etc/localstack/init/ready.d
     networks:
@@ -56,4 +66,3 @@ networks:
 
 volumes:
   postgres-data:
-

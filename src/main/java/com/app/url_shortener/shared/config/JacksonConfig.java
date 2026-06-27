@@ -9,11 +9,8 @@ import org.springframework.http.converter.json.ProblemDetailJacksonMixin;
 @Configuration
 public class JacksonConfig {
 
-
   @Bean
   public JsonMapperBuilderCustomizer problemMapperCustomizer() {
-    return builder -> builder.addMixIn(
-            ProblemDetail.class, ProblemDetailJacksonMixin.class
-    );
+    return builder -> builder.addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class);
   }
 }

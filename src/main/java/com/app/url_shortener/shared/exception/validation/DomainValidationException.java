@@ -8,5 +8,4 @@ public abstract class DomainValidationException extends AppBusinessException {
   public DomainValidationException(ErrorCode errorCode) {
     super(errorCode);
   }
-
 }

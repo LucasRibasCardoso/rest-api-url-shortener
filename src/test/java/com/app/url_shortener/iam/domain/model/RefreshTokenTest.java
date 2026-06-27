@@ -1,18 +1,14 @@
 package com.app.url_shortener.iam.domain.model;
 
-import com.app.url_shortener.iam.domain.exception.auth.RefreshTokenExpiredException;
-import com.app.url_shortener.iam.domain.exception.auth.TokenCompromisedException;
-import com.app.url_shortener.iam.domain.model.RefreshToken;
+import static org.assertj.core.api.Assertions.*;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.*;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - Entidade RefreshToken")
@@ -27,9 +23,7 @@ class RefreshTokenTest {
     void shouldCreateValidTokenWith7DaysExpiration() {
       // Arrange
       var userId = UUID.randomUUID();
-      var tokenHash = "hash-seguro-123";
-      var now = Instant.now();
-
+      var tokenHash = "  hash-seguro-123  ";
       // Act
       var token = RefreshToken.create(userId, tokenHash);
 
@@ -37,77 +31,72 @@ class RefreshTokenTest {
       assertThat(token).isNotNull();
       assertThat(token.getId()).isNotNull();
       assertThat(token.getUserId()).isEqualTo(userId);
-      assertThat(token.getTokenHash()).isEqualTo(tokenHash);
+      assertThat(token.getTokenHash()).isEqualTo("hash-seguro-123");
       assertThat(token.isRevoked()).isFalse();
 
-      var expectedExpiration = now.plus(7, ChronoUnit.DAYS);
-      assertThat(token.getExpiresAt()).isCloseTo(expectedExpiration, within(1, ChronoUnit.SECONDS));
+      assertThat(Duration.between(token.getCreatedAt(), token.getExpiresAt()))
+          .isEqualTo(Duration.ofDays(7));
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar hash do token em branco")
+    void shouldRejectBlankTokenHash() {
+      // 1. Arrange
+      var userId = UUID.randomUUID();
+
+      // 2. Act
+      var throwableAssert = assertThatThrownBy(() -> RefreshToken.create(userId, "   "));
+
+      // 3. Assert
+      throwableAssert
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("tokenHash must not be blank");
     }
   }
 
   @Nested
-  @DisplayName("Rotação de Token (Token Rotation)")
-  class RotationTests {
+  @DisplayName("Expiração")
+  class ExpirationTests {
 
     @Test
-    @DisplayName("Deve rotacionar o token com sucesso, revogando o atual e gerando um novo")
-    void shouldRotateTokenSuccessfully() {
-      // Arrange
-      var userId = UUID.randomUUID();
-      var currentToken = RefreshToken.create(userId, "hash-antigo");
-      var newTokenHash = "hash-novo-456";
-
-      // Act
-      var nextToken = currentToken.rotate(newTokenHash);
-
-      // Assert
-      assertThat(currentToken.isRevoked()).isTrue();
-      assertThat(currentToken.getRevokedAt()).isNotNull();
-      assertThat(currentToken.getReplacedByTokenId()).isEqualTo(nextToken.getId());
-
-      assertThat(nextToken).isNotNull();
-      assertThat(nextToken.getUserId()).isEqualTo(userId);
-      assertThat(nextToken.getTokenHash()).isEqualTo(newTokenHash);
-      assertThat(nextToken.isRevoked()).isFalse();
-    }
-
-    @Test
-    @DisplayName("Deve lançar exceção de comprometimento ao tentar rotacionar um token já revogado")
-    void shouldThrowExceptionWhenRotatingRevokedToken() {
-      // Arrange
-      var currentToken = RefreshToken.create(UUID.randomUUID(), "hash");
-      // Forçamos a revogação simulando um restore com a data de revogação preenchida
-      var revokedToken = RefreshToken.restore(
-              currentToken.getId(),
-              currentToken.getUserId(),
-              currentToken.getTokenHash(),
-              currentToken.getCreatedAt(),
-              currentToken.getExpiresAt(),
-              Instant.now(),
-              null
-      );
-
-      // Act & Assert
-      assertThatThrownBy(() -> revokedToken.rotate("novo-hash")).isInstanceOf(TokenCompromisedException.class);
-    }
-
-    @Test
-    @DisplayName("Deve lançar exceção de expiração ao tentar rotacionar um token com tempo limite ultrapassado")
-    void shouldThrowExceptionWhenRotatingExpiredToken() {
+    @DisplayName("Deve considerar um token restaurado com expiração passada como expirado")
+    void shouldBeExpiredWhenExpirationIsInThePast() {
       // 1. Arrange
-      var pastExpiration = Instant.now().minus(1, ChronoUnit.DAYS);
-      var expiredToken = RefreshToken.restore(
+      var now = Instant.now();
+      var token =
+          RefreshToken.restore(
               UUID.randomUUID(),
               UUID.randomUUID(),
-              "hash",
-              Instant.now().minus(8, ChronoUnit.DAYS),
-              pastExpiration, // expirou ontem
+              "token-hash",
+              now.minus(Duration.ofDays(8)),
+              now.minus(Duration.ofDays(1)),
               null,
-              null
-      );
+              null);
 
-      // 2 & 3. Act & Assert
-      assertThatThrownBy(() -> expiredToken.rotate("novo-hash")).isInstanceOf(RefreshTokenExpiredException.class);
+      // 2. Act
+      var expired = token.isExpired();
+
+      // 3. Assert
+      assertThat(expired).isTrue();
+    }
+  }
+
+  @Nested
+  @DisplayName("Representação textual segura")
+  class SafeToStringTests {
+
+    @Test
+    @DisplayName("Não deve expor tokenHash no toString")
+    void shouldNotExposeTokenHashInToString() {
+      // 1. Arrange
+      var tokenHash = "sensitive-token-hash";
+      var token = RefreshToken.create(UUID.randomUUID(), tokenHash);
+
+      // 2. Act
+      var text = token.toString();
+
+      // 3. Assert
+      assertThat(text).doesNotContain(tokenHash).doesNotContain("tokenHash");
     }
   }
 }

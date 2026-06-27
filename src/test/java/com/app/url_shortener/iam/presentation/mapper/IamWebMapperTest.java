@@ -1,5 +1,8 @@
 package com.app.url_shortener.iam.presentation.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+
 import com.app.url_shortener.iam.application.result.AuthenticatedUserResult;
 import com.app.url_shortener.iam.application.result.LoginResult;
 import com.app.url_shortener.iam.application.result.RefreshTokenResult;
@@ -9,20 +12,15 @@ import com.app.url_shortener.iam.application.result.VerifyEmailResult;
 import com.app.url_shortener.iam.domain.valueobject.VerificationCode;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
-import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequest;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
-import com.app.url_shortener.iam.presentation.mapper.IamWebMapper;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - IamWebMapper")
@@ -38,21 +36,19 @@ class IamWebMapperTest {
     @DisplayName("Deve mapear request de cadastro para comando")
     void shouldMapRegisterRequestToCommand() {
       // 1. Arrange
-      var request = new RegisterRequestDto(
-              "  Maria   Silva  ",
-              "  MARIA@EMAIL.COM  ",
-              "secure-password"
-      );
+      var request =
+          new RegisterRequestDto("  Maria   Silva  ", "  MARIA@EMAIL.COM  ", "secure-password");
+      var clientIp = "203.0.113.10";
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toRegisterUserCommand(request, clientIp);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(command.name()).isEqualTo("Maria Silva"),
-              () -> assertThat(command.email()).isEqualTo("maria@email.com"),
-              () -> assertThat(command.password()).isEqualTo("secure-password")
-      );
+          () -> assertThat(command.name()).isEqualTo("Maria Silva"),
+          () -> assertThat(command.email()).isEqualTo("maria@email.com"),
+          () -> assertThat(command.password()).isEqualTo("secure-password"),
+          () -> assertThat(command.clientIp()).isEqualTo(clientIp));
     }
 
     @Test
@@ -62,13 +58,12 @@ class IamWebMapperTest {
       var request = new VerifyEmailRequestDto("  USER@EMAIL.COM  ", "123456");
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toVerifyEmailCommand(request);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(command.email()).isEqualTo("user@email.com"),
-              () -> assertThat(command.code()).isEqualTo(VerificationCode.of("123456"))
-      );
+          () -> assertThat(command.email()).isEqualTo("user@email.com"),
+          () -> assertThat(command.code()).isEqualTo(VerificationCode.of("123456")));
     }
 
     @Test
@@ -76,25 +71,40 @@ class IamWebMapperTest {
     void shouldMapLoginRequestToCommand() {
       // 1. Arrange
       var request = new LoginRequestDto("  USER@EMAIL.COM  ", "secure-password");
+      var clientIp = "203.0.113.10";
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toLoginCommand(request, clientIp);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(command.email()).isEqualTo("user@email.com"),
-              () -> assertThat(command.password()).isEqualTo("secure-password")
-      );
+          () -> assertThat(command.email()).isEqualTo("user@email.com"),
+          () -> assertThat(command.password()).isEqualTo("secure-password"),
+          () -> assertThat(command.clientIp()).isEqualTo(clientIp));
+    }
+
+    @Test
+    @DisplayName("Deve criar comando de logout quando o refresh token for nulo")
+    void shouldCreateLogoutCommandWhenRefreshTokenIsNull() {
+      // 1. Arrange
+      String refreshToken = null;
+
+      // 2. Act
+      var command = mapper.toLogoutCommand(refreshToken);
+
+      // 3. Assert
+      assertThat(command).isNotNull();
+      assertThat(command.refreshToken()).isNull();
     }
 
     @Test
     @DisplayName("Deve mapear request de reenvio de verificação para comando")
     void shouldMapResendVerificationRequestToCommand() {
       // 1. Arrange
-      var request = new ResendVerificationRequest("  USER@EMAIL.COM  ");
+      var request = new ResendVerificationRequestDto("  USER@EMAIL.COM  ");
 
       // 2. Act
-      var command = mapper.toCommand(request);
+      var command = mapper.toResendVerificationCommand(request);
 
       // 3. Assert
       assertThat(command.email()).isEqualTo("user@email.com");
@@ -112,7 +122,7 @@ class IamWebMapperTest {
       var result = new RegisterUserResult("Usuário cadastrado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -125,7 +135,7 @@ class IamWebMapperTest {
       var result = new VerifyEmailResult("Email verificado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -138,7 +148,7 @@ class IamWebMapperTest {
       var result = new ResendVerificationResult("Código reenviado com sucesso.");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toGenericMessageResponse(result);
 
       // 3. Assert
       assertThat(response.message()).isEqualTo(result.message());
@@ -149,36 +159,31 @@ class IamWebMapperTest {
     void shouldMapLoginResultToResponseWithoutRefreshToken() {
       // 1. Arrange
       var userId = UUID.fromString("019a16f1-ae7f-7c9d-9e18-44773f1ac123");
-      var authenticatedUser = new AuthenticatedUserResult(
+      var authenticatedUser =
+          new AuthenticatedUserResult(
               userId,
               "User Name",
               "user@email.com",
               List.of("USER", "ADMIN"),
               List.of("ROLE_USER", "ROLE_ADMIN", "url:create"),
-              "PREMIUM"
-      );
-      var result = new LoginResult(
-              "raw-refresh-token",
-              "jwt-access-token",
-              "Bearer",
-              3_600L,
-              authenticatedUser
-      );
+              "PREMIUM");
+      var result =
+          new LoginResult(
+              "raw-refresh-token", "jwt-access-token", "Bearer", 3_600L, authenticatedUser);
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toLoginResponse(result);
 
       // 3. Assert
       assertAll(
-              () -> assertThat(response.accessToken()).isEqualTo(result.accessToken()),
-              () -> assertThat(response.tokenType()).isEqualTo(result.tokenType()),
-              () -> assertThat(response.expiresInSeconds()).isEqualTo(result.expiresInSeconds()),
-              () -> assertThat(response.user().id()).isEqualTo(userId),
-              () -> assertThat(response.user().name()).isEqualTo(authenticatedUser.name()),
-              () -> assertThat(response.user().email()).isEqualTo(authenticatedUser.email()),
-              () -> assertThat(response.user().plan()).isEqualTo(authenticatedUser.plan()),
-              () -> assertThat(response.user().roles()).containsExactly("USER", "ADMIN")
-      );
+          () -> assertThat(response.accessToken()).isEqualTo(result.accessToken()),
+          () -> assertThat(response.tokenType()).isEqualTo(result.tokenType()),
+          () -> assertThat(response.expiresInSeconds()).isEqualTo(result.expiresInSeconds()),
+          () -> assertThat(response.user().id()).isEqualTo(userId),
+          () -> assertThat(response.user().name()).isEqualTo(authenticatedUser.name()),
+          () -> assertThat(response.user().email()).isEqualTo(authenticatedUser.email()),
+          () -> assertThat(response.user().plan()).isEqualTo(authenticatedUser.plan()),
+          () -> assertThat(response.user().roles()).containsExactly("USER", "ADMIN"));
     }
 
     @Test
@@ -188,7 +193,7 @@ class IamWebMapperTest {
       var result = new RefreshTokenResult("new-refresh-token", "new-access-token");
 
       // 2. Act
-      var response = mapper.toResponse(result);
+      var response = mapper.toRefreshTokenResponse(result);
 
       // 3. Assert
       assertThat(response.newAccessToken()).isEqualTo(result.newAccessToken());
@@ -206,7 +211,7 @@ class IamWebMapperTest {
       var code = "123456";
 
       // 2. Act
-      var result = mapper.mapToVerificationCode(code);
+      var result = mapper.toVerificationCode(code);
 
       // 3. Assert
       assertThat(result).isEqualTo(VerificationCode.of(code));
@@ -219,7 +224,7 @@ class IamWebMapperTest {
       var verificationCode = VerificationCode.of("123456");
 
       // 2. Act
-      var result = mapper.mapToString(verificationCode);
+      var result = mapper.toVerificationCodeValue(verificationCode);
 
       // 3. Assert
       assertThat(result).isEqualTo("123456");
@@ -232,7 +237,7 @@ class IamWebMapperTest {
       VerificationCode verificationCode = null;
 
       // 2. Act
-      var result = mapper.mapToString(verificationCode);
+      var result = mapper.toVerificationCodeValue(verificationCode);
 
       // 3. Assert
       assertThat(result).isNull();
@@ -245,7 +250,7 @@ class IamWebMapperTest {
       String code = null;
 
       // 2. Act
-      var result = mapper.mapToVerificationCode(code);
+      var result = mapper.toVerificationCode(code);
 
       // 3. Assert
       assertThat(result).isNull();

@@ -1,19 +1,18 @@
 package com.app.url_shortener.security.principal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.app.url_shortener.iam.domain.enums.PlanType;
 import com.app.url_shortener.iam.domain.enums.UserStatus;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
 @DisplayName("Testes de Unidade - UserPrincipal")
@@ -86,13 +85,12 @@ class UserPrincipalTest {
 
   private static UserPrincipal userPrincipal(UserStatus status) {
     return new UserPrincipal(
-            UUID.randomUUID(),
-            "John Doe",
-            "john.doe@email.com",
-            "password-hash",
-            PlanType.FREE,
-            status,
-            List.of()
-    );
+        UUID.randomUUID(),
+        "John Doe",
+        "john.doe@email.com",
+        "password-hash",
+        PlanType.FREE,
+        status,
+        List.of());
   }
 }

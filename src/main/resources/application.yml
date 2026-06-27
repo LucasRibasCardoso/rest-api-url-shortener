@@ -1,13 +1,30 @@
 spring:
   application:
     name: url-shortener
+  config:
+    import: optional:file:.env[.properties]
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:}
   mvc:
     problemdetails:
       enabled: true
 
 app:
+  iam:
+    email-verification:
+      sender: ${EMAIL_VERIFICATION_SENDER:ses}
+      code-ttl: 10m
+      sending-timeout: 1m
+      resend-cooldown: 60s
+      ses:
+        endpoint: ${SES_ENDPOINT:}
+        from-email: ${SES_FROM_EMAIL}
+        subject: ${SES_EMAIL_VERIFICATION_SUBJECT:Confirme seu e-mail}
+        api-call-timeout: ${SES_API_CALL_TIMEOUT:10s}
+      code-protection:
+        encryption-password: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_PASSWORD}
+        encryption-salt: ${EMAIL_VERIFICATION_CODE_ENCRYPTION_SALT}
+        hmac-secret: ${EMAIL_VERIFICATION_CODE_HMAC_SECRET}
   idempotency:
     protected-uris:
       - /api/v1/auth/register
@@ -17,3 +34,72 @@ app:
       - /api/v1/auth/logout
       - /api/v1/auth/resend-verification
       - /api/v1/urls
+  outbox:
+    publisher:
+      enabled: true
+      batch-size: 20
+      fixed-delay: 5s
+      initial-delay: 5s
+      max-attempts: 5
+      retry-delay: 30s
+  hashids:
+    min-length: 7
+  id-generator:
+    block-size: 10_000
+    counter-name: url_short_code
+  security:
+    jwt:
+      issuer: ${spring.application.name}
+      access-token-expiration-seconds: 900
+  url:
+    redirect-cache:
+      ttl:
+        active: 15m
+        deleted: 1h
+        not-found: 5m
+  rate-limit:
+    enabled: true
+    key-prefix: rate-limit
+    policies:
+      auth-register-email:
+        enabled: true
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 15m
+        fail-open: false
+      auth-register-ip:
+        enabled: true
+        capacity: 20
+        refill-tokens: 20
+        refill-period: 15m
+        fail-open: false
+      auth-login:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 10m
+        fail-open: false
+      auth-verify-email:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 15m
+        fail-open: false
+      auth-resend-verification:
+        enabled: true
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 15m
+        fail-open: false
+      url-shorten-free:
+        enabled: true
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 1h
+        fail-open: false
+      url-shorten-premium:
+        enabled: true
+        capacity: 1000
+        refill-tokens: 1000
+        refill-period: 1h
+        fail-open: false

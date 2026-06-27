@@ -1,8 +1,8 @@
 package com.app.url_shortener.url.application.usecase;
 
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
-import com.app.url_shortener.url.application.result.ResolvedUrlResult;
+import com.app.url_shortener.url.application.result.ResolveUrlResult;
 
 public interface ResolveUrlUseCase {
-  ResolvedUrlResult execute(ResolveUrlCommand command);
+  ResolveUrlResult execute(ResolveUrlCommand command);
 }
