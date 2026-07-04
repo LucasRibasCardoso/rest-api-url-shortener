@@ -38,3 +38,4 @@ tasks.md
 .env
 .env.*
 !.env.example
+/secrets/application-dev.json

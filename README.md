@@ -132,11 +132,43 @@ Esse comando sobe:
 
 - PostgreSQL com banco `url_shortener`
 - Redis
-- LocalStack com DynamoDB, SQS e SES
+- LocalStack com DynamoDB, SQS, SES e Secrets Manager
 
-Os scripts em `localstack-init` criam automaticamente as tabelas DynamoDB, as filas SQS e a
-identidade SES definida por `SES_FROM_EMAIL`. Os e-mails enviados localmente ficam disponíveis em
-`http://localhost:4566/_aws/ses` para inspeção.
+Antes de subir a infraestrutura, crie o arquivo local de secrets a partir do exemplo:
+
+```bash
+cp secrets/application-dev.example.json secrets/application-dev.json
+```
+
+Os scripts em `localstack-init` criam automaticamente as tabelas DynamoDB, as filas SQS, a
+identidade SES definida por `SES_FROM_EMAIL` e o secret
+`/url-shortener/dev/application` no Secrets Manager local. Os e-mails enviados localmente ficam
+disponíveis em `http://localhost:4566/_aws/ses` para inspeção.
+
+O arquivo `secrets/application-dev.json` não é versionado. Ele deve conter as chaves sensíveis
+carregadas pela aplicação via Secrets Manager:
+
+```json
+{
+  "postgres.password": "...",
+  "app.hashids.salt": "...",
+  "app.security.jwt.secret": "...",
+  "app.rate-limit.email-hash-secret": "...",
+  "app.iam.email-verification.code-protection.encryption-password": "...",
+  "app.iam.email-verification.code-protection.encryption-salt": "...",
+  "app.iam.email-verification.code-protection.hmac-secret": "..."
+}
+```
+
+Em desenvolvimento, `POSTGRES_PASSWORD` no `.env` continua sendo necessário para o Docker Compose
+inicializar o PostgreSQL. O valor de `postgres.password` em `secrets/application-dev.json` é usado
+pela aplicação via Secrets Manager; mantenha os dois com o mesmo valor.
+
+Para conferir se o secret foi criado:
+
+```bash
+awslocal secretsmanager describe-secret --secret-id /url-shortener/dev/application
+```
 
 ### 3. Validar ou compilar o projeto
 

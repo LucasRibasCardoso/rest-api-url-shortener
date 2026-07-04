@@ -1,17 +1,26 @@
 spring:
+  config:
+    import: aws-secretsmanager:/url-shortener/dev/application
+
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
-    hikari:
-      pool-name: UrlShortenerHikariPool
-      minimum-idle: 2
-      maximum-pool-size: 10
-      idle-timeout: 300000
-      max-lifetime: 1800000
-      connection-timeout: 30000
-      validation-timeout: 5000
-      leak-detection-threshold: 60000
+    password: ${postgres.password}
+
+  cloud:
+    aws:
+      endpoint: ${LOCALSTACK_ENDPOINT_URL}
+
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+      region:
+        static: ${AWS_REGION}
+
+      sqs:
+        queue-not-found-strategy: fail
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -22,22 +31,15 @@ spring:
           time_zone: UTC
         format_sql: true
     show-sql: false
+
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+
   flyway:
     enabled: true
-  cloud:
-    aws:
-      credentials:
-        access-key: ${AWS_ACCESS_KEY_ID}
-        secret-key: ${AWS_SECRET_ACCESS_KEY}
-      region:
-        static: ${AWS_REGION}
-      sqs:
-        endpoint: ${LOCALSTACK_ENDPOINT_URL}
-        queue-not-found-strategy: fail
+
 aws:
   dynamodb:
     endpoint: ${LOCALSTACK_ENDPOINT_URL}
@@ -50,23 +52,23 @@ aws:
 
 app:
   base-url: ${APP_BASE_URL}
-  hashids:
-    salt: ${HASHIDS_SALT}
-  security:
-    jwt:
-      secret: ${JWT_SECRET}
+
+  iam:
+    email-verification:
+      ses:
+        endpoint: ${LOCALSTACK_ENDPOINT_URL}
+
   outbox:
     sqs:
       queues:
         EMAIL_VERIFICATION_REQUESTED: ${SQS_EMAIL_VERIFICATION_EVENTS_QUEUE_NAME}
+
   aws:
     sqs:
       url-redirect-events-queue: ${SQS_URL_REDIRECT_EVENTS_QUEUE_NAME}
       url-redirect-events-dlq: ${SQS_URL_REDIRECT_EVENTS_DLQ_NAME}
       email-verification-events-queue: ${SQS_EMAIL_VERIFICATION_EVENTS_QUEUE_NAME}
       email-verification-events-dlq: ${SQS_EMAIL_VERIFICATION_EVENTS_DLQ_NAME}
-  rate-limit:
-    email-hash-secret: ${RATE_LIMIT_EMAIL_HASH_SECRET}
 
 logging:
   level:
