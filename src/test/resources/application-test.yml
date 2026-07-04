@@ -4,8 +4,10 @@ spring:
     hikari:
       maximum-pool-size: 3
       minimum-idle: 0
+
   flyway:
     enabled: false
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -13,17 +15,21 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+
   data:
     redis:
       host: localhost
       port: 6379
+
   cloud:
     aws:
       credentials:
         access-key: test-access-key
         secret-key: test-secret-key
+
       region:
         static: us-east-1
+
       sqs:
         endpoint: http://localhost:4566
         queue-not-found-strategy: fail
@@ -42,6 +48,7 @@ aws:
 
 app:
   base-url: http://localhost:8080
+
   iam:
     email-verification:
       sender: console
@@ -49,23 +56,28 @@ app:
         encryption-password: test-email-verification-password-32
         encryption-salt: 0123456789abcdef
         hmac-secret: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+
   outbox:
     publisher:
       enabled: false
     sqs:
       queues:
         EMAIL_VERIFICATION_REQUESTED: email-verification-events-queue
+
   hashids:
     salt: test-hashids-salt
+
   security:
     jwt:
       secret: test-jwt-secret-with-at-least-32-bytes
+
   aws:
     sqs:
       url-redirect-events-queue: url-redirect-events-queue
       url-redirect-events-dlq: url-redirect-events-dlq
       email-verification-events-queue: email-verification-events-queue
       email-verification-events-dlq: email-verification-events-dlq
+
   rate-limit:
     email-hash-secret: dGVzdC1yYXRlLWxpbWl0LWVtYWlsLWhhc2gtc2VjcmV0
     policies:
