@@ -12,7 +12,17 @@ spring:
     problemdetails:
       enabled: true
 
+springdoc:
+  api-docs:
+    enabled: ${app.openapi.enabled}
+    path: /docs/openapi.json
+  swagger-ui:
+    enabled: false
+
 app:
+  openapi:
+    enabled: ${APP_OPENAPI_ENABLED:false}
+
   iam:
     email-verification:
       sender: ${EMAIL_VERIFICATION_SENDER:ses}

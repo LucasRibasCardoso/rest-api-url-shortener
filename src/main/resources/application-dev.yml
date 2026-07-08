@@ -53,6 +53,9 @@ aws:
 app:
   base-url: ${APP_BASE_URL}
 
+  openapi:
+    enabled: ${APP_OPENAPI_ENABLED:true}
+
   iam:
     email-verification:
       ses:

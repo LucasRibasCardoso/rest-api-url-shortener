@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
   ApplicationProperties.class,
   SpringApplicationProperties.class,
+  OpenApiProperties.class,
   DynamoDbProperties.class,
   AwsSqsProperties.class,
   JwtProperties.class,
