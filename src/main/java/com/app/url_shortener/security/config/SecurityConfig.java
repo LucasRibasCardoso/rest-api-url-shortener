@@ -45,7 +45,8 @@ public class SecurityConfig {
       ObjectProvider<OpenApiProperties> openApiPropertiesProvider,
       Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter) {
 
-    boolean openApiEnabled = openApiPropertiesProvider.getIfAvailable(() -> new OpenApiProperties(false)).enabled();
+    boolean openApiEnabled =
+        openApiPropertiesProvider.getIfAvailable(() -> new OpenApiProperties(false)).enabled();
 
     return http.csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(
