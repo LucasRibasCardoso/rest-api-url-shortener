@@ -574,6 +574,67 @@ Para cada @ApiResponse, informe:
 
 A OpenAPI modela responses, headers, parâmetros, request body, security requirements e schemas como elementos próprios da operação, então esses itens devem aparecer quando fazem parte do contrato público.  
 
+Exemplos devem ser coesos com o cenário real documentado.
+
+Regras para exemplos de response:
+
+* Schemas reutilizáveis devem descrever a estrutura do payload.
+* Não colocar em schemas genéricos, como `ApiError`, exemplos de um cenário específico que possam aparecer em outros status.
+* Exemplos de erro devem ficar no `@ApiResponse` do endpoint, no status e cenário correspondente.
+* Cada cenário real relevante deve ter seu próprio `@ExampleObject`.
+* Se o mesmo status tiver mais de um formato real de erro, use um schema reutilizável adequado, por exemplo `BadRequestError` com `oneOf`, e documente exemplos para cada formato.
+* Para `400` com validação de DTO, incluir exemplo com `errors[]` e campos reais inválidos.
+* Para `400` por `Idempotency-Key` ausente ou inválido, incluir exemplo sem `errors[]`, com o `errorCode` real.
+* Para `409`, `429`, `401`, `403`, `404` e outros erros, usar `type`, `title`, `status`, `detail` e `errorCode` coerentes com o status e a causa real.
+* Não reutilizar exemplo de `404`, como `URL_NOT_FOUND`, em responses `400`, `409` ou `429`.
+* Não incluir tokens, senhas, cookies reais, OTPs ou valores sensíveis em exemplos.
+
+Exemplo para `POST /api/v1/auth/register`:
+
+```java
+@ApiResponse(
+    responseCode = "400",
+    description = "Payload inválido ou problema no header Idempotency-Key.",
+    content =
+        @Content(
+            mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+            schema = @Schema(ref = "#/components/schemas/BadRequestError"),
+            examples = {
+                @ExampleObject(
+                    name = "invalidPayload",
+                    summary = "Payload inválido",
+                    value =
+                        """
+                        {
+                          "type": "/errors/validation",
+                          "title": "Validação",
+                          "status": 400,
+                          "detail": "Um ou mais campos estão inválidos.",
+                          "errorCode": "REQUEST_VALIDATION_FAILED",
+                          "errors": [
+                            {
+                              "field": "email",
+                              "message": "must be a well-formed email address"
+                            }
+                          ]
+                        }
+                        """),
+                @ExampleObject(
+                    name = "missingIdempotencyKey",
+                    summary = "Idempotency-Key ausente",
+                    value =
+                        """
+                        {
+                          "type": "/errors/validation",
+                          "title": "Validação",
+                          "status": 400,
+                          "detail": "O cabeçalho Idempotency-Key é obrigatório para esta operação.",
+                          "errorCode": "IDEMPOTENCY_HEADER_MISSING"
+                        }
+                        """)
+            }))
+```
+
 Exemplo:
 
 @ApiResponses({
@@ -1058,6 +1119,7 @@ Conferir manualmente:
 * description não está genérica;
 * request schema está correto;
 * response schemas estão corretos;
+* exemplos de response são específicos do cenário real documentado;
 * status codes batem com testes e código;
 * security requirement aparece apenas onde deve;
 * headers aparecem quando fazem parte do contrato;
@@ -1090,6 +1152,8 @@ Antes de concluir, confirmar:
 * Endpoints autenticados possuem @SecurityRequirement(name = "bearerAuth").
 * Permissões documentadas refletem exatamente o código.
 * Erros usam ProblemDetail ou o schema padronizado real do projeto.
+* Exemplos de erro usam `type`, `title`, `status`, `detail` e `errorCode` coerentes com o cenário real.
+* Schemas genéricos de erro não carregam exemplos específicos de outro status ou domínio.
 * Nenhum segredo, token, OTP, cookie real ou credencial real foi adicionado.
 * A documentação não expõe detalhes internos desnecessários.
 * ./mvnw clean compile foi executado ou a impossibilidade foi registrada.

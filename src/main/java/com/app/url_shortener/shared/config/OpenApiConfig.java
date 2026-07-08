@@ -28,6 +28,7 @@ public class OpenApiConfig {
   private static final String BEARER_AUTH_SCHEME = "bearerAuth";
   private static final String API_ERROR_SCHEMA = "ApiError";
   private static final String API_VALIDATION_ERROR_SCHEMA = "ApiValidationError";
+  private static final String BAD_REQUEST_ERROR_SCHEMA = "BadRequestError";
   private static final String FIELD_ERROR_SCHEMA = "FieldError";
   private static final String IDEMPOTENCY_KEY_PARAMETER = "IdempotencyKeyHeader";
   private static final String REFRESH_TOKEN_COOKIE_REQUIRED_PARAMETER =
@@ -65,12 +66,6 @@ public class OpenApiConfig {
 
       Endpoints críticos de escrita exigem `Idempotency-Key` para evitar processamento duplicado
       em tentativas repetidas.
-
-      ## Escopo do contrato HTTP
-
-      Esta especificação descreve recursos, payloads, headers, cookies, códigos HTTP e erros
-      observáveis pelos clientes da API. Detalhes internos de persistência, cache, mensageria e
-      implementação não fazem parte do contrato público.
 
       ## Ambiente
 
@@ -125,6 +120,7 @@ public class OpenApiConfig {
         .addSchemas(FIELD_ERROR_SCHEMA, fieldErrorSchema())
         .addSchemas(API_ERROR_SCHEMA, apiErrorSchema())
         .addSchemas(API_VALIDATION_ERROR_SCHEMA, apiValidationErrorSchema())
+        .addSchemas(BAD_REQUEST_ERROR_SCHEMA, badRequestErrorSchema())
         .addParameters(IDEMPOTENCY_KEY_PARAMETER, idempotencyKeyHeaderParameter())
         .addParameters(REFRESH_TOKEN_COOKIE_REQUIRED_PARAMETER, refreshTokenCookieParameter(true))
         .addParameters(REFRESH_TOKEN_COOKIE_OPTIONAL_PARAMETER, refreshTokenCookieParameter(false))
@@ -145,29 +141,15 @@ public class OpenApiConfig {
     return new ObjectSchema()
         .description("Erro padrão da API no formato Problem Details.")
         .required(List.of("type", "title", "status", "detail", "errorCode"))
+        .addProperty("type", new StringSchema().description("Tipo estável do problema."))
+        .addProperty("title", new StringSchema().description("Título do erro."))
+        .addProperty("status", new IntegerSchema().description("Status HTTP."))
+        .addProperty("detail", new StringSchema().description("Mensagem legível do erro."))
         .addProperty(
-            "type",
-            new StringSchema()
-                .description("Tipo estável do problema.")
-                .example("/errors/not-found"))
-        .addProperty(
-            "title", new StringSchema().description("Título do erro.").example("Não encontrado"))
-        .addProperty("status", new IntegerSchema().description("Status HTTP.").example(404))
-        .addProperty(
-            "detail",
-            new StringSchema()
-                .description("Mensagem legível do erro.")
-                .example("URL não encontrada."))
-        .addProperty(
-            "instance",
-            new StringSchema()
-                .description("Caminho da requisição, quando informado.")
-                .example("/api/v1/urls/abc123"))
+            "instance", new StringSchema().description("Caminho da requisição, quando informado."))
         .addProperty(
             "errorCode",
-            new StringSchema()
-                .description("Código estável para tratamento por clientes.")
-                .example("URL_NOT_FOUND"));
+            new StringSchema().description("Código estável para tratamento por clientes."));
   }
 
   private Schema<?> apiValidationErrorSchema() {
@@ -218,13 +200,27 @@ public class OpenApiConfig {
                 .example("URL deve ser HTTP ou HTTPS."));
   }
 
+  private Schema<?> badRequestErrorSchema() {
+    return new Schema<>()
+        .description(
+            "Erro de requisição inválida. Pode representar validação de payload ou problema no Idempotency-Key.")
+        .oneOf(
+            List.of(
+                schemaRef("#/components/schemas/" + API_ERROR_SCHEMA),
+                schemaRef("#/components/schemas/" + API_VALIDATION_ERROR_SCHEMA)));
+  }
+
+  private Schema<?> schemaRef(String ref) {
+    return new Schema<>().$ref(ref);
+  }
+
   private Parameter idempotencyKeyHeaderParameter() {
     return new Parameter()
         .name("Idempotency-Key")
         .in("header")
         .required(true)
         .description("Chave idempotente exigida por operações críticas de escrita.")
-        .schema(new StringSchema().format("uuid").example("123e4567-e89b-12d3-a456-426614174000"));
+        .schema(new StringSchema().minLength(1).example("register-user-20260708-001"));
   }
 
   private Parameter refreshTokenCookieParameter(boolean required) {
