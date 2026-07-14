@@ -2,6 +2,7 @@ package com.app.url_shortener.iam.presentation.docs;
 
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
+import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.VerifyEmailRequestDto;
 import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
@@ -36,6 +37,9 @@ public interface AuthApiDocs {
           Cria uma conta de usuário e inicia o fluxo de verificação de e-mail.
           O endpoint é público e exige `Idempotency-Key`. O e-mail informado deve ser único.
           A conta criada permanece pendente até a confirmação do código de verificação.
+
+          Requisições repetidas com a mesma chave idempotente e o mesmo payload retornam a resposta
+          previamente gerada. Requisições com a mesma chave e payload diferente são rejeitadas.
           """)
   @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
   @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -206,6 +210,9 @@ public interface AuthApiDocs {
 
           Códigos incorretos, expirados, já consumidos ou associados a e-mail inexistente retornam
           a mesma resposta pública de validação para não revelar detalhes da conta.
+
+          Requisições repetidas com a mesma chave idempotente e o mesmo payload retornam a resposta
+          previamente gerada. Requisições com a mesma chave e payload diferente são rejeitadas.
           """)
   @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
   @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -372,6 +379,9 @@ public interface AuthApiDocs {
 
           O e-mail é normalizado para minúsculas antes da autenticação. Contas pendentes,
           bloqueadas ou desabilitadas não recebem tokens.
+
+          Requisições repetidas com a mesma chave idempotente e o mesmo payload retornam a resposta
+          previamente gerada. Requisições com a mesma chave e payload diferente são rejeitadas.
           """)
   @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
   @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -715,6 +725,155 @@ public interface AuthApiDocs {
           String refreshToken);
 
   @Operation(
+      operationId = "resendEmailVerification",
+      summary = "Reenviar verificação de e-mail",
+      description =
+          """
+          Solicita o reenvio do código de verificação para uma conta pendente.
+          O endpoint é público e exige `Idempotency-Key`. Para evitar enumeração de contas, a API
+          retorna a mesma mensagem de sucesso quando o e-mail não existe ou quando a conta já não
+          está pendente de verificação.
+
+          Quando o e-mail pertence a uma conta pendente, um novo envio de verificação é iniciado.
+          Requisições repetidas com a mesma chave idempotente e o mesmo payload retornam a resposta
+          previamente gerada. Requisições com a mesma chave e payload diferente são rejeitadas.
+          """)
+  @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
+  @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      required = true,
+      description = "E-mail da conta que deve receber um novo código de verificação.",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = ResendVerificationRequestDto.class)))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Solicitação de reenvio aceita.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = GenericMessageResponseDto.class),
+                examples =
+                    @ExampleObject(
+                        name = "resendAccepted",
+                        summary = "Reenvio aceito",
+                        value =
+                            """
+                            {
+                              "message": "Enviamos um novo código de verificação para o seu e-mail."
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Payload inválido ou problema no header Idempotency-Key.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/BadRequestError"),
+                examples = {
+                  @ExampleObject(
+                      name = "invalidPayload",
+                      summary = "Payload inválido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "Um ou mais campos estão inválidos.",
+                            "errorCode": "REQUEST_VALIDATION_FAILED",
+                            "errors": [
+                              {
+                                "field": "email",
+                                "message": "must be a well-formed email address"
+                              }
+                            ]
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "missingIdempotencyKey",
+                      summary = "Idempotency-Key ausente",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "O cabeçalho Idempotency-Key é obrigatório para esta operação.",
+                            "errorCode": "IDEMPOTENCY_HEADER_MISSING"
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Conflito de idempotência.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "idempotencyConflict",
+                        summary = "Conflito de idempotência",
+                        value =
+                            """
+                            {
+                              "type": "/errors/conflict",
+                              "title": "Conflito",
+                              "status": 409,
+                              "detail": "A requisição já está em processamento. Aguarde.",
+                              "errorCode": "IDEMPOTENCY_IN_PROCESSING"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Limite de requisições excedido.",
+        headers = @Header(name = "Retry-After", ref = "#/components/headers/RetryAfter"),
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "tooManyRequests",
+                        summary = "Rate limit excedido",
+                        value =
+                            """
+                            {
+                              "type": "/errors/too-many-requests",
+                              "title": "Muitas requisições",
+                              "status": 429,
+                              "detail": "Muitas requisições. Por favor, tente novamente mais tarde.",
+                              "errorCode": "TOO_MANY_REQUESTS"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Falha temporária em dependência necessária ao reenvio de verificação.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "dependencyFailure",
+                        summary = "Dependência temporariamente indisponível",
+                        value =
+                            """
+                            {
+                              "type": "/errors/infrastructure",
+                              "title": "Infraestrutura",
+                              "status": 503,
+                              "detail": "Falha temporária em serviço de infraestrutura.",
+                              "errorCode": "DEPENDENCY_FAILURE"
+                            }
+                            """)))
+  })
+  ResponseEntity<GenericMessageResponseDto> resend(
+      @Valid @RequestBody ResendVerificationRequestDto request);
+
+  @Operation(
       operationId = "logoutUser",
       summary = "Encerrar sessão",
       description =
@@ -728,6 +887,9 @@ public interface AuthApiDocs {
           Em caso de sucesso, a resposta não possui corpo e emite `Set-Cookie` para expirar
           `refreshToken` com `HttpOnly`, `Secure`, `SameSite=Strict`, path `/api/v1/auth` e
           `Max-Age=0`.
+
+          Requisições repetidas com a mesma chave idempotente e o mesmo payload retornam a resposta
+          previamente gerada. Requisições com a mesma chave e payload diferente são rejeitadas.
           """,
       security = @SecurityRequirement(name = "bearerAuth"))
   @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
