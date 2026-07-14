@@ -236,8 +236,136 @@ public interface UrlApiDocs {
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 
   @GetMapping(SHORT_CODE_PATH)
+  @Operation(
+      operationId = "getCurrentUserUrlDetails",
+      summary = "Consultar detalhes de URL",
+      description =
+          """
+          Consulta os detalhes de uma URL encurtada pelo short code informado.
+          Exige JWT válido e permissão `url:read:own` para URLs do próprio usuário ou
+          `url:read:any` para leitura de URLs de qualquer usuário.
+
+          URLs deletadas continuam consultáveis por usuários autorizados e retornam metadados de
+          exclusão. Quando a URL não existe ou o usuário autenticado não pode acessá-la, a resposta
+          pública é a mesma: recurso não encontrado.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Detalhes da URL encurtada encontrados.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UrlDetailsResponseDto.class),
+                examples = {
+                  @ExampleObject(
+                      name = "activeUrlDetails",
+                      summary = "URL ativa",
+                      value =
+                          """
+                          {
+                            "shortCode": "aB3dE",
+                            "originalUrl": "https://example.com/articles/spring-boot",
+                            "userId": "019a16f1-ae7f-7c9d-9e18-44773f1ac001",
+                            "status": "ACTIVE",
+                            "createdAt": "2026-05-10T14:30:00Z",
+                            "updatedAt": "2026-05-10T14:30:00Z",
+                            "accessCount": 42,
+                            "lastAccessedAt": "2026-05-11T10:00:00Z"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "deletedUrlDetails",
+                      summary = "URL deletada",
+                      value =
+                          """
+                          {
+                            "shortCode": "aB3dE",
+                            "originalUrl": "https://example.com/articles/spring-boot",
+                            "userId": "019a16f1-ae7f-7c9d-9e18-44773f1ac001",
+                            "status": "DELETED",
+                            "createdAt": "2026-05-10T14:30:00Z",
+                            "updatedAt": "2026-05-11T10:00:00Z",
+                            "deletedAt": "2026-05-11T10:00:00Z",
+                            "deletedBy": "019a16f1-ae7f-7c9d-9e18-44773f1ac001",
+                            "accessCount": 0
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Usuário autenticado sem permissão para consultar detalhes de URLs.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "forbidden",
+                        summary = "Permissão insuficiente",
+                        value =
+                            """
+                            {
+                              "type": "/errors/forbidden",
+                              "title": "Acesso negado",
+                              "status": 403,
+                              "detail": "Acesso negado para esse recurso",
+                              "errorCode": "AUTH_ACCESS_DENIED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Short code não encontrado ou não acessível para o usuário autenticado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "urlNotFound",
+                        summary = "URL não encontrada",
+                        value =
+                            """
+                            {
+                              "type": "/errors/not-found",
+                              "title": "Não encontrado",
+                              "status": 404,
+                              "detail": "URL não encontrada.",
+                              "errorCode": "URL_NOT_FOUND"
+                            }
+                            """)))
+  })
   ResponseEntity<UrlDetailsResponseDto> findUrlDetails(
-      @PathVariable String shortCode,
+      @Parameter(
+              name = "shortCode",
+              description = "Código curto alfanumérico da URL encurtada.",
+              required = true,
+              example = "aB3dE",
+              schema = @Schema(type = "string", minLength = 1, maxLength = 64))
+          @PathVariable
+          String shortCode,
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 
   @DeleteMapping(SHORT_CODE_PATH)

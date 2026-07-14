@@ -1,11 +1,11 @@
 
-Documentar POST /api/v1/urls
+Documentar DELETE /api/v1/urls/{shortCode}
 Analisar:
-- UrlController, UrlControllerTest e UrlCreateIT
+- UrlController, UrlControllerTest e UrlDeleteIT
 - AuthApiDocs, se já existir
-- ShortenUrlUseCase, ShortenUrlUseCaseImpl e suas dependencias
+- DeleteUrlUseCase, DeleteUrlUseCaseImpl e suas dependencias
 - GlobalExceptionHandler
-- exceções de domínio relacionadas à criação de URLs
+- exceções de domínio relacionadas à deleção de uma URL
 
 Passo 0: Verificar configuração global OpenAPI
 
