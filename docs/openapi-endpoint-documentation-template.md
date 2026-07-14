@@ -1,15 +1,13 @@
 
-Documentar POST /api/v1/auth/resend-verification
+Documentar POST /api/v1/r
 Analisar:
-- AuthController
+- RedirectController
 - AuthApiDocs, se já existir
-- ResendVerificationUseCase / implementação
-- ResendVerificationRequestDto
-- GenericMessageResponseDto
+- ResolveUrlUseCase, ResolveUrlUseCaseImp e suas dependencias
 - GlobalExceptionHandler
 - exceções de domínio relacionadas à verificação de email
-- AuthResendVerificationIT
-- AuthControllerTest
+- RedirectIT
+- RedirectControllerTest
 
 Passo 0: Verificar configuração global OpenAPI
 
