@@ -817,7 +817,138 @@ public interface UrlApiDocs {
           String cursor);
 
   @GetMapping("me/ranking")
+  @Operation(
+      operationId = "getCurrentUserUrlRanking",
+      summary = "Consultar ranking de URLs",
+      description =
+          """
+          Consulta o ranking das URLs ativas mais acessadas do usuário autenticado.
+          Exige JWT válido e permissão `url:ranking:own`.
+
+          O parâmetro `rankingSize` aceita somente os valores 3 e 10. Quando omitido, retorna até
+          três URLs. URLs de outros usuários e URLs deletadas não aparecem no ranking. URLs ativas
+          sem acessos podem aparecer quando houver espaço no limite solicitado.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Ranking das URLs mais acessadas do usuário autenticado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UrlRankingResponseDto.class),
+                examples = {
+                  @ExampleObject(
+                      name = "urlRanking",
+                      summary = "Ranking com URLs",
+                      value =
+                          """
+                          {
+                            "urls": [
+                              {
+                                "originalUrl": "https://example.com/articles/spring-boot",
+                                "shortUrl": "http://localhost:8080/r/aB3dE",
+                                "createdAt": "2026-05-10T14:30:00Z",
+                                "status": "ACTIVE",
+                                "accessCount": 42,
+                                "lastAccessedAt": "2026-06-08T10:00:00Z"
+                              }
+                            ]
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "emptyRanking",
+                      summary = "Ranking vazio",
+                      value =
+                          """
+                          {
+                            "urls": []
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Tamanho do ranking inválido.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiValidationError"),
+                examples =
+                    @ExampleObject(
+                        name = "invalidRankingSize",
+                        summary = "rankingSize inválido",
+                        value =
+                            """
+                            {
+                              "type": "/errors/validation",
+                              "title": "Validação",
+                              "status": 400,
+                              "detail": "Um ou mais campos estão inválidos.",
+                              "errorCode": "REQUEST_VALIDATION_FAILED",
+                              "errors": [
+                                {
+                                  "field": "rankingSize",
+                                  "message": "O tamanho do ranking deve ser 3 ou 10"
+                                }
+                              ]
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Usuário autenticado sem permissão para consultar ranking de URLs.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "forbidden",
+                        summary = "Permissão insuficiente",
+                        value =
+                            """
+                            {
+                              "type": "/errors/forbidden",
+                              "title": "Acesso negado",
+                              "status": 403,
+                              "detail": "Acesso negado para esse recurso",
+                              "errorCode": "AUTH_ACCESS_DENIED"
+                            }
+                            """)))
+  })
   ResponseEntity<UrlRankingResponseDto> findMyTopUrls(
-      @RequestParam(defaultValue = "3") @ValidRankingSize int rankingSize,
+      @Parameter(
+              name = "rankingSize",
+              description = "Quantidade máxima de URLs no ranking. Valores aceitos: 3 ou 10.",
+              example = "3",
+              schema =
+                  @Schema(
+                      type = "integer",
+                      allowableValues = {"3", "10"},
+                      defaultValue = "3"))
+          @RequestParam(defaultValue = "3")
+          @ValidRankingSize
+          int rankingSize,
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 }

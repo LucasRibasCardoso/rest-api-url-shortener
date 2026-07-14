@@ -1,12 +1,23 @@
 package com.app.url_shortener.url.presentation.dto.response;
 
 import com.app.url_shortener.url.domain.model.UrlStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
+@Schema(description = "Item do ranking de URLs mais acessadas.")
 public record UrlRankingItemResponseDto(
-    String originalUrl,
-    String shortUrl,
-    Instant createdAt,
-    UrlStatus status,
-    long accessCount,
-    Instant lastAccessedAt) {}
+    @Schema(
+            description = "URL original associada ao item do ranking.",
+            example = "https://example.com/articles/spring-boot")
+        String originalUrl,
+    @Schema(description = "URL curta completa.", example = "http://localhost:8080/r/aB3dE")
+        String shortUrl,
+    @Schema(description = "Data e hora de criação da URL.", example = "2026-05-10T14:30:00Z")
+        Instant createdAt,
+    @Schema(description = "Status atual da URL no ranking.", example = "ACTIVE") UrlStatus status,
+    @Schema(description = "Quantidade de acessos registrados para a URL.", example = "42")
+        long accessCount,
+    @Schema(
+            description = "Data e hora do último acesso registrado, quando houver.",
+            example = "2026-06-08T10:00:00Z")
+        Instant lastAccessedAt) {}
