@@ -4,6 +4,7 @@ import com.app.url_shortener.iam.application.command.*;
 import com.app.url_shortener.iam.application.result.*;
 import com.app.url_shortener.iam.application.usecase.*;
 import com.app.url_shortener.iam.domain.exception.auth.InvalidRefreshTokenException;
+import com.app.url_shortener.iam.presentation.docs.AuthApiDocs;
 import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.ResendVerificationRequestDto;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-public class AuthController {
+public class AuthController implements AuthApiDocs {
 
   public static final Duration DEFAULT_MAX_AGE = Duration.ofDays(7);
 

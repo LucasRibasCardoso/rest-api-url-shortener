@@ -3,6 +3,7 @@ package com.app.url_shortener.url.presentation.controller;
 import com.app.url_shortener.url.application.command.ResolveUrlCommand;
 import com.app.url_shortener.url.application.result.ResolveUrlResult;
 import com.app.url_shortener.url.application.usecase.ResolveUrlUseCase;
+import com.app.url_shortener.url.presentation.docs.RedirectApiDocs;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/r")
 @RestController
 @RequiredArgsConstructor
-public class RedirectController {
+public class RedirectController implements RedirectApiDocs {
 
   private static final String SHORT_CODE_PATH = "/{shortCode:[a-zA-Z0-9]{1,64}}";
 

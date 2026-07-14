@@ -284,44 +284,12 @@ Base path: `/api/v1/urls`
 |---|---|---|
 | `GET` | `/r/{shortCode}` | Resolve o short code e retorna `302 Found` para a URL original |
 
-### Swagger/OpenAPI
+### Documentação OpenAPI
 
-Documentação interativa local:
-
-```text
-http://localhost:8080/swagger-ui.html
-```
-
-Também há uma página estática permitida pela configuração de segurança:
+Acesse a documentação através do seguinte endpoint:
 
 ```text
-http://localhost:8080/docs.html
+http://localhost:8080/docs
 ```
 
-Especificação OpenAPI:
-
-```text
-http://localhost:8080/v3/api-docs
-```
-
-## Decisões Técnicas
-
-- **Clean Architecture e Ports and Adapters**: `iam` e `url` separam domínio, aplicação, apresentação e infraestrutura, reduzindo acoplamento com Spring, JPA, Redis e DynamoDB.
-- **DDD nos agregados principais**: modelos como `UserAccount`, `RefreshToken` e `Url` encapsulam criação, restauração e invariantes básicas de negócio.
-- **Autenticação stateless com JWT**: Spring Security usa OAuth2 Resource Server, `SessionCreationPolicy.STATELESS` e authorities lidas do claim `authorities` sem prefixo automático.
-- **RBAC com roles e permissions**: migrations criam roles `USER` e `ADMIN`, permissões granulares para URLs e relacionamentos `role_permissions`.
-- **Refresh token em cookie seguro**: login e refresh emitem cookie `refreshToken` `HttpOnly`, `Secure`, `SameSite=Strict` e escopo `/api/v1/auth`.
-- **Refresh tokens persistidos como hash**: tokens brutos são gerados com `SecureRandom`, enviados ao cliente e armazenados no PostgreSQL apenas como SHA-256.
-- **Rotina de limpeza agendada**: `RefreshTokenCleanupTask` remove tokens expirados/revogados antigos diariamente às 03:00.
-- **Idempotência em endpoints críticos**: `IdempotencyFilter` exige `Idempotency-Key`, evita concorrência duplicada e reutiliza respostas concluídas por 24 horas via Redis.
-- **Redis como componente operacional**: além de cache de redirecionamento, Redis sustenta idempotência, rate limiting com Bucket4j e alocação de blocos de IDs para geração de short codes.
-- **Geração eficiente de short codes**: IDs numéricos são alocados em blocos no Redis e codificados com Hashids/Base62, reduzindo chamadas ao contador central.
-- **DynamoDB para URLs**: registros de URL são persistidos em tabela DynamoDB por `shortCode`, com índices secundários para listagem por usuário, filtro por status e ranking de URLs ativas.
-- **Cache de resolução por short code**: consultas por short code usam Redis com TTLs distintos para URLs ativas, removidas e não encontradas.
-- **Outbox transacional com SQS**: eventos de verificação de e-mail são persistidos no PostgreSQL, publicados por scheduler e consumidos via SQS, reduzindo acoplamento entre transação de IAM e envio externo.
-- **Contadores assíncronos de redirecionamento**: acessos públicos publicam eventos no SQS e o consumidor agrupa mensagens por `shortCode` para incrementar contadores no DynamoDB.
-- **Rate limiting por política**: Bucket4j com Redis aplica limites para registro, login, verificação, reenvio e criação de URLs por plano.
-- **Problem Details centralizado**: `GlobalExceptionHandler` e `ProblemDetailFactory` padronizam erros HTTP com `errorCode`, validações de campo e categorias como validation, conflict, forbidden e infrastructure.
-- **Migrations versionadas**: PostgreSQL é versionado por Flyway em `src/main/resources/db/migration`.
-- **Pipeline CI/CD**: GitHub Actions executa testes unitários, slice tests, integração e publica imagem Docker no GitHub Container Registry para a branch `main`.
-- **Container runtime enxuto**: Dockerfile usa Temurin 21 JRE Alpine, layered JAR, usuário não-root e opções JVM configuradas.
+Disponível em ambiente local/dev quando `APP_OPENAPI_ENABLED=true`.
