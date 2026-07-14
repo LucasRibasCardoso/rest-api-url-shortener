@@ -62,7 +62,7 @@ class AuthRefreshTokenIT extends AbstractIntegrationTest {
     String currentTokenHash = secureTokenGeneratorPort.hashToken(currentRawRefreshToken);
 
     // Act
-    Response response = refresh(currentRawRefreshToken, "refresh-active-token");
+    Response response = refresh(currentRawRefreshToken);
 
     // Assert
     response
@@ -125,7 +125,7 @@ class AuthRefreshTokenIT extends AbstractIntegrationTest {
     // Arrange
 
     // Act
-    Response response = refreshWithoutCookie("refresh-without-cookie");
+    Response response = refreshWithoutCookie();
 
     // Assert
     response
@@ -150,7 +150,7 @@ class AuthRefreshTokenIT extends AbstractIntegrationTest {
     String unknownRefreshToken = "unknown-refresh-token";
 
     // Act
-    Response response = refresh(unknownRefreshToken, "refresh-unknown-token");
+    Response response = refresh(unknownRefreshToken);
 
     // Assert
     response
@@ -176,10 +176,10 @@ class AuthRefreshTokenIT extends AbstractIntegrationTest {
         userTestDataFactory.createActiveUser("refresh-replay.integration@example.com", PASSWORD);
     String originalRawRefreshToken =
         login(user.getEmail(), PASSWORD, "login-before-replay").refreshToken();
-    Response firstResponse = refresh(originalRawRefreshToken, "refresh-before-replay");
+    Response firstResponse = refresh(originalRawRefreshToken);
 
     // Act
-    Response replayResponse = refresh(originalRawRefreshToken, "refresh-replayed-token");
+    Response replayResponse = refresh(originalRawRefreshToken);
 
     // Assert
     firstResponse.then().log().ifValidationFails().statusCode(200);
@@ -200,15 +200,11 @@ class AuthRefreshTokenIT extends AbstractIntegrationTest {
         .allSatisfy(token -> assertThat(token.getRevokedAt()).isNotNull());
   }
 
-  private Response refresh(String rawRefreshToken, String idempotencyKey) {
-    return given()
-        .header("Idempotency-Key", idempotencyKey)
-        .cookie("refreshToken", rawRefreshToken)
-        .when()
-        .post(REFRESH_ENDPOINT);
+  private Response refresh(String rawRefreshToken) {
+    return given().cookie("refreshToken", rawRefreshToken).when().post(REFRESH_ENDPOINT);
   }
 
-  private Response refreshWithoutCookie(String idempotencyKey) {
-    return given().header("Idempotency-Key", idempotencyKey).when().post(REFRESH_ENDPOINT);
+  private Response refreshWithoutCookie() {
+    return given().when().post(REFRESH_ENDPOINT);
   }
 }

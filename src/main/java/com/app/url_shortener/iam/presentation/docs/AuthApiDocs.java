@@ -4,6 +4,7 @@ import com.app.url_shortener.iam.presentation.dto.request.LoginRequestDto;
 import com.app.url_shortener.iam.presentation.dto.request.RegisterRequestDto;
 import com.app.url_shortener.iam.presentation.dto.response.GenericMessageResponseDto;
 import com.app.url_shortener.iam.presentation.dto.response.LoginResponseDto;
+import com.app.url_shortener.iam.presentation.dto.response.RefreshTokenResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -17,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(
@@ -415,4 +417,133 @@ public interface AuthApiDocs {
   ResponseEntity<LoginResponseDto> login(
       @Valid @RequestBody LoginRequestDto requestDto,
       @Parameter(hidden = true) HttpServletRequest request);
+
+  @Operation(
+      operationId = "refreshAccessToken",
+      summary = "Renovar token de acesso",
+      description =
+          """
+          Renova a sessão a partir do cookie `refreshToken`.
+          O endpoint é público e não usa JWT Bearer no header `Authorization`. Em caso de sucesso,
+          rotaciona o refresh token atual, retorna um novo access token no corpo da resposta e
+          emite um novo cookie `refreshToken` seguro, `HttpOnly`, `Secure`, `SameSite=Strict`,
+          com path `/api/v1/auth` e duração de 7 dias.
+
+          O refresh token antigo deixa de ser válido após a rotação. Reuso de token já rotacionado
+          é tratado como comprometimento e invalida as sessões do usuário.
+          """)
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Access token renovado e refresh token rotacionado com sucesso.",
+        headers = @Header(name = "Set-Cookie", ref = "#/components/headers/SetCookie"),
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = RefreshTokenResponseDto.class),
+                examples =
+                    @ExampleObject(
+                        name = "refreshed",
+                        summary = "Token renovado",
+                        value =
+                            """
+                            {
+                              "newAccessToken": "<access_token>"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Refresh token ausente, inválido, expirado, desconhecido ou comprometido.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples = {
+                  @ExampleObject(
+                      name = "missingRefreshTokenCookie",
+                      summary = "Cookie ausente",
+                      value =
+                          """
+                          {
+                            "type": "/errors/unauthorized",
+                            "title": "Não autorizado",
+                            "status": 401,
+                            "detail": "Refresh token inválido.",
+                            "errorCode": "AUTH_REFRESH_TOKEN_INVALID"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "expiredRefreshToken",
+                      summary = "Refresh token expirado ou desconhecido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/unauthorized",
+                            "title": "Não autorizado",
+                            "status": 401,
+                            "detail": "Refresh token expirado.",
+                            "errorCode": "AUTH_REFRESH_TOKEN_EXPIRED"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "compromisedRefreshToken",
+                      summary = "Refresh token comprometido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/unauthorized",
+                            "title": "Não autorizado",
+                            "status": 401,
+                            "detail": "Refresh token comprometido.",
+                            "errorCode": "AUTH_REFRESH_TOKEN_COMPROMISED"
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Usuário associado ao refresh token não encontrado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "userNotFound",
+                        summary = "Usuário não encontrado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/not-found",
+                              "title": "Não encontrado",
+                              "status": 404,
+                              "detail": "Usuário não encontrado.",
+                              "errorCode": "AUTH_USER_NOT_FOUND"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Falha temporária em dependência necessária à renovação da sessão.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "dependencyFailure",
+                        summary = "Dependência temporariamente indisponível",
+                        value =
+                            """
+                            {
+                              "type": "/errors/infrastructure",
+                              "title": "Infraestrutura",
+                              "status": 503,
+                              "detail": "Falha temporária em serviço de infraestrutura.",
+                              "errorCode": "DEPENDENCY_FAILURE"
+                            }
+                            """)))
+  })
+  ResponseEntity<RefreshTokenResponseDto> refresh(
+      @Parameter(ref = "#/components/parameters/RefreshTokenCookieRequired")
+          @CookieValue(required = false)
+          String refreshToken);
 }
