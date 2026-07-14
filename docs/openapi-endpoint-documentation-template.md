@@ -1,16 +1,13 @@
 
-Documentar POST /api/v1/auth/refresh.
+Documentar POST /api/v1/auth/logout
 Analisar:
 - AuthController
 - AuthApiDocs, se já existir
-- RefreshTokenUseCase / implementação
-- RefreshTokenRequestDto
-- GenericMessageResponseDto
+- LogoutUseCase / implementação
 - GlobalExceptionHandler
-- exceções de domínio relacionadas ao login
-- AuthLoginIT
+- exceções de domínio relacionadas ao logout
+- AuthLogoutIT
 - AuthControllerTest
-- configuração de rate limit para login
 
 Passo 0: Verificar configuração global OpenAPI
 

@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -544,6 +545,119 @@ public interface AuthApiDocs {
   })
   ResponseEntity<RefreshTokenResponseDto> refresh(
       @Parameter(ref = "#/components/parameters/RefreshTokenCookieRequired")
+          @CookieValue(required = false)
+          String refreshToken);
+
+  @Operation(
+      operationId = "logoutUser",
+      summary = "Encerrar sessão",
+      description =
+          """
+          Encerra a sessão do usuário autenticado.
+          Exige JWT válido no header `Authorization` e `Idempotency-Key`. Quando o cookie
+          `refreshToken` é informado, o refresh token ativo correspondente é revogado. Quando o
+          cookie está ausente, vazio ou não corresponde a uma sessão ativa, a operação ainda retorna
+          sucesso e expira o cookie no cliente.
+
+          Em caso de sucesso, a resposta não possui corpo e emite `Set-Cookie` para expirar
+          `refreshToken` com `HttpOnly`, `Secure`, `SameSite=Strict`, path `/api/v1/auth` e
+          `Max-Age=0`.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @Parameter(ref = "#/components/parameters/IdempotencyKeyHeader")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "204",
+        description = "Logout concluído e cookie de refresh token expirado.",
+        headers = @Header(name = "Set-Cookie", ref = "#/components/headers/SetCookie"),
+        content = @Content),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Header Idempotency-Key ausente ou inválido.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/BadRequestError"),
+                examples =
+                    @ExampleObject(
+                        name = "missingIdempotencyKey",
+                        summary = "Idempotency-Key ausente",
+                        value =
+                            """
+                            {
+                              "type": "/errors/validation",
+                              "title": "Validação",
+                              "status": 400,
+                              "detail": "O cabeçalho Idempotency-Key é obrigatório para esta operação.",
+                              "errorCode": "IDEMPOTENCY_HEADER_MISSING"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "Conflito de idempotência.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "idempotencyConflict",
+                        summary = "Conflito de idempotência",
+                        value =
+                            """
+                            {
+                              "type": "/errors/conflict",
+                              "title": "Conflito",
+                              "status": 409,
+                              "detail": "A requisição já está em processamento. Aguarde.",
+                              "errorCode": "IDEMPOTENCY_IN_PROCESSING"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Falha temporária em dependência necessária ao logout.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "dependencyFailure",
+                        summary = "Dependência temporariamente indisponível",
+                        value =
+                            """
+                            {
+                              "type": "/errors/infrastructure",
+                              "title": "Infraestrutura",
+                              "status": 503,
+                              "detail": "Falha temporária em serviço de infraestrutura.",
+                              "errorCode": "DEPENDENCY_FAILURE"
+                            }
+                            """)))
+  })
+  ResponseEntity<Void> logout(
+      @Parameter(ref = "#/components/parameters/RefreshTokenCookieOptional")
           @CookieValue(required = false)
           String refreshToken);
 }
