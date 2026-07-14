@@ -1,12 +1,14 @@
 
-Documentar POST /api/v1/auth/logout
+Documentar POST /api/v1/auth/resend-verification
 Analisar:
 - AuthController
 - AuthApiDocs, se já existir
-- LogoutUseCase / implementação
+- ResendVerificationUseCase / implementação
+- ResendVerificationRequestDto
+- GenericMessageResponseDto
 - GlobalExceptionHandler
-- exceções de domínio relacionadas ao logout
-- AuthLogoutIT
+- exceções de domínio relacionadas à verificação de email
+- AuthResendVerificationIT
 - AuthControllerTest
 
 Passo 0: Verificar configuração global OpenAPI
