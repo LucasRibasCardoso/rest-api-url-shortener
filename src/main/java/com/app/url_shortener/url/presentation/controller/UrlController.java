@@ -5,6 +5,7 @@ import com.app.url_shortener.shared.config.ApplicationProperties;
 import com.app.url_shortener.url.application.command.*;
 import com.app.url_shortener.url.application.result.*;
 import com.app.url_shortener.url.application.usecase.*;
+import com.app.url_shortener.url.presentation.docs.UrlApiDocs;
 import com.app.url_shortener.url.presentation.dto.request.ShortenUrlRequestDto;
 import com.app.url_shortener.url.presentation.dto.response.*;
 import com.app.url_shortener.url.presentation.mapper.UrlWebMapper;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/urls")
-public class UrlController {
+public class UrlController implements UrlApiDocs {
 
   private static final String SHORT_CODE_PATH = "/{shortCode:[a-zA-Z0-9]{1,64}}";
 

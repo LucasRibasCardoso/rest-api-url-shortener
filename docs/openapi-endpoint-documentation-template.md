@@ -1,13 +1,11 @@
 
-Documentar POST /api/v1/r
+Documentar POST /api/v1/urls
 Analisar:
-- RedirectController
+- UrlController, UrlControllerTest e UrlCreateIT
 - AuthApiDocs, se já existir
-- ResolveUrlUseCase, ResolveUrlUseCaseImp e suas dependencias
+- ShortenUrlUseCase, ShortenUrlUseCaseImpl e suas dependencias
 - GlobalExceptionHandler
-- exceções de domínio relacionadas à verificação de email
-- RedirectIT
-- RedirectControllerTest
+- exceções de domínio relacionadas à criação de URLs
 
 Passo 0: Verificar configuração global OpenAPI
 
