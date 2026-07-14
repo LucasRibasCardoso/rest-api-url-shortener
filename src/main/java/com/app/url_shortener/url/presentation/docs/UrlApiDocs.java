@@ -479,18 +479,342 @@ public interface UrlApiDocs {
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 
   @GetMapping("/users/{userId}")
+  @Operation(
+      operationId = "listUserUrls",
+      summary = "Listar URLs de usuário",
+      description =
+          """
+          Lista URLs encurtadas de um usuário informado pelo identificador.
+          Exige JWT válido e permissão administrativa `url:list:any`.
+
+          A resposta é paginada por cursor e retorna URLs ordenadas da mais recente para a mais
+          antiga. Por padrão, lista apenas URLs ativas. Quando o usuário informado não existe ou não
+          possui URLs, retorna uma página vazia com status 200.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Página de URLs do usuário informado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UrlPageResponseDto.class),
+                examples = {
+                  @ExampleObject(
+                      name = "urlPage",
+                      summary = "Página com URLs",
+                      value =
+                          """
+                          {
+                            "urls": [
+                              {
+                                "originalUrl": "https://example.com/articles/spring-boot",
+                                "shortCode": "aB3dE",
+                                "shortUrl": "http://localhost:8080/r/aB3dE",
+                                "createdAt": "2026-05-10T14:30:00Z",
+                                "status": "ACTIVE"
+                              }
+                            ],
+                            "nextCursor": "eyJzaG9ydENvZGUiOiJhQjNkRSJ9"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "emptyPage",
+                      summary = "Página vazia",
+                      value =
+                          """
+                          {
+                            "urls": [],
+                            "nextCursor": null
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Parâmetros inválidos, filtro inválido ou cursor de paginação inválido.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/BadRequestError"),
+                examples = {
+                  @ExampleObject(
+                      name = "invalidLimit",
+                      summary = "Limite inválido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "Um ou mais campos estão inválidos.",
+                            "errorCode": "REQUEST_VALIDATION_FAILED",
+                            "errors": [
+                              {
+                                "field": "limit",
+                                "message": "must be less than or equal to 100"
+                              }
+                            ]
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "invalidCursor",
+                      summary = "Cursor inválido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "Cursor de paginação inválido.",
+                            "errorCode": "URL_CURSOR_INVALID"
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Usuário autenticado sem permissão administrativa para listar URLs.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "forbidden",
+                        summary = "Permissão insuficiente",
+                        value =
+                            """
+                            {
+                              "type": "/errors/forbidden",
+                              "title": "Acesso negado",
+                              "status": 403,
+                              "detail": "Acesso negado para esse recurso",
+                              "errorCode": "AUTH_ACCESS_DENIED"
+                            }
+                            """)))
+  })
   ResponseEntity<UrlPageResponseDto> findAllUrlsByUserId(
-      @PathVariable UUID userId,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-      @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
-      @RequestParam(required = false) String cursor);
+      @Parameter(
+              name = "userId",
+              description = "Identificador do usuário cujas URLs serão listadas.",
+              required = true,
+              example = "019a16f1-ae7f-7c9d-9e18-44773f1ac001",
+              schema = @Schema(type = "string", format = "uuid"))
+          @PathVariable
+          UUID userId,
+      @Parameter(
+              name = "limit",
+              description = "Quantidade máxima de URLs retornadas na página.",
+              example = "20",
+              schema =
+                  @Schema(type = "integer", minimum = "1", maximum = "100", defaultValue = "20"))
+          @RequestParam(defaultValue = "20")
+          @Min(1)
+          @Max(100)
+          int limit,
+      @Parameter(
+              name = "status",
+              description = "Filtra URLs por status.",
+              example = "ACTIVE",
+              schema =
+                  @Schema(
+                      allowableValues = {"ACTIVE", "DELETED", "ALL"},
+                      defaultValue = "ACTIVE"))
+          @RequestParam(defaultValue = "ACTIVE")
+          UrlStatusFilter status,
+      @Parameter(
+              name = "cursor",
+              description = "Cursor retornado na página anterior para continuar a listagem.",
+              example = "eyJzaG9ydENvZGUiOiJhQjNkRSJ9")
+          @RequestParam(required = false)
+          String cursor);
 
   @GetMapping("/me")
+  @Operation(
+      operationId = "listCurrentUserUrls",
+      summary = "Listar URLs do usuário autenticado",
+      description =
+          """
+          Lista URLs encurtadas pertencentes ao usuário autenticado.
+          Exige JWT válido e permissão `url:list:own`.
+
+          A identidade do usuário é obtida do token de acesso. A resposta é paginada por cursor e
+          retorna URLs ordenadas da mais recente para a mais antiga. Por padrão, lista apenas URLs
+          ativas. Quando o usuário autenticado não possui URLs, retorna uma página vazia com status
+          200.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Página de URLs do usuário autenticado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UrlPageResponseDto.class),
+                examples = {
+                  @ExampleObject(
+                      name = "currentUserUrlPage",
+                      summary = "Página com URLs",
+                      value =
+                          """
+                          {
+                            "urls": [
+                              {
+                                "originalUrl": "https://example.com/articles/spring-boot",
+                                "shortCode": "aB3dE",
+                                "shortUrl": "http://localhost:8080/r/aB3dE",
+                                "createdAt": "2026-05-10T14:30:00Z",
+                                "status": "ACTIVE"
+                              }
+                            ],
+                            "nextCursor": "eyJzaG9ydENvZGUiOiJhQjNkRSJ9"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "currentUserEmptyPage",
+                      summary = "Página vazia",
+                      value =
+                          """
+                          {
+                            "urls": [],
+                            "nextCursor": null
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Parâmetros inválidos, filtro inválido ou cursor de paginação inválido.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/BadRequestError"),
+                examples = {
+                  @ExampleObject(
+                      name = "invalidLimit",
+                      summary = "Limite inválido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "Um ou mais campos estão inválidos.",
+                            "errorCode": "REQUEST_VALIDATION_FAILED",
+                            "errors": [
+                              {
+                                "field": "limit",
+                                "message": "must be greater than or equal to 1"
+                              }
+                            ]
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "invalidCursor",
+                      summary = "Cursor inválido",
+                      value =
+                          """
+                          {
+                            "type": "/errors/validation",
+                            "title": "Validação",
+                            "status": 400,
+                            "detail": "Cursor de paginação inválido.",
+                            "errorCode": "URL_CURSOR_INVALID"
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "403",
+        description = "Usuário autenticado sem permissão para listar as próprias URLs.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "forbidden",
+                        summary = "Permissão insuficiente",
+                        value =
+                            """
+                            {
+                              "type": "/errors/forbidden",
+                              "title": "Acesso negado",
+                              "status": 403,
+                              "detail": "Acesso negado para esse recurso",
+                              "errorCode": "AUTH_ACCESS_DENIED"
+                            }
+                            """)))
+  })
   ResponseEntity<UrlPageResponseDto> findAllMyUrls(
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-      @RequestParam(defaultValue = "ACTIVE") UrlStatusFilter status,
-      @RequestParam(required = false) String cursor);
+      @Parameter(
+              name = "limit",
+              description = "Quantidade máxima de URLs retornadas na página.",
+              example = "20",
+              schema =
+                  @Schema(type = "integer", minimum = "1", maximum = "100", defaultValue = "20"))
+          @RequestParam(defaultValue = "20")
+          @Min(1)
+          @Max(100)
+          int limit,
+      @Parameter(
+              name = "status",
+              description = "Filtra URLs por status.",
+              example = "ACTIVE",
+              schema =
+                  @Schema(
+                      allowableValues = {"ACTIVE", "DELETED", "ALL"},
+                      defaultValue = "ACTIVE"))
+          @RequestParam(defaultValue = "ACTIVE")
+          UrlStatusFilter status,
+      @Parameter(
+              name = "cursor",
+              description = "Cursor retornado na página anterior para continuar a listagem.",
+              example = "eyJzaG9ydENvZGUiOiJhQjNkRSJ9")
+          @RequestParam(required = false)
+          String cursor);
 
   @GetMapping("me/ranking")
   ResponseEntity<UrlRankingResponseDto> findMyTopUrls(
