@@ -369,8 +369,113 @@ public interface UrlApiDocs {
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 
   @DeleteMapping(SHORT_CODE_PATH)
+  @Operation(
+      operationId = "deleteCurrentUserUrl",
+      summary = "Remover URL encurtada",
+      description =
+          """
+          Remove logicamente uma URL encurtada pelo short code informado.
+          Exige JWT válido e permissão `url:delete:own` para URLs do próprio usuário ou
+          `url:delete:any` para remoção de URLs de qualquer usuário.
+
+          Em caso de sucesso, retorna `204 No Content` sem corpo. A operação é idempotente para
+          URLs já deletadas: uma nova tentativa autorizada para o mesmo short code mantém o estado
+          deletado e também retorna sucesso sem corpo.
+          """,
+      security = @SecurityRequirement(name = "bearerAuth"))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "204",
+        description = "URL removida com sucesso.",
+        content = @Content),
+    @ApiResponse(
+        responseCode = "401",
+        description = "JWT ausente, inválido ou expirado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "unauthorized",
+                        summary = "Não autenticado",
+                        value =
+                            """
+                            {
+                              "type": "/errors/unauthorized",
+                              "title": "Não autorizado",
+                              "status": 401,
+                              "detail": "Autenticação necessária ou token inválido.",
+                              "errorCode": "AUTH_UNAUTHORIZED"
+                            }
+                            """))),
+    @ApiResponse(
+        responseCode = "403",
+        description =
+            "Usuário autenticado sem permissão de exclusão ou sem autorização para remover a URL.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples = {
+                  @ExampleObject(
+                      name = "missingDeleteAuthority",
+                      summary = "Permissão de exclusão ausente",
+                      value =
+                          """
+                          {
+                            "type": "/errors/forbidden",
+                            "title": "Acesso negado",
+                            "status": 403,
+                            "detail": "Acesso negado para esse recurso",
+                            "errorCode": "AUTH_ACCESS_DENIED"
+                          }
+                          """),
+                  @ExampleObject(
+                      name = "deleteForbidden",
+                      summary = "URL de outro usuário",
+                      value =
+                          """
+                          {
+                            "type": "/errors/forbidden",
+                            "title": "Proibido",
+                            "status": 403,
+                            "detail": "Sem permissão para excluir esta URL.",
+                            "errorCode": "URL_DELETE_FORBIDDEN"
+                          }
+                          """)
+                })),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Short code não encontrado.",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                schema = @Schema(ref = "#/components/schemas/ApiError"),
+                examples =
+                    @ExampleObject(
+                        name = "urlNotFound",
+                        summary = "URL não encontrada",
+                        value =
+                            """
+                            {
+                              "type": "/errors/not-found",
+                              "title": "Não encontrado",
+                              "status": 404,
+                              "detail": "URL não encontrada.",
+                              "errorCode": "URL_NOT_FOUND"
+                            }
+                            """)))
+  })
   ResponseEntity<Void> deleteUrl(
-      @PathVariable String shortCode,
+      @Parameter(
+              name = "shortCode",
+              description = "Código curto alfanumérico da URL encurtada.",
+              required = true,
+              example = "aB3dE",
+              schema = @Schema(type = "string", minLength = 1, maxLength = 64))
+          @PathVariable
+          String shortCode,
       @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal user);
 
   @GetMapping("/users/{userId}")
