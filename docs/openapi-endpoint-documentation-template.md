@@ -1,42 +1,16 @@
-# Template para Documentar Endpoints OpenAPI
 
-Use este template quando for documentar um endpoint da API usando o padrão de interfaces `*ApiDocs`.
-O objetivo é produzir documentação precisa a partir do fluxo real implementado no código, evitando descrições genéricas, inventadas ou divergentes do comportamento testado.
-A documentação deve representar o contrato público da API HTTP: método, rota, autenticação, permissões, request, responses, headers, cookies, status codes, validações e efeitos observáveis pelo cliente.
-Não exponha detalhes internos de implementação, como nomes de tabelas, filas, chaves Redis, adapters, repositories, providers, locks, estruturas internas de cache ou decisões que não impactem diretamente o cliente HTTP.
----
-
-## Entrada esperada
-Ao usar este template, informe:
-- Endpoint alvo: método HTTP e rota, por exemplo `POST /api/v1/auth/register`.
-- Controller principal.
-- Arquivos principais do fluxo, quando conhecidos.
-- DTOs de request e response, quando conhecidos.
-- Use case ou service chamado pelo controller, quando conhecido.
-- Exception handler global, quando conhecido.
-- Testes de integração, slice ou unitários relacionados, quando conhecidos.
-- Configurações relevantes, quando conhecidas:
-  - security;
-  - rate limit;
-  - idempotência;
-  - cookies;
-  - OpenAPI global.
-Exemplo:
-```text
-Documentar POST /api/v1/auth/register.
+Documentar POST /api/v1/auth/refresh.
 Analisar:
 - AuthController
 - AuthApiDocs, se já existir
-- RegisterUserUseCase / implementação
-- RegisterRequestDto
+- RefreshTokenUseCase / implementação
+- RefreshTokenRequestDto
 - GenericMessageResponseDto
 - GlobalExceptionHandler
-- exceções de domínio relacionadas ao registro
-- AuthRegistrationIT
+- exceções de domínio relacionadas ao login
+- AuthLoginIT
 - AuthControllerTest
-- configuração de rate limit para register
-
-⸻
+- configuração de rate limit para login
 
 Passo 0: Verificar configuração global OpenAPI
 
